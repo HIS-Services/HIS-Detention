@@ -1,0 +1,490 @@
+/* 전역 CSS 변수 정의 */
+:root{
+  --nv:#0F1F5C;
+  --nv2:#1B2F7A;
+  --bg:#EEF1F9;
+  --tx:#111827;
+  --sb:#5B6888;
+  --bd:#D8DDED;
+  --gn:#15803D;
+  --rd:#DC2626;
+  --yl:#B45309;
+  --r:8px;
+  --rlg:14px;
+  --sh:0 1px 8px rgba(15,31,92,.06);
+}
+
+/* 전체 요소 box-sizing 통일 */
+*{box-sizing:border-box}
+
+/* body 기본 스타일 */
+body{
+  margin:0;
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg);
+  color:var(--tx);
+  font-size:14px;
+  line-height:1.4;
+}
+
+/* 폼 요소들에 body와 같은 폰트 적용 */
+button,input,select,textarea{font:inherit}
+
+/* 토스트 메시지 기본 스타일 */
+#toast{
+  position:fixed;
+  left:50%;
+  bottom:20px;
+  transform:translateX(-50%) translateY(60px);
+  padding:8px 14px;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  z-index:9999;
+  transition:.25s;
+  font-size:12px;
+}
+
+/* 토스트 표시 상태 */
+.on{transform:translateX(-50%) translateY(0)}
+
+/* 성공 토스트 */
+#toast.ok{background:var(--gn)}
+
+/* 오류 토스트 */
+#toast.err{background:var(--rd)}
+
+/* 경고 토스트 */
+#toast.warn{background:var(--yl)}
+
+/* 로그인 페이지 전체 레이아웃 */
+.login-page{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:linear-gradient(150deg,var(--nv),var(--nv2) 60%,#28479f);
+}
+
+/* 로그인 박스와 일반 카드 공통 */
+.login-box,.card{
+  background:#fff;
+  border-radius:var(--rlg);
+  box-shadow:var(--sh);
+}
+
+/* 로그인 박스 크기/여백 */
+.login-box{
+  padding:22px 20px;
+  width:min(460px,100%);
+}
+
+/* 아이콘 원형 박스 */
+.icon{
+  width:50px;
+  height:50px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#E8B020,#FBD155);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  margin:0 auto 8px;
+}
+
+/* 제목 스타일 */
+h1{
+  margin:0 0 4px;
+  font-size:20px;
+  color:var(--nv);
+  font-family:'DM Serif Display',serif;
+}
+
+/* 기본 문단 스타일 */
+p{
+  margin:0 0 10px;
+  color:var(--sb);
+  font-size:13px;
+}
+
+/* grid 레이아웃 */
+.grid{
+  display:grid;
+  gap:10px;
+}
+
+/* label 스타일 */
+.label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--sb);
+  margin-bottom:4px;
+  display:block;
+}
+
+/* 입력창 공통 스타일 */
+.edit-input{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--bd);
+  border-radius:8px;
+  outline:none;
+  font-size:13px;
+  min-width:0;
+  background:#fff;
+}
+
+/* 입력창 focus 상태 */
+.edit-input:focus{
+  border-color:var(--nv2);
+  box-shadow:0 0 0 2px rgba(27,47,122,.08);
+}
+
+/* 버튼 공통 */
+.btn{
+  padding:8px 14px;
+  border-radius:8px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+  font-size:13px;
+  white-space:nowrap;
+}
+
+/* 주요 버튼 */
+.btn-primary{
+  background:linear-gradient(135deg,var(--nv),var(--nv2));
+  color:#fff;
+}
+
+/* 보조 버튼 */
+.btn-secondary{
+  background:#e9edf5;
+  color:var(--tx);
+}
+
+/* 삭제/위험 버튼 */
+.btn-danger{
+  background:#fde8e8;
+  color:var(--rd);
+}
+
+/* 상단 액션 버튼 정렬 */
+.inline-actions{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* 상단 topbar */
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  background:linear-gradient(120deg,var(--nv),var(--nv2));
+  padding:10px 14px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+
+/* topbar 안 제목 */
+.topbar h1{
+  color:#fff;
+  font-size:16px;
+  margin:0;
+}
+
+/* topbar 하위 설명 */
+.sub{
+  font-size:10px;
+  color:#dbe2ff;
+}
+
+/* 본문 컨텐츠 영역 */
+.content{
+  max-width:1120px;
+  margin:0 auto;
+  padding:12px;
+}
+
+/* 카드 스타일 */
+.card{
+  padding:12px 14px;
+  margin-bottom:12px;
+}
+
+/* 카드 제목 영역 */
+.card-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+  font-weight:800;
+  font-size:15px;
+  color:var(--nv);
+}
+
+/* 탭 버튼 영역 */
+.tabs{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+
+/* 탭 버튼 기본 */
+.tab-btn{
+  padding:8px 14px;
+  border-radius:10px;
+  border:none;
+  background:#d8dde8;
+  font-weight:800;
+  font-size:13px;
+  cursor:pointer;
+}
+
+/* 선택된 탭 버튼 */
+.tab-btn.active{
+  background:var(--nv);
+  color:#fff;
+}
+
+/* 탭 패널 기본 숨김 */
+.tab-panel{display:none}
+
+/* 선택된 탭 패널만 표시 */
+.tab-panel.active{display:block}
+
+/* 검색/필터/액션 버튼 영역 */
+.filter-bar{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+  align-items:center;
+}
+
+/* 가변 폭 요소 */
+.flex1{
+  flex:1;
+  min-width:180px;
+}
+
+/* 테이블 감싸는 박스 */
+.tbl-wrap{
+  overflow:auto;
+  border:1px solid var(--bd);
+  border-radius:10px;
+  background:#fff;
+}
+
+/* 테이블 기본 */
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#fff;
+  table-layout:auto;
+}
+
+/* 셀 공통 */
+th,td{
+  padding:7px 8px;
+  border-bottom:1px solid #eef2ff;
+  vertical-align:middle;
+  font-size:13px;
+}
+
+/* 헤더 셀 */
+th{
+  background:#dce6f7;
+  color:var(--nv);
+  font-size:11px;
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+
+/* 빈 상태 텍스트 */
+.empty{
+  text-align:center;
+  color:var(--sb);
+  padding:18px 10px;
+  font-size:12px;
+}
+
+/* 배지/상태 pill */
+.badge,.pill{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#eef3ff;
+  color:var(--nv2);
+  font-size:11px;
+  font-weight:700;
+}
+
+/* 오류 pill */
+.pill.err{
+  background:#fde8e8;
+  color:var(--rd);
+}
+
+/* 성공 pill */
+.pill.ok{
+  background:#e8f8ee;
+  color:var(--gn);
+}
+
+/* 안내 박스 */
+.notice{
+  padding:10px 12px;
+  border-radius:10px;
+  background:#fffbeb;
+  border:1px solid #fcd34d;
+  color:#6b4f10;
+  margin-bottom:10px;
+  font-size:13px;
+}
+
+/* 작은 설명 텍스트 */
+.small{
+  font-size:11px;
+  color:var(--sb);
+}
+
+/* 숨김 처리 */
+.hidden{display:none}
+
+/* 체크박스 크기 약간 축소 */
+input[type="checkbox"]{
+  width:14px;
+  height:14px;
+}
+
+/* textarea 기본 높이 축소 */
+textarea.edit-input{
+  min-height:76px;
+  resize:vertical;
+}
+
+/* select 너비 문제 방지 */
+select.edit-input{
+  background:#fff;
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px){
+  body{
+    font-size:13px;
+  }
+
+  .content{
+    padding:10px;
+  }
+
+  .card{
+    padding:10px 12px;
+  }
+
+  .filter-bar{
+    gap:5px;
+  }
+
+  .btn{
+    padding:7px 12px;
+    font-size:12px;
+  }
+
+  .edit-input{
+    font-size:12px;
+    padding:7px 9px;
+  }
+
+  th,td{
+    font-size:12px;
+    padding:6px 7px;
+  }
+
+  .tab-btn{
+    padding:7px 12px;
+    font-size:12px;
+  }
+}
+
+/* 테이블 행 교차 색상 */
+tbody tr:nth-child(odd){
+  background:#ffffff;
+}
+
+tbody tr:nth-child(even){
+  background:#f7faff;
+}
+
+/* 줄 위에 마우스를 올렸을 때 */
+tbody tr:hover{
+  background:#edf3ff;
+}
+
+/* 교차 배경 위에서도 입력칸은 깔끔하게 유지 */
+tbody tr td .edit-input{
+  background:rgba(255,255,255,0.92);
+}
+
+/* hover 시 입력칸도 약간 강조 */
+tbody tr:hover td .edit-input{
+  background:#ffffff;
+}
+
+.criteria-textarea{
+  width:100%;
+  min-height:56px;
+  padding:8px 10px;
+  border:1px solid var(--bd);
+  border-radius:8px;
+  outline:none;
+  font-size:13px;
+  line-height:1.4;
+  resize:vertical;
+  font-family:inherit;
+  background:#fff;
+}
+
+.criteria-table{
+  table-layout:fixed;
+  width:100%;
+}
+
+.criteria-table th:nth-child(1),
+.criteria-table td:nth-child(1){
+  width:20%;
+}
+
+.criteria-table th:nth-child(2),
+.criteria-table td:nth-child(2){
+  width:38%;
+}
+
+.criteria-table th:nth-child(3),
+.criteria-table td:nth-child(3){
+  width:10%;
+}
+
+.criteria-table th:nth-child(4),
+.criteria-table td:nth-child(4){
+  width:20%;
+}
+
+.criteria-table th:nth-child(5),
+.criteria-table td:nth-child(5){
+  width:12%;
+}
+
+.criteria-points-input{
+  width:100%;
+  min-width:0;
+}

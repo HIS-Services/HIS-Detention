@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교사 로그인 | Teacher Login</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Serif+Display&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="common.css" />
+
+  <style>
+    .admin-link {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .login-box {
+      max-width: 460px;
+    }
+
+    .login-box .btn {
+      width: 100%;
+    }
+
+    .title-en {
+      display:block;
+      margin-top:2px;
+      font-size:.9em;
+    }
+
+    .desc-ko,
+    .desc-en {
+      display:block;
+      text-align:center;
+    }
+
+    .desc-en {
+      margin-top:2px;
+    }
+
+    .label-en {
+      display:block;
+      font-size:11px;
+      color:var(--sb);
+      margin-top:2px;
+      font-weight:500;
+    }
+
+
+    .autocomplete-shell{
+      position:relative;
+    }
+
+    .autocomplete-shell .edit-input{
+      padding-right:42px;
+    }
+
+    .autocomplete-shell .edit-input.is-selected{
+      border-color:#15803d;
+      box-shadow:0 0 0 3px rgba(21,128,61,.12);
+      background:#fbfffc;
+    }
+
+    .autocomplete-toggle{
+      position:absolute;
+      top:1px;
+      right:1px;
+      width:38px;
+      height:calc(100% - 2px);
+      border:0;
+      border-left:1px solid #d8dded;
+      border-radius:0 7px 7px 0;
+      background:#f7f9fd;
+      color:var(--nv);
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .autocomplete-toggle:hover,
+    .autocomplete-toggle:focus-visible{
+      background:#e8eefb;
+    }
+
+    .autocomplete-menu{
+      position:absolute;
+      left:0;
+      right:0;
+      top:calc(100% + 6px);
+      z-index:3000;
+      max-height:218px;
+      overflow-y:auto;
+      padding:4px;
+      border:1px solid #b8c4dc;
+      border-radius:8px;
+      background:#fff;
+      box-shadow:0 10px 24px rgba(15,31,92,.18);
+    }
+
+    .autocomplete-menu[hidden]{display:none}
+
+    .autocomplete-option{
+      width:100%;
+      display:block;
+      padding:6px 8px;
+      border:0;
+      border-radius:6px;
+      background:#fff;
+      color:var(--tx);
+      text-align:left;
+      cursor:pointer;
+    }
+
+    .autocomplete-option + .autocomplete-option{
+      margin-top:2px;
+    }
+
+    .autocomplete-option:hover,
+    .autocomplete-option.active{
+      background:var(--nv);
+      color:#fff;
+    }
+
+    .autocomplete-option-name{
+      display:block;
+      font-size:13px;
+      font-weight:800;
+      line-height:1.25;
+    }
+
+    .autocomplete-option-email{
+      display:block;
+      margin-top:1px;
+      font-size:10px;
+      color:var(--sb);
+      line-height:1.25;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .autocomplete-option:hover .autocomplete-option-email,
+    .autocomplete-option.active .autocomplete-option-email{
+      color:#dbe5ff;
+    }
+
+    .autocomplete-empty{
+      padding:12px;
+      color:#7c4a03;
+      background:#fff8e7;
+      border-radius:8px;
+      font-size:12px;
+      text-align:center;
+    }
+
+    .selection-confirm{
+      min-height:28px;
+      margin-top:6px;
+      padding:5px 8px;
+      border:1px dashed #c8d0e2;
+      border-radius:8px;
+      background:#f8faff;
+      color:var(--sb);
+      font-size:11px;
+      line-height:1.4;
+    }
+
+    .selection-confirm.selected{
+      border-style:solid;
+      border-color:#86c99a;
+      background:#effbf3;
+      color:#11612c;
+      font-weight:700;
+    }
+
+    .selection-confirm .selection-check{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:17px;
+      height:17px;
+      margin-right:5px;
+      border-radius:50%;
+      background:#15803d;
+      color:#fff;
+      font-size:11px;
+      vertical-align:-2px;
+    }
+
+
+    .login-divider{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:18px 0 14px;
+      color:var(--sb);
+      font-size:11px;
+      font-weight:700;
+    }
+
+    .login-divider::before,
+    .login-divider::after{
+      content:"";
+      flex:1;
+      height:1px;
+      background:#d8deec;
+    }
+
+    .google-login-btn{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      width:100%;
+      min-height:44px;
+      border:1px solid #c9d2e3;
+      border-radius:9px;
+      background:#fff;
+      color:#26334f;
+      font-size:13px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 2px 7px rgba(15,31,92,.06);
+    }
+
+    .google-login-btn:hover,
+    .google-login-btn:focus-visible{
+      border-color:#8ea2c8;
+      background:#f8faff;
+    }
+
+    .google-login-btn:disabled{
+      opacity:.65;
+      cursor:wait;
+    }
+
+    .google-mark{
+      width:20px;
+      height:20px;
+      display:block;
+      flex:0 0 auto;
+    }
+
+    .google-login-note{
+      margin:8px 0 0;
+      color:var(--sb);
+      font-size:10px;
+      line-height:1.45;
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="toast"></div>
+
+  <a class="admin-link" href="admin.html">⚙️ 관리자 | Admin</a>
+
+  <div class="login-page">
+    <div class="login-box">
+      <div class="icon">🧑‍🏫</div>
+
+      <h1 style="text-align:center;">
+        교사 로그인
+        <span class="title-en">Teacher Login</span>
+      </h1>
+
+      <p>
+        <span class="desc-ko">교사를 선택하고 비밀번호를 입력해 주세요.</span>
+        <span class="desc-en">Please select a teacher and enter the password.</span>
+      </p>
+
+      <div class="grid">
+        <div>
+          <label class="label">
+            교사 선택 | Teacher
+            <span class="label-en">이름으로 검색할 수 있습니다.</span>
+            <span class="label-en">You can search by teacher name.</span>
+          </label>
+
+          <div id="teacher-autocomplete" class="autocomplete-shell">
+            <input
+              id="teacher-search"
+              class="edit-input"
+              placeholder="교사 이름 또는 이메일 / Teacher name or email"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="teacher-suggestions"
+              aria-expanded="false"
+            />
+            <button id="teacher-dropdown-toggle" class="autocomplete-toggle" type="button" tabindex="-1" aria-label="교사 목록 열기 | Open teacher list">▼</button>
+            <div id="teacher-suggestions" class="autocomplete-menu" role="listbox" hidden></div>
+          </div>
+          <div id="teacher-selection-state" class="selection-confirm" aria-live="polite">검색 결과에서 교사를 선택하세요. | Select a teacher from the results.</div>
+        </div>
+
+        <div>
+          <label class="label">
+            비밀번호 | Password
+          </label>
+          <input
+            id="pw"
+            type="password"
+            class="edit-input"
+            placeholder="비밀번호 / Password"
+            onkeydown="if(event.key === 'Enter') login()"
+          />
+        </div>
+
+        <button class="btn btn-primary" onclick="login()">로그인 | Login</button>
+      </div>
+
+      <div class="login-divider">학교 계정 | School Account</div>
+      <button id="google-login-btn" class="google-login-btn" type="button" onclick="loginWithGoogle()">
+        <svg class="google-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.38a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.98-4.33 2.98-7.39Z"/>
+          <path fill="#34A853" d="M12 22c2.7 0 4.98-.9 6.64-2.38l-3.24-2.53c-.9.6-2.05.96-3.4.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z"/>
+          <path fill="#FBBC05" d="M6.39 13.92A6 6 0 0 1 6.08 12c0-.67.11-1.32.31-1.92V7.47H3.04A10 10 0 0 0 2 12c0 1.61.38 3.14 1.04 4.53l3.35-2.61Z"/>
+          <path fill="#EA4335" d="M12 5.95c1.47 0 2.79.51 3.83 1.5l2.88-2.88A9.65 9.65 0 0 0 12 2a10 10 0 0 0-8.96 5.47l3.35 2.61C7.18 7.71 9.39 5.95 12 5.95Z"/>
+        </svg>
+        <span>학교 Google 계정으로 로그인 | Sign in with HIS Google</span>
+      </button>
+      <p class="google-login-note">관리자센터에 등록된 @his.sc.kr 교사 계정만 사용할 수 있습니다.<br>Only registered HIS teacher accounts are allowed.</p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="common.js"></script>
+
+  <script>
+    let teachers = {};
+    let teacherSearchMap = {};
+    let teacherSearchItems = [];
+    let teacherAutocompleteFiltered = [];
+    let teacherAutocompleteIndex = -1;
+    let selectedTeacherEmail = '';
+    let teacherAutocompleteReady = false;
+
+    async function init() {
+      try {
+        await ensureFirebaseAuth();
+        const snap = await db.ref('teachers').once('value');
+        teachers = snap.val() || {};
+        renderTeachers();
+      } catch (e) {
+        console.error(e);
+        toast('교사 목록을 불러오지 못했습니다.\nFailed to load teacher list.', 'err');
+      }
+    }
+
+    function renderTeachers() {
+      const list = Object.values(teachers)
+        .filter(t => t && t.active !== false)
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
+
+      teacherSearchMap = {};
+      teacherSearchItems = list.map(t => {
+        const name = String(t.name || '').trim();
+        const email = String(t.email || '').trim();
+        const label = `${name} | ${email}`;
+        const item = { name, email, label, emailKey: email.toLowerCase() };
+        teacherSearchMap[label] = item.emailKey;
+        return item;
+      });
+
+      setupTeacherAutocomplete();
+    }
+
+    function teacherSearchText(value) {
+      return String(value || '').trim().toLocaleLowerCase('ko');
+    }
+
+    function getTeacherItemByLabel(label) {
+      const value = String(label || '').trim();
+      return teacherSearchItems.find(item => item.label === value) || null;
+    }
+
+    function updateTeacherSelectionState(item) {
+      const input = document.getElementById('teacher-search');
+      const state = document.getElementById('teacher-selection-state');
+      if (!input || !state) return;
+
+      if (!item) {
+        input.classList.remove('is-selected');
+        state.classList.remove('selected');
+        state.textContent = '검색 결과에서 교사를 선택하세요. | Select a teacher from the results.';
+        return;
+      }
+
+      input.classList.add('is-selected');
+      state.classList.add('selected');
+      state.innerHTML = `<span class="selection-check">✓</span>선택됨 | Selected: ${esc(item.name)} · ${esc(item.email)}`;
+    }
+
+    function closeTeacherSuggestions() {
+      const input = document.getElementById('teacher-search');
+      const menu = document.getElementById('teacher-suggestions');
+      if (!input || !menu) return;
+      menu.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      teacherAutocompleteIndex = -1;
+      input.removeAttribute('aria-activedescendant');
+    }
+
+    function setTeacherAutocompleteIndex(index, focusOption = false) {
+      const input = document.getElementById('teacher-search');
+      const menu = document.getElementById('teacher-suggestions');
+      if (!menu || !teacherAutocompleteFiltered.length) return;
+      teacherAutocompleteIndex = Math.max(0, Math.min(index, teacherAutocompleteFiltered.length - 1));
+      menu.querySelectorAll('.autocomplete-option').forEach((button, i) => {
+        const active = i === teacherAutocompleteIndex;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+        button.tabIndex = active ? 0 : -1;
+        if (active) {
+          input?.setAttribute('aria-activedescendant', button.id);
+          button.scrollIntoView({ block: 'nearest' });
+          if (focusOption) button.focus();
+        }
+      });
+    }
+
+    function renderTeacherSuggestions(forceOpen = false) {
+      const input = document.getElementById('teacher-search');
+      const menu = document.getElementById('teacher-suggestions');
+      if (!input || !menu) return;
+
+      const query = teacherSearchText(input.value);
+      teacherAutocompleteFiltered = teacherSearchItems.filter(item => {
+        if (!query) return true;
+        return teacherSearchText(`${item.name} ${item.email} ${item.label}`).includes(query);
+      }).slice(0, 12);
+
+      if (!teacherAutocompleteFiltered.length) {
+        menu.innerHTML = '<div class="autocomplete-empty">일치하는 교사가 없습니다. | No matching teacher.</div>';
+        teacherAutocompleteIndex = -1;
+      } else {
+        menu.innerHTML = teacherAutocompleteFiltered.map((item, index) => `
+          <button type="button" id="teacher-suggestion-${index}" class="autocomplete-option" role="option" aria-selected="false" tabindex="-1" data-teacher-index="${index}">
+            <span class="autocomplete-option-name">${esc(item.name)}</span>
+            <span class="autocomplete-option-email">${esc(item.email)}</span>
+          </button>
+        `).join('');
+        teacherAutocompleteIndex = 0;
+        setTeacherAutocompleteIndex(0);
+      }
+
+      if (forceOpen || document.activeElement === input) {
+        menu.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    function selectTeacherSuggestion(item, moveToPassword = true) {
+      if (!item) return;
+      const input = document.getElementById('teacher-search');
+      input.value = item.label;
+      selectedTeacherEmail = item.emailKey;
+      updateTeacherSelectionState(item);
+      closeTeacherSuggestions();
+      if (moveToPassword) setTimeout(() => document.getElementById('pw')?.focus(), 0);
+    }
+
+    function syncTeacherSelection() {
+      const inputValue = (document.getElementById('teacher-search').value || '').trim();
+      const item = getTeacherItemByLabel(inputValue);
+      selectedTeacherEmail = item ? item.emailKey : '';
+      updateTeacherSelectionState(item);
+      return selectedTeacherEmail;
+    }
+
+    function setupTeacherAutocomplete() {
+      if (teacherAutocompleteReady) return;
+      const shell = document.getElementById('teacher-autocomplete');
+      const input = document.getElementById('teacher-search');
+      const menu = document.getElementById('teacher-suggestions');
+      const toggle = document.getElementById('teacher-dropdown-toggle');
+      if (!shell || !input || !menu || !toggle) return;
+      teacherAutocompleteReady = true;
+
+      input.addEventListener('input', () => {
+        const item = getTeacherItemByLabel(input.value);
+        selectedTeacherEmail = item ? item.emailKey : '';
+        updateTeacherSelectionState(item);
+        renderTeacherSuggestions(true);
+      });
+
+      input.addEventListener('focus', () => renderTeacherSuggestions(true));
+
+      input.addEventListener('keydown', event => {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (menu.hidden) renderTeacherSuggestions(true);
+          else setTeacherAutocompleteIndex(teacherAutocompleteIndex + 1);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (menu.hidden) renderTeacherSuggestions(true);
+          else setTeacherAutocompleteIndex(teacherAutocompleteIndex - 1);
+          return;
+        }
+        if (event.key === 'Escape') {
+          closeTeacherSuggestions();
+          return;
+        }
+        if (event.key === 'Tab' && !event.shiftKey && !menu.hidden && teacherAutocompleteFiltered.length) {
+          event.preventDefault();
+          setTeacherAutocompleteIndex(Math.max(0, teacherAutocompleteIndex), true);
+          return;
+        }
+        if (event.key === 'Enter') {
+          if (!menu.hidden && teacherAutocompleteFiltered.length) {
+            event.preventDefault();
+            selectTeacherSuggestion(teacherAutocompleteFiltered[Math.max(0, teacherAutocompleteIndex)]);
+            return;
+          }
+          if (syncTeacherSelection()) {
+            event.preventDefault();
+            document.getElementById('pw')?.focus();
+          }
+        }
+      });
+
+      menu.addEventListener('mousedown', event => event.preventDefault());
+      menu.addEventListener('keydown', event => {
+        const button = event.target.closest('[data-teacher-index]');
+        if (!button) return;
+        const index = Number(button.dataset.teacherIndex);
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          setTeacherAutocompleteIndex(index + 1, true);
+        } else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (index <= 0) {
+            document.getElementById('teacher-search')?.focus();
+            setTeacherAutocompleteIndex(0);
+          } else {
+            setTeacherAutocompleteIndex(index - 1, true);
+          }
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectTeacherSuggestion(teacherAutocompleteFiltered[index]);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeTeacherSuggestions();
+          document.getElementById('teacher-search')?.focus();
+        } else if (event.key === 'Tab' && !event.shiftKey) {
+          selectTeacherSuggestion(teacherAutocompleteFiltered[index], false);
+        }
+      });
+      menu.addEventListener('click', event => {
+        const button = event.target.closest('[data-teacher-index]');
+        if (!button) return;
+        selectTeacherSuggestion(teacherAutocompleteFiltered[Number(button.dataset.teacherIndex)]);
+      });
+
+      toggle.addEventListener('click', () => {
+        if (menu.hidden) {
+          input.focus();
+          renderTeacherSuggestions(true);
+        } else {
+          closeTeacherSuggestions();
+        }
+      });
+
+      document.addEventListener('mousedown', event => {
+        if (!shell.contains(event.target)) closeTeacherSuggestions();
+      });
+    }
+
+    function normalizeRoles(roles) {
+      if (Array.isArray(roles)) return roles.filter(Boolean);
+
+      if (typeof roles === 'string') {
+        return roles
+          .split(/[|,]/)
+          .map(v => String(v || '').trim().toLowerCase())
+          .filter(Boolean);
+      }
+
+      return [];
+    }
+
+
+
+    function findTeacherByEmail(email) {
+      const target = String(email || '').trim().toLowerCase();
+      if (!target) return null;
+
+      for (const [key, value] of Object.entries(teachers || {})) {
+        const teacher = value || {};
+        if (String(teacher.email || '').trim().toLowerCase() === target) {
+          return { key, teacher };
+        }
+      }
+      return null;
+    }
+
+
+    function teacherKeyFromEmail(email) {
+      return String(email || '').trim().toLowerCase().replace(/\./g, '_');
+    }
+
+    async function loadGoogleTeacherByEmail(email) {
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const teacherKey = teacherKeyFromEmail(normalizedEmail);
+      if (!normalizedEmail || !teacherKey) return null;
+
+      const snapshot = await db.ref(`teachers/${teacherKey}`).once('value');
+      const teacher = snapshot.val() || null;
+      if (!teacher) return null;
+
+      const registeredEmail = String(teacher.email || '').trim().toLowerCase();
+      if (registeredEmail !== normalizedEmail) return null;
+
+      return { key: teacherKey, teacher };
+    }
+
+    function saveTeacherSession(key, teacher, roles, authProvider, authUser) {
+      const user = authUser || null;
+      sessionStorage.setItem(
+        'his_teacher',
+        JSON.stringify({
+          key,
+          name: teacher.name || '',
+          email: teacher.email || '',
+          roles: roles,
+          homeroom: teacher.homeroom || '',
+          authProvider: authProvider || 'legacy',
+          authUid: user && user.uid ? user.uid : '',
+          authEmail: user && user.email ? String(user.email).trim().toLowerCase() : '',
+          authEmailVerified: !!(user && user.emailVerified),
+          authProviderId: user && user.providerData && user.providerData[0] ? String(user.providerData[0].providerId || '') : ''
+        })
+      );
+    }
+
+    async function syncGoogleAuthLink(teacherKeyValue, teacher, roles, user) {
+      if (!user || !user.uid || !teacherKeyValue) return { teacherUpdated: false, indexUpdated: false };
+
+      const authEmail = String(user.email || '').trim().toLowerCase();
+      const linkedAt = new Date().toISOString();
+      let teacherUpdated = false;
+      let indexUpdated = false;
+
+      const normalizedRoles = normalizeRoles(roles || []);
+      const isAdmin = normalizedRoles.includes('admin');
+      const isMaster = normalizedRoles.includes('master');
+      const isAuditManager = isAdmin || isMaster;
+
+      try {
+        await db.ref(`teachers/${teacherKeyValue}`).update({
+          active: teacher.active !== false,
+          loginProvider: 'google',
+          authUid: user.uid,
+          authEmail,
+          authEmailVerified: !!user.emailVerified,
+          roleFlags: {
+            admin: isAdmin,
+            master: isMaster,
+            auditManager: isAuditManager
+          },
+          lastGoogleLoginAt: linkedAt
+        });
+        teacherUpdated = true;
+      } catch (teacherLinkError) {
+        console.error('Teacher Google auth link update failed:', teacherLinkError);
+      }
+
+      try {
+        await db.ref(`teacherAuthIndex/${user.uid}`).set({
+          teacherKey: teacherKeyValue,
+          email: authEmail,
+          active: teacher.active !== false,
+          isAdmin,
+          isMaster,
+          isAuditManager,
+          linkedAt,
+          updatedAt: linkedAt
+        });
+        indexUpdated = true;
+      } catch (indexLinkError) {
+        console.warn('teacherAuthIndex is not writable yet. Apply the transition rules before the next verification step.', indexLinkError);
+      }
+
+      return { teacherUpdated, indexUpdated };
+    }
+
+    async function restoreAnonymousAuth() {
+      try {
+        if (firebaseAuth && !firebaseAuth.currentUser) {
+          await firebaseAuth.signInAnonymously();
+        }
+      } catch (restoreError) {
+        console.error('Firebase anonymous auth restore failed:', restoreError);
+      }
+    }
+
+    async function loginWithGoogle() {
+      const button = document.getElementById('google-login-btn');
+      if (button) button.disabled = true;
+
+      try {
+        if (!firebaseAuth) {
+          throw new Error('Firebase Auth SDK is not available.');
+        }
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({
+          hd: 'his.sc.kr',
+          prompt: 'select_account'
+        });
+
+        const result = await firebaseAuth.signInWithPopup(provider);
+        const user = result && result.user ? result.user : firebaseAuth.currentUser;
+        const email = String(user && user.email || '').trim().toLowerCase();
+        const emailVerified = !!(user && user.emailVerified);
+
+        if (!email || !email.endsWith('@his.sc.kr') || !emailVerified) {
+          await firebaseAuth.signOut();
+          await restoreAnonymousAuth();
+          return toast('학교에서 승인한 @his.sc.kr Google 계정으로 로그인해 주세요.\nPlease sign in with an approved HIS Google account.', 'err');
+        }
+
+        const matched = await loadGoogleTeacherByEmail(email);
+        if (!matched || matched.teacher.active === false) {
+          await firebaseAuth.signOut();
+          await restoreAnonymousAuth();
+          return toast('관리자센터에 등록되지 않았거나 비활성화된 교사 계정입니다.\nThis teacher account is not registered or is inactive.', 'err');
+        }
+
+        const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
+        const linkResult = await syncGoogleAuthLink(matched.key, matched.teacher, roles, user);
+        const linkedTeacher = {
+          ...matched.teacher,
+          active: matched.teacher.active !== false,
+          loginProvider: 'google',
+          authUid: user.uid,
+          authEmail: email,
+          authEmailVerified: emailVerified
+        };
+        saveTeacherSession(matched.key, linkedTeacher, roles, 'google', user);
+        sessionStorage.setItem('his_google_auth_link', JSON.stringify(linkResult));
+        location.href = 'teacher.html';
+      } catch (e) {
+        console.error('Google login failed:', e);
+        if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
+          return;
+        }
+        await restoreAnonymousAuth();
+        toast('Google 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\nAn error occurred during Google sign-in.', 'err');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    async function login() {
+      const selectedEmail = syncTeacherSelection();
+      const pw = (document.getElementById('pw').value || '').trim();
+
+      if (!selectedEmail || !pw) {
+        return toast('교사와 비밀번호를 입력해 주세요.\nPlease select a teacher and enter the password.', 'err');
+      }
+
+      try {
+        const snap = await db.ref('teachers').once('value');
+
+        let found = null;
+        let key = '';
+
+        snap.forEach(child => {
+          const t = child.val() || {};
+          if (String(t.email || '').trim().toLowerCase() === selectedEmail) {
+            found = t;
+            key = child.key;
+          }
+        });
+
+        if (!found) {
+          document.getElementById('pw').value = '';
+          return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
+        }
+
+        // admin 판별: roles에 admin 포함 OR email/name에 admin/관리자 포함
+        const roles = normalizeRoles(found.roles || found.role || []);
+        const emailStr = String(found.email || '').toLowerCase();
+        const nameStr  = String(found.name  || '').toLowerCase();
+        const isAdmin  = roles.includes('admin')
+                      || roles.includes('master')
+                      || emailStr === 'admin'
+                      || nameStr.includes('관리자');
+
+        if (isAdmin) {
+          // admin: teachers.password 또는 adminConfig/password 둘 다 허용
+          let adminConfigPw = null;
+          try {
+            const adminSnap = await db.ref('adminConfig/password').once('value');
+            adminConfigPw = adminSnap.val() || null;
+          } catch(e) {}
+
+          const teacherPw = String(found.password || '');
+          const validPws = [teacherPw, adminConfigPw].filter(Boolean);
+
+          if (!validPws.includes(pw)) {
+            document.getElementById('pw').value = '';
+            return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
+          }
+        } else {
+          if (String(found.password || '') !== pw) {
+            document.getElementById('pw').value = '';
+            return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
+          }
+        }
+
+        saveTeacherSession(key, found, roles, 'legacy');
+
+        location.href = 'teacher.html';
+      } catch (e) {
+        console.error(e);
+        toast('로그인 중 오류가 발생했습니다.\nAn error occurred during login.', 'err');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

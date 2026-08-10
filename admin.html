@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>관리자 페이지 | Admin Page</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="common.css" />
+  <script>
+    // 관리자 비밀번호 세션 또는 Admin/Master 교사 세션이 있으면
+    // 첫 화면을 그리기 전에 관리자 화면을 표시해 로그인 화면 재노출을 막습니다.
+    function hasAdminCenterSessionEarly() {
+      try {
+        if (sessionStorage.getItem('his_admin_session') === '1') return true;
+        const teacher = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+        const raw = teacher.roles ?? teacher.role ?? [];
+        const roles = Array.isArray(raw)
+          ? raw
+          : (raw && typeof raw === 'object')
+            ? Object.keys(raw).filter(key => raw[key])
+            : String(raw || '').split(/[|,\s]+/).filter(Boolean);
+        return roles.map(role => String(role).toLowerCase()).some(role => role === 'admin' || role === 'master');
+      } catch (e) { return false; }
+    }
+    try {
+      if (hasAdminCenterSessionEarly()) {
+        document.documentElement.classList.add('admin-session-restored');
+      }
+    } catch (e) {}
+  </script>
+  <style>
+    html.admin-session-restored #login-screen { display:none !important; }
+    html.admin-session-restored #admin-screen { display:block !important; }
+    .title-en { display:block; margin-top:2px; font-size:.9em; }
+    .desc-ko, .desc-en { display:block; text-align:center; }
+    .desc-en { margin-top:2px; }
+    .sub-en { display:block; margin-top:2px; }
+    .role-box { display:grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap:4px 10px; font-size:12px; line-height:1.3; }
+    .role-box label { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+    .role-box input[type="checkbox"] { margin:0; }
+    .pw-change-row { display:grid; gap:8px; margin-top:10px; }
+    .readonly-input { width:100%; padding:8px 10px; border:1px solid var(--bd); border-radius:8px; background:#f8fbff; font-size:13px; color:#4b5563; }
+    .admin-workspace{display:grid;grid-template-columns:minmax(360px,44%) minmax(420px,56%);gap:12px;align-items:start}
+    .admin-list-card,.admin-detail-card{border:1px solid var(--bd);border-radius:12px;background:#fff;overflow:hidden}
+    .admin-list-card{min-height:560px}.admin-detail-card{min-height:560px;position:sticky;top:10px}
+    .admin-list-head,.admin-detail-head{padding:12px 14px;border-bottom:1px solid var(--bd);background:#f8faff}
+    .admin-list-scroll{max-height:610px;overflow:auto}
+    .admin-list-table{table-layout:fixed}.admin-list-table th{position:sticky;top:0;z-index:2}
+    .admin-list-row{cursor:pointer}.admin-list-row:nth-child(odd){background:#fff}.admin-list-row:nth-child(even){background:#f7f9fd}
+    .admin-list-row:hover{background:#eef4ff}.admin-list-row.selected{background:#dceaff!important;box-shadow:inset 4px 0 0 #2563eb}
+    .admin-list-row.delete-mark{background:#fff0f0!important}.admin-primary{font-weight:800;color:var(--nv)}
+    .admin-secondary{font-size:11px;color:var(--sb);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .admin-detail-body{padding:14px;max-height:610px;overflow:auto}.admin-form-section{border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;overflow:hidden}
+    .admin-form-title{padding:8px 10px;background:#f1f5fb;color:var(--nv);font-size:12px;font-weight:800}
+    .admin-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}.admin-form-grid.one{grid-template-columns:1fr}
+    .admin-detail-empty{min-height:520px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--sb);padding:30px}
+    .admin-detail-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding-top:4px}
+    .admin-count-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.admin-count-pill{padding:4px 8px;border-radius:999px;background:#eef3ff;color:var(--nv);font-size:11px;font-weight:800}
+    .delete-toggle{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #fecaca;background:#fff7f7;border-radius:8px;color:#b91c1c;font-weight:700;font-size:12px}
+
+    /* 교사 계정·권한 화면 */
+    .teacher-account-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 15px;border-radius:11px 11px 0 0;background:#142b70;color:#fff}
+    .teacher-account-title{font-size:16px;font-weight:900;line-height:1.25}.teacher-account-title span{font-size:11px;font-weight:700;color:#dbe5ff;margin-left:4px}
+    .teacher-account-sub{margin-top:4px;font-size:10px;color:#dbe5ff}.teacher-account-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    .teacher-account-actions .btn{min-height:34px;padding:7px 11px}.teacher-filter-row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;padding:12px 0}
+    .teacher-role-badges{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.teacher-role-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border:1px solid #cdd8ea;border-radius:999px;background:#fff;color:#41516f;font-size:10px;font-weight:800;line-height:1.1;white-space:nowrap}
+    .teacher-role-badge.primary{border-color:#b8cef4;background:#eaf2ff;color:#174ea6}.teacher-role-badge.admin{border-color:#c7bdf5;background:#f0edff;color:#5536a7}.teacher-role-badge.more{background:#f5f7fb;color:#64748b}
+    .teacher-detail-identity{margin:-14px -14px 12px;padding:13px 15px;background:#1a73e8;color:#fff}.teacher-detail-identity.locked{background:#52627e}
+    .teacher-detail-name{font-size:15px;font-weight:900;line-height:1.25}.teacher-detail-meta{margin-top:4px;font-size:10px;color:#e5efff;overflow-wrap:anywhere}.teacher-detail-identity.locked .teacher-detail-meta{color:#e2e8f0}
+    .teacher-permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}.teacher-permission-item{display:flex;align-items:center;gap:7px;min-height:34px;padding:7px 9px;border:1px solid #dce3ef;border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:#334155}.teacher-permission-item input{margin:0}
+    .teacher-permission-matrix{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px}.teacher-permission-matrix th,.teacher-permission-matrix td{padding:9px 8px;border-top:1px solid #e4e9f2;text-align:center}.teacher-permission-matrix thead th{border-top:0;background:#f8faff;color:#52627e;font-size:10px}.teacher-permission-matrix tbody th{text-align:left;color:#263a60}.teacher-permission-matrix tbody tr:nth-child(even){background:#f7f9fd}
+    .teacher-permission-note{padding:8px 10px;border-top:1px solid #e4e9f2;background:#fbfcfe;color:var(--sb);font-size:10px}.teacher-save-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:3px}
+    @media(max-width:720px){.teacher-account-head{align-items:flex-start;flex-direction:column}.teacher-account-actions{width:100%;justify-content:flex-start}.teacher-filter-row{grid-template-columns:1fr}.teacher-permission-grid{grid-template-columns:1fr}}
+    .google-verify-panel{margin:12px 0 0;border:1px solid #cdd8ea;border-radius:10px;background:#f8faff;overflow:hidden}
+    .google-verify-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#edf4ff;border-bottom:1px solid #d7e2f2}
+    .google-verify-title{font-size:12px;font-weight:900;color:#17366f}.google-verify-title span{font-size:10px;color:#5c6f91;margin-left:4px}
+    .google-verify-body{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px}
+    .google-verify-item{min-width:0;padding:8px 9px;border:1px solid #dde5f1;border-radius:8px;background:#fff}
+    .google-verify-label{font-size:9px;font-weight:800;color:#70809d}.google-verify-value{margin-top:3px;font-size:11px;font-weight:900;color:#263a60;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .google-verify-value.ok{color:#137333}.google-verify-value.warn{color:#9a6700}.google-verify-value.err{color:#b42318}
+    .google-verify-note{padding:0 10px 10px;font-size:10px;color:#66758f;line-height:1.45}
+    @media(max-width:900px){.google-verify-body{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.google-verify-body{grid-template-columns:1fr}}
+    .google-readiness-panel{margin:10px 0 0;border:1px solid #d8e0ec;border-radius:10px;background:#fff;overflow:hidden}
+    .google-readiness-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#f5f7fb;border-bottom:1px solid #e0e6ef}
+    .google-readiness-title{font-size:12px;font-weight:900;color:#17366f}.google-readiness-title span{font-size:10px;color:#5c6f91;margin-left:4px}
+    .google-readiness-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px}
+    .google-readiness-card{padding:8px 9px;border:1px solid #dde5f1;border-radius:8px;background:#fbfcfe}
+    .google-readiness-card-label{font-size:9px;font-weight:800;color:#70809d}.google-readiness-card-value{margin-top:3px;font-size:15px;font-weight:900;color:#263a60}
+    .google-readiness-card-value.ok{color:#137333}.google-readiness-card-value.warn{color:#9a6700}.google-readiness-card-value.err{color:#b42318}
+    .google-readiness-list{max-height:220px;overflow:auto;border-top:1px solid #e5eaf2}
+    .google-readiness-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}
+    .google-readiness-table th,.google-readiness-table td{padding:7px 8px;border-bottom:1px solid #edf0f5;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+    .google-readiness-table th{position:sticky;top:0;background:#f8faff;color:#52627e;font-size:9px;z-index:1}
+    .google-readiness-empty{padding:10px 11px;color:#137333;font-size:10px;font-weight:800}
+    .google-readiness-note{padding:8px 10px;color:#66758f;background:#fbfcfe;font-size:9px;line-height:1.45}
+    @media(max-width:900px){.google-readiness-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.google-readiness-summary{grid-template-columns:1fr}.google-readiness-table th:nth-child(2),.google-readiness-table td:nth-child(2){display:none}}
+
+    .google-login-history-panel{margin:10px 0 0;border:1px solid #d8e0ec;border-radius:10px;background:#fff;overflow:hidden}
+    .google-login-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#f5f7fb;border-bottom:1px solid #e0e6ef}
+    .google-login-history-title{font-size:12px;font-weight:900;color:#17366f}.google-login-history-title span{font-size:10px;color:#5c6f91;margin-left:4px}
+    .google-login-history-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px}
+    .google-login-history-card{padding:8px 9px;border:1px solid #dde5f1;border-radius:8px;background:#fbfcfe}
+    .google-login-history-card-label{font-size:9px;font-weight:800;color:#70809d}.google-login-history-card-value{margin-top:3px;font-size:15px;font-weight:900;color:#263a60}
+    .google-login-history-card-value.ok{color:#137333}.google-login-history-card-value.warn{color:#9a6700}
+    .google-login-history-list{max-height:240px;overflow:auto;border-top:1px solid #e5eaf2}
+    .google-login-history-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}
+    .google-login-history-table th,.google-login-history-table td{padding:7px 8px;border-bottom:1px solid #edf0f5;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+    .google-login-history-table th{position:sticky;top:0;background:#f8faff;color:#52627e;font-size:9px;z-index:1}
+    .google-login-history-empty{padding:10px 11px;color:#66758f;font-size:10px}
+    .google-login-history-note{padding:8px 10px;color:#66758f;background:#fbfcfe;font-size:9px;line-height:1.45}
+    @media(max-width:900px){.google-login-history-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.google-login-history-summary{grid-template-columns:1fr}.google-login-history-table th:nth-child(2),.google-login-history-table td:nth-child(2){display:none}}
+
+    /* 학생 명단 화면: 기존 편집 구조를 유지한 최소 가독성 개선 */
+    .student-account-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 15px;border-radius:11px 11px 0 0;background:#142b70;color:#fff}
+    .student-account-title{font-size:16px;font-weight:900;line-height:1.25}.student-account-title span{font-size:11px;font-weight:700;color:#dbe5ff;margin-left:4px}
+    .student-account-sub{margin-top:4px;font-size:10px;color:#dbe5ff}.student-account-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    .student-account-actions .btn{min-height:34px;padding:7px 11px}.student-filter-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 160px;gap:8px;padding:12px 0}
+    .student-email-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 7px;border:1px solid #cdd8ea;border-radius:999px;background:#fff;color:#41516f;font-size:10px;font-weight:800;line-height:1.1;white-space:nowrap}
+    .student-email-badge.ok{border-color:#b9dec9;background:#eaf8ef;color:#18733d}.student-email-badge.warn{border-color:#f0d59d;background:#fff7df;color:#8a5a00}
+    .student-name-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .student-detail-identity{margin:-14px -14px 12px;padding:13px 15px;background:#1a73e8;color:#fff}
+    .student-detail-name{font-size:15px;font-weight:900;line-height:1.3}.student-detail-meta{margin-top:4px;font-size:10px;color:#e5efff;overflow-wrap:anywhere}
+    .student-detail-warning{margin-bottom:10px;padding:9px 11px;border:1px solid #f0d59d;border-radius:9px;background:#fff8e7;color:#7a5200;font-size:11px;font-weight:700;line-height:1.45}
+    .student-auto-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:10px;padding:10px}.student-auto-value{margin-top:4px;font-size:12px;overflow-wrap:anywhere}
+    .student-system-detail{margin-bottom:10px;border:1px solid var(--bd);border-radius:9px;background:#fbfcfe;padding:9px 10px;font-size:11px;color:var(--sb)}
+    .student-system-detail summary{cursor:pointer;color:var(--nv);font-weight:800}.student-system-detail div{margin-top:7px;overflow-wrap:anywhere}
+    .student-save-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:3px}
+    @media(max-width:720px){.student-account-head{align-items:flex-start;flex-direction:column}.student-account-actions{width:100%;justify-content:flex-start}.student-filter-row{grid-template-columns:1fr}.student-auto-grid{grid-template-columns:1fr}}
+    @media (max-width: 1000px){.admin-workspace{grid-template-columns:1fr}.admin-detail-card{position:static}.admin-list-card,.admin-detail-card{min-height:0}.admin-list-scroll,.admin-detail-body{max-height:none}}
+    @media (max-width: 900px) { .role-box { grid-template-columns: 1fr; }.admin-form-grid{grid-template-columns:1fr} }
+
+    /* 관리자 센터 공통 셸 */
+    body{background:#eef2fa;}
+    .admin-center-topbar{background:#142b70;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 1px 2px rgba(15,23,42,.12);}
+    .admin-center-brand h1{margin:0;font-size:18px;line-height:1.25;color:#fff;}
+    .admin-center-brand .sub{margin-top:3px;color:#dbe5ff;font-size:11px;}
+    .admin-center-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;}
+    .admin-center-user{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#e8f0fe;color:#174ea6;font-size:11px;font-weight:800;}
+    .admin-center-nav{height:46px;background:#fff;border-bottom:1px solid #d8deea;box-shadow:0 2px 6px rgba(15,23,42,.08);display:flex;align-items:stretch;padding:0 20px;gap:2px;}
+    .admin-center-nav a,.admin-center-nav button{appearance:none;border:0;background:transparent;color:#334155;padding:0 13px;text-decoration:none;font-family:inherit;font-size:12px;font-weight:800;display:inline-flex;align-items:center;cursor:pointer;border-bottom:3px solid transparent;}
+    .admin-center-nav a:hover,.admin-center-nav button:hover{background:#f4f7fc;color:#174ea6;}
+    .admin-center-nav .active{color:#174ea6;border-bottom-color:#1a73e8;background:#f7faff;}
+    #admin-screen>.content{max-width:1440px;margin:0 auto;padding:14px 18px 28px;}
+    #admin-screen .tabs{display:none!important;}
+    #admin-screen .card{border-radius:12px;box-shadow:0 3px 12px rgba(15,23,42,.06);}
+    #admin-screen .card-title{color:#0f2a67;font-weight:900;}
+    @media(max-width:760px){.admin-center-topbar{align-items:flex-start;flex-direction:column}.admin-center-nav{overflow-x:auto;padding:0 8px}.admin-center-nav a,.admin-center-nav button{white-space:nowrap;padding:0 10px}}
+
+    .admin-dashboard-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .admin-dashboard-actions button,.admin-dashboard-actions a{min-height:58px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none}
+    .admin-page-heading{margin:0 0 12px}.admin-page-heading h2{margin:0;color:#142b70;font-size:20px}.admin-page-heading p{margin:4px 0 0;color:var(--sb);font-size:12px}
+
+    /* 관리자 홈: 처리 업무 중심 요약 */
+    .admin-home-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .admin-home-head h2{margin:0;color:#142b70;font-size:19px;line-height:1.25}
+    .admin-home-head h2 span{font-size:12px;font-weight:700;color:var(--sb);margin-left:5px}
+    .admin-home-head p{margin:4px 0 0;color:var(--sb);font-size:11px}
+    .admin-home-totals{display:flex;align-items:center;gap:7px;color:var(--sb);font-size:11px;white-space:nowrap}
+    .admin-home-totals strong{color:#142b70;font-size:12px}
+    .admin-task-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+    .admin-task-card{min-height:86px;padding:13px 14px;border:1px solid #d8deea;border-radius:11px;background:#fff;color:inherit;text-decoration:none;display:flex;align-items:center;justify-content:space-between;gap:10px;box-sizing:border-box;transition:background .15s,border-color .15s,transform .15s}
+    .admin-task-card:hover{background:#f5f8ff;border-color:#9db9ef;transform:translateY(-1px)}
+    .admin-task-title{font-size:14px;font-weight:900;color:#142b70;line-height:1.25}
+    .admin-task-sub{margin-top:4px;font-size:10px;color:var(--sb);line-height:1.3}
+    .admin-task-value{min-width:44px;text-align:right;font-size:25px;font-weight:900;color:#142b70;line-height:1}.admin-task-value.compact{min-width:64px;font-size:11px;line-height:1.25}
+    .admin-management-card{background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(15,23,42,.05)}
+    .admin-management-title{padding:10px 13px;border-bottom:1px solid var(--bd);font-size:13px;font-weight:900;color:#142b70}
+    .admin-management-title span{font-size:10px;font-weight:700;color:var(--sb);margin-left:5px}
+    .admin-management-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .admin-management-item{appearance:none;border:0;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);background:#fff;padding:12px 13px;text-align:left;text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-family:inherit;min-height:66px;box-sizing:border-box}
+    .admin-management-item:nth-child(2n){border-right:0}.admin-management-item:nth-last-child(-n+2){border-bottom:0}
+    .admin-management-item:hover{background:#f5f8ff}
+    .admin-management-main{font-size:13px;font-weight:900;color:#142b70}
+    .admin-management-sub{margin-top:3px;font-size:10px;color:var(--sb);line-height:1.35}
+    .admin-management-arrow{font-size:19px;color:#7b8ba9;line-height:1}
+    @media(max-width:900px){.admin-task-grid{grid-template-columns:1fr 1fr}.admin-dashboard-actions{grid-template-columns:1fr 1fr}}
+    @media(max-width:620px){.admin-home-head{align-items:flex-start;flex-direction:column}.admin-home-totals{white-space:normal}.admin-task-grid,.admin-management-list{grid-template-columns:1fr}.admin-management-item{border-right:0}.admin-management-item:nth-last-child(-n+2){border-bottom:1px solid var(--bd)}.admin-management-item:last-child{border-bottom:0}.admin-dashboard-actions{grid-template-columns:1fr}}
+  
+    /* Unified administrator center shell */
+    .admin-center-topbar{min-height:76px;background:linear-gradient(110deg,#102863,#173b86);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-sizing:border-box;}
+    .admin-center-brand h1{margin:0;font-size:18px;line-height:1.25;color:#fff;}
+    .admin-center-brand .sub{margin-top:4px;font-size:10px;color:#dbe7ff;}
+    .admin-center-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;}
+    .admin-center-actions .btn,.admin-center-actions a.btn{min-height:31px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap;}
+    .admin-center-user{display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:0 9px;border-radius:999px;background:#eef4ff;color:#173b86;font-size:10px;font-weight:900;}
+    .admin-center-nav{height:46px;background:#fff;border-bottom:1px solid #d8deea;box-shadow:0 2px 6px rgba(15,23,42,.08);display:flex;align-items:stretch;padding:0 20px;gap:2px;box-sizing:border-box;overflow-x:auto;}
+    .admin-center-nav a,.admin-center-nav button{appearance:none;border:0;background:transparent;color:#334155;padding:0 13px;text-decoration:none;font-family:inherit;font-size:12px;font-weight:800;display:inline-flex;align-items:center;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+    .admin-center-nav a:hover,.admin-center-nav button:hover{background:#f4f7fc;color:#174ea6;}
+    .admin-center-nav .active{color:#174ea6;border-bottom-color:#1a73e8;background:#f7faff;}
+    @media(max-width:760px){.admin-center-topbar{align-items:flex-start;flex-direction:column}.admin-center-actions{justify-content:flex-start}.admin-center-nav{padding:0 8px}.admin-center-nav a,.admin-center-nav button{padding:0 10px}}
+
+    .role-group{padding:8px 0;border-bottom:1px solid #e5e7eb}.role-group:last-child{border-bottom:0}.role-box input:disabled{cursor:not-allowed;opacity:.55}
+
+
+    /* 2026-07-30 settings: separate access and data tools without changing actions */
+    .settings-page-head{margin-bottom:14px}
+    .settings-page-head h2{margin:0;color:#14213d;font-size:22px;line-height:1.2}
+    .settings-page-head h2 span{font-size:14px;font-weight:600;color:#6b7280}
+    .settings-page-head p{margin:6px 0 0;color:#68758b;font-size:13px}
+    .settings-grid{display:grid;gap:14px}
+    .settings-section{overflow:hidden;border:1px solid #dce4f0;border-radius:13px;background:#fff;box-shadow:0 4px 14px rgba(17,42,90,.05)}
+    .settings-section-head{padding:10px 13px;border-bottom:1px solid #e4e9f1;background:#f7f9fc;color:#17233d;font-size:14px;font-weight:850}
+    .settings-action-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px}
+    .settings-action-copy{min-width:0}
+    .settings-action-title{font-size:14px;font-weight:850;color:#17233d}
+    .settings-action-sub{margin-top:3px;color:#68758b;font-size:11px;line-height:1.45}
+    .settings-tool-list{display:grid}
+    .settings-tool-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;color:#17233d;text-decoration:none;border-top:1px solid #e8edf4;background:#fff;transition:background .15s ease}
+    .settings-tool-item:first-child{border-top:0}
+    .settings-tool-item:hover{background:#f5f8ff}
+    .settings-tool-main{display:block;font-size:14px;font-weight:850}
+    .settings-tool-sub{display:block;margin-top:3px;color:#68758b;font-size:11px;line-height:1.45}
+    .settings-tool-arrow{font-size:24px;color:#6c7b94;line-height:1}
+    .settings-tool-button{width:100%;border:0;text-align:left;font:inherit;cursor:pointer}
+    .settings-tool-button:disabled{cursor:wait;opacity:.62}
+    .settings-tool-status{padding:0 14px 13px;color:#68758b;font-size:11px;line-height:1.45}
+    .settings-tool-status.ok{color:#087443}
+    .settings-tool-status.err{color:#b42318}
+    @media(max-width:680px){
+      .settings-page-head h2{font-size:19px}
+      .settings-action-row{align-items:flex-start;flex-direction:column}
+      .settings-action-row .btn{width:100%}
+    }
+
+</style>
+</head>
+<body>
+  <div id="toast"></div>
+
+  <div id="login-screen" class="login-page">
+    <div class="login-box">
+      <div class="icon">⚙️</div>
+      <h1 style="text-align:center;">관리자 페이지<span class="title-en">Admin Page</span></h1>
+      <p><span class="desc-ko">학생, 교사 데이터를 관리합니다.</span><span class="desc-en">Manage student and teacher data.</span></p>
+
+      <div class="grid">
+        <div>
+          <label class="label">관리자 비밀번호 | Admin Password</label>
+          <input id="admin-pw" type="password" class="edit-input" placeholder="비밀번호 / Password" onkeydown="if(event.key==='Enter') checkAdmin()" />
+        </div>
+        <button class="btn btn-primary" onclick="checkAdmin()">로그인 | Login</button>
+        <a href="index.html" style="text-align:center;color:var(--sb);text-decoration:none">← 교사 로그인으로<br>← Back to Teacher Login</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-screen" class="hidden">
+    <header class="admin-center-topbar">
+      <div class="admin-center-brand">
+        <h1>관리자 센터 <span style="font-size:13px;font-weight:500;color:#dbe7ff;">Admin Center</span></h1>
+        <div id="admin-center-identity" class="sub">관리자 · Admin</div>
+      </div>
+      <div class="admin-center-actions">
+        <a href="teacher.html" class="btn btn-secondary">디텐션 메인 | Main</a>
+        <button class="btn btn-secondary" onclick="refreshAll()">새로고침 | Refresh</button>
+        <button class="btn btn-danger" onclick="adminLogout()">로그아웃 | Logout</button>
+      </div>
+    </header>
+    <nav class="admin-center-nav" aria-label="관리자 메뉴">
+      <button type="button" data-admin-tab="home" onclick="switchAdminView('home')">홈 | Home</button>
+      <button type="button" data-admin-tab="teachers" onclick="switchAdminView('teachers')">교사 계정 | Teachers</button>
+      <button type="button" data-admin-tab="students" onclick="switchAdminView('students')">학생 명단 | Students</button>
+      <a href="detention-admin.html#entries" data-admin-link="detention">디텐션 DB | Database</a>
+      <button type="button" data-admin-tab="settings" onclick="switchAdminView('settings')">설정 | Settings</button>
+    </nav>
+
+    <div class="content">
+      <div id="pw-change-box" class="card hidden">
+        <div class="card-title">관리자 비밀번호 변경 | Change Admin Password</div>
+        <div class="pw-change-row">
+          <div>
+            <label class="label">현재 비밀번호 | Current Password</label>
+            <input id="current-admin-pw" type="password" class="edit-input" placeholder="현재 비밀번호 / Current password">
+          </div>
+          <div>
+            <label class="label">새 비밀번호 | New Password</label>
+            <input id="new-admin-pw" type="password" class="edit-input" placeholder="새 비밀번호 / New password">
+          </div>
+          <div>
+            <label class="label">새 비밀번호 확인 | Confirm New Password</label>
+            <input id="new-admin-pw-confirm" type="password" class="edit-input" placeholder="새 비밀번호 확인 / Confirm new password">
+          </div>
+          <div class="inline-actions">
+            <button class="btn btn-primary" onclick="changeAdminPassword()">변경 저장 | Save Change</button>
+            <button class="btn btn-secondary" onclick="togglePwChangeBox()">닫기 | Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn" data-tab="teachers">교사 계정 관리 | Teachers</button>
+        <button class="tab-btn" data-tab="students">학생 명단 관리 | Students</button>
+        <a href="detention-admin.html#entries" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center;">
+          디텐션 DB 관리 | Detention DB
+        </a>
+        <button class="tab-btn" data-tab="csv">CSV 업로드 | CSV Upload</button>
+      </div>
+
+      <div id="tab-home" class="tab-panel active">
+        <div class="admin-home-head">
+          <div>
+            <h2>오늘의 관리 현황 <span>Management Status</span></h2>
+            <p>처리가 필요한 항목을 선택하세요. | Select an item that needs attention.</p>
+          </div>
+          <div class="admin-home-totals" aria-label="전체 학생 및 교사 수">
+            <span>학생 <strong id="dash-students">-</strong></span><span>·</span><span>교사 <strong id="dash-teachers">-</strong></span>
+          </div>
+        </div>
+
+        <div class="admin-task-grid">
+          <a class="admin-task-card" href="detention-admin.html#entries">
+            <div><div class="admin-task-title">디텐션 확정</div><div class="admin-task-sub">Detention Review</div></div>
+            <div id="dash-pending" class="admin-task-value">-</div>
+          </a>
+          <a class="admin-task-card" href="teacher.html?tab=notify">
+            <div><div class="admin-task-title">알림 미완료</div><div class="admin-task-sub">Pending Notices</div></div>
+            <div id="dash-notices" class="admin-task-value">-</div>
+          </a>
+          <a class="admin-task-card" href="teacher.html?tab=recovery-view">
+            <div><div class="admin-task-title">회복교육 진행</div><div class="admin-task-sub">Active Recovery</div></div>
+            <div id="dash-recovery" class="admin-task-value">-</div>
+          </a>
+          <a class="admin-task-card" href="teacher.html?tab=discipline">
+            <div><div class="admin-task-title">위원회 진행</div><div class="admin-task-sub">Active Committee</div></div>
+            <div id="dash-committee" class="admin-task-value">-</div>
+          </a>
+        </div>
+
+        <div class="admin-management-card">
+          <div class="admin-management-title">관리 메뉴 <span>Management</span></div>
+          <div class="admin-management-list">
+            <button type="button" class="admin-management-item" onclick="switchAdminView('teachers')">
+              <span><span class="admin-management-main">교사 계정·권한</span><span class="admin-management-sub">교사 정보와 역할 권한 관리 | Teacher accounts and roles</span></span><span class="admin-management-arrow">›</span>
+            </button>
+            <button type="button" class="admin-management-item" onclick="switchAdminView('students')">
+              <span><span class="admin-management-main">학생 명단</span><span class="admin-management-sub">학생·학반·보호자 이메일 관리 | Student roster and emails</span></span><span class="admin-management-arrow">›</span>
+            </button>
+            <button type="button" class="admin-management-item" onclick="switchAdminView('csv')">
+              <span><span class="admin-management-main">CSV 업로드</span><span class="admin-management-sub">교사·학생 명단 대량 등록 | Bulk roster upload</span></span><span class="admin-management-arrow">›</span>
+            </button>
+            <a class="admin-management-item" href="import-data.html">
+              <span><span class="admin-management-main">데이터 가져오기</span><span class="admin-management-sub">기존 운영 데이터 가져오기 | Import existing data</span></span><span class="admin-management-arrow">›</span>
+            </a>
+            <a class="admin-management-item" href="detention-admin.html#entries">
+              <span><span class="admin-management-main">디텐션 DB</span><span class="admin-management-sub">입력 기록 확인·확정·반려 | Review detention records</span></span><span class="admin-management-arrow">›</span>
+            </a>
+            <button type="button" class="admin-management-item" onclick="switchAdminView('settings')">
+              <span><span class="admin-management-main">설정</span><span class="admin-management-sub">관리자 비밀번호와 운영 설정 | Admin settings</span></span><span class="admin-management-arrow">›</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-teachers" class="tab-panel">
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="teacher-account-head">
+            <div>
+              <div class="teacher-account-title">교사 계정·권한 <span>Teacher Accounts & Roles</span></div>
+              <div id="teacher-page-summary" class="teacher-account-sub">교사 0명 · 수정 대기 0건</div>
+            </div>
+            <div class="teacher-account-actions">
+              <button class="btn btn-secondary" onclick="prepareGoogleLoginFieldsForAllTeachers()">Google 로그인 필드 보완 | Prepare Google Login</button>
+              <button class="btn btn-secondary" onclick="addTeacherRow()">교사 추가 | Add</button>
+              <button id="btn-save-teachers" class="btn btn-primary" onclick="saveTeachers()" disabled style="opacity:.4;cursor:not-allowed;">저장할 내용 없음 | No Changes</button>
+            </div>
+          </div>
+          <div style="padding:0 14px 14px">
+            <div class="google-verify-panel">
+              <div class="google-verify-head">
+                <div class="google-verify-title">Google 로그인 연결 점검 <span>Google Sign-in Verification</span></div>
+                <button type="button" class="btn btn-secondary" onclick="renderGoogleLoginVerification()">새로고침 | Refresh</button>
+              </div>
+              <div id="google-login-verification" class="google-verify-body"></div>
+              <div id="google-login-verification-note" class="google-verify-note"></div>
+            </div>
+            <div class="google-readiness-panel">
+              <div class="google-readiness-head">
+                <div class="google-readiness-title">Google 로그인 사전 점검 <span>Google Sign-in Readiness</span></div>
+                <button type="button" class="btn btn-secondary" onclick="renderGoogleEmailReadinessAudit()">다시 점검 | Recheck</button>
+              </div>
+              <div id="google-email-readiness-summary" class="google-readiness-summary"></div>
+              <div id="google-email-readiness-list" class="google-readiness-list"></div>
+              <div class="google-readiness-note">실제 로그인 전에도 등록 이메일, 사용 상태, 로그인 방식, Firebase 교사 키를 점검합니다. UID 연결 여부는 로그인 허용 조건에 포함하지 않습니다.</div>
+            </div>
+            <div class="google-login-history-panel">
+              <div class="google-login-history-head">
+                <div class="google-login-history-title">Google 첫 로그인 기록 <span>First Sign-in History</span></div>
+                <button type="button" class="btn btn-secondary" onclick="renderGoogleFirstLoginHistory()">기록 새로고침 | Refresh</button>
+              </div>
+              <div id="google-login-history-summary" class="google-login-history-summary"></div>
+              <div id="google-login-history-list" class="google-login-history-list"></div>
+              <div class="google-login-history-note">교사가 학교 Google 계정으로 처음 로그인하면 인증 이메일, Firebase UID, 마지막 Google 로그인 시간이 표시됩니다. 미로그인 교사는 기존 로그인 사용에 영향을 받지 않습니다.</div>
+            </div>
+            <div class="teacher-filter-row">
+              <input id="teacher-search" class="edit-input" placeholder="교사명, 이메일, 학반, 권한 검색 | Search teachers">
+              <select id="teacher-role-filter" class="edit-input" aria-label="권한 필터">
+                <option value="all">전체 권한 | All Roles</option>
+                <option value="basic">기본 교사 | Basic</option>
+                <option value="confirm">디텐션 확정 | Confirm</option>
+                <option value="notice_recovery">알림·회복교육 | Notice/Recovery</option>
+                <option value="committee">위원회 | Committee</option>
+                <option value="admin">Master·Admin</option>
+              </select>
+            </div>
+            <div class="admin-workspace">
+              <div class="admin-list-card">
+                <div class="admin-list-head">
+                  <b>교사 목록 | Teachers</b>
+                  <div id="teacher-list-summary" class="admin-count-row"></div>
+                </div>
+                <div class="admin-list-scroll">
+                  <table class="admin-list-table">
+                    <thead><tr><th style="width:47%">교사</th><th style="width:15%">학반</th><th style="width:38%">주요 권한</th></tr></thead>
+                    <tbody id="teacher-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="admin-detail-card">
+                <div class="admin-detail-head"><b>교사 상세 편집 | Teacher Details</b><span id="teacher-selected-label" style="float:right;font-size:11px;color:var(--sb)"></span></div>
+                <div id="teacher-detail" class="admin-detail-body"><div class="admin-detail-empty">왼쪽 목록에서 교사를 선택하세요.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-students" class="tab-panel">
+        <div class="card">
+          <div class="student-account-head">
+            <div>
+              <div class="student-account-title">학생 명단 <span>Student List</span></div>
+              <div id="student-page-summary" class="student-account-sub">학생 -명 · 수정 대기 0건 | - students · 0 pending</div>
+            </div>
+            <div class="student-account-actions">
+              <button class="btn btn-secondary" onclick="addStudentRow()">학생 추가 | Add</button>
+              <button id="btn-save-students" class="btn btn-primary" onclick="saveStudents()" disabled style="opacity:.4;cursor:not-allowed;">저장할 내용 없음 | No Changes</button>
+            </div>
+          </div>
+          <div class="student-filter-row">
+            <input id="student-search" class="edit-input" placeholder="학생명, 영문명, 학반, 이메일 검색 | Search students">
+            <select id="student-class-filter" class="edit-input" aria-label="학반 필터"><option value="all">전체 학반 | All Classes</option></select>
+            <select id="student-email-filter" class="edit-input" aria-label="이메일 상태 필터">
+              <option value="all">이메일 상태 전체 | All</option>
+              <option value="parent">대표메일 누락 | Parent Missing</option>
+              <option value="homeroom">담임메일 누락 | Homeroom Missing</option>
+              <option value="self">학생메일 누락 | Student Missing</option>
+            </select>
+          </div>
+          <div class="admin-workspace">
+            <div class="admin-list-card">
+              <div class="admin-list-head">
+                <b>학생 목록 | Students</b>
+                <div id="student-list-summary" class="admin-count-row"></div>
+              </div>
+              <div class="admin-list-scroll">
+                <table class="admin-list-table">
+                  <thead><tr><th style="width:50%">학생</th><th style="width:15%">학반</th><th style="width:35%">이메일 상태</th></tr></thead>
+                  <tbody id="student-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="admin-detail-card">
+              <div class="admin-detail-head"><b>학생 상세 편집 | Student Details</b><span id="student-selected-label" style="float:right;font-size:11px;color:var(--sb)"></span></div>
+              <div id="student-detail" class="admin-detail-body"><div class="admin-detail-empty">왼쪽 목록에서 학생을 선택하세요.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-csv" class="tab-panel">
+        <div class="card">
+          <div class="card-title">학생 명단 엑셀 붙여넣기 | Student Excel Paste</div>
+          <div class="notice">열 순서 | Columns: <strong>이름 · 영문명 · 학반 · 본인이메일 · 부이메일 · 모이메일 · 대표메일대상 · 대표메일</strong><br><span class="small">대표메일대상 값: 부 / 모 / 둘다 / 직접입력. 대표메일은 실제 발송 대상 이메일이며, 비워두면 대표메일대상에 따라 자동 생성됩니다.</span></div>
+          <textarea id="student-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V)"></textarea>
+          <div class="filter-bar" style="margin-top:8px;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="student-paste-header" checked> 첫 행 = 헤더 | First row is header
+            </label>
+            <button class="btn btn-primary" onclick="pasteStudents()">붙여넣기 적용 | Apply</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('student-paste-area').value=''">지우기</button>
+          </div>
+          <div id="student-paste-msg" class="small" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">학생 명단 CSV 업로드 | Student CSV Upload</div>
+          <div class="notice">CSV 첫 줄 | Header: name,englishName,className,selfEmail,fatherEmail,motherEmail,parentEmailTarget,parentEmail<br><span class="small">한글 헤더도 지원: 이름, 영문명, 학반, 본인이메일, 부이메일, 모이메일, 대표메일대상, 대표메일</span></div>
+          <div class="small" style="margin-bottom:10px;">
+            담임교사 이메일은 학반(className) 기준으로 교사 계정의 담당학반에서 자동 연결됩니다.<br>
+            대표메일은 학부모 알림 메일 발송 대상입니다. parentEmail이 있으면 우선 사용하고, 없으면 parentEmailTarget에 따라 부/모/둘다 이메일을 자동 조합합니다.<br>
+            Homeroom teacher email is filled automatically from the teacher account based on className.
+          </div>
+          <div class="filter-bar">
+            <select id="student-csv-enc" class="edit-input">
+              <option value="utf-8">UTF-8</option>
+              <option value="euc-kr">EUC-KR</option>
+            </select>
+            <input id="student-csv" type="file" accept=".csv">
+            <button class="btn btn-primary" onclick="uploadStudentsCsv()">업로드 | Upload</button>
+          </div>
+          <div id="student-upload-msg" class="small"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">교사 계정 엑셀 붙여넣기 | Teacher Excel Paste</div>
+          <div class="notice">열 순서 | Columns: <strong>이름 · 이메일 · 비밀번호 · 담당학반 · 권한</strong></div>
+          <textarea id="teacher-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V)"></textarea>
+          <div class="filter-bar" style="margin-top:8px;align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="teacher-paste-header" checked> 첫 행 = 헤더 | First row is header
+            </label>
+            <button class="btn btn-primary" onclick="pasteTeachers()">붙여넣기 적용 | Apply</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('teacher-paste-area').value=''">지우기</button>
+          </div>
+          <div id="teacher-paste-msg" class="small" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">교사 계정 CSV 업로드 | Teacher CSV Upload</div>
+          <div class="notice">CSV 첫 줄 | Header: name,email,password,homeroom,roles</div>
+          <div class="small" style="margin-bottom:10px;">roles 예시 | Example: default|confirm|ms_notice|hs_notice|ms_restore|hs_restore|committee_view|committee_edit|master|admin</div>
+          <div class="filter-bar">
+            <select id="teacher-csv-enc" class="edit-input">
+              <option value="utf-8">UTF-8</option>
+              <option value="euc-kr">EUC-KR</option>
+            </select>
+            <input id="teacher-csv" type="file" accept=".csv">
+            <button class="btn btn-primary" onclick="uploadTeachersCsv()">업로드 | Upload</button>
+          </div>
+          <div id="teacher-upload-msg" class="small"></div>
+        </div>
+      </div>
+      <div id="tab-settings" class="tab-panel">
+        <div class="settings-page-head">
+          <h2>설정 <span>Settings</span></h2>
+          <p>관리자 인증과 데이터 관리 도구를 구분합니다. | Manage administrator access and data tools.</p>
+        </div>
+
+        <div class="settings-grid">
+          <section class="settings-section" aria-labelledby="settings-access-title">
+            <div id="settings-access-title" class="settings-section-head">관리자 인증 | Administrator Access</div>
+            <div class="settings-action-row">
+              <div class="settings-action-copy">
+                <div class="settings-action-title">관리자 비밀번호 | Administrator Password</div>
+                <div class="settings-action-sub">관리자 센터 접속 비밀번호를 변경합니다. | Change the password used to access the Admin Center.</div>
+              </div>
+              <button class="btn btn-secondary" onclick="togglePwChangeBox();document.getElementById('pw-change-box').scrollIntoView({behavior:'smooth'})">비밀번호 변경 | Change Password</button>
+            </div>
+          </section>
+
+          <section class="settings-section" aria-labelledby="settings-data-title">
+            <div id="settings-data-title" class="settings-section-head">데이터 도구 | Data Tools</div>
+            <div class="settings-tool-list">
+              <a href="import-data.html" class="settings-tool-item">
+                <span><span class="settings-tool-main">Firebase 데이터 가져오기 | Import to Firebase</span><span class="settings-tool-sub">기존 운영 자료를 Firebase 데이터로 가져옵니다. | Import existing operational data into Firebase.</span></span>
+                <span class="settings-tool-arrow" aria-hidden="true">›</span>
+              </a>
+              <button id="btn-firebase-diagnostic" type="button" class="settings-tool-item settings-tool-button" onclick="downloadFirebaseDiagnostic()">
+                <span><span class="settings-tool-main">Firebase 진단 데이터 다운로드 | Download Diagnostic Data</span><span class="settings-tool-sub">DB 점검용 JSON 파일을 내려받습니다. 비밀번호는 자동으로 제외됩니다. | Download a diagnostic JSON file with passwords removed.</span></span>
+                <span class="settings-tool-arrow" aria-hidden="true">↓</span>
+              </button>
+              <div id="firebase-diagnostic-status" class="settings-tool-status" aria-live="polite"></div>
+              <a href="detention-admin.html#entries" class="settings-tool-item">
+                <span><span class="settings-tool-main">디텐션 DB 관리 | Detention Database</span><span class="settings-tool-sub">기록 조회·수정·상태 점검 화면을 엽니다. | Open record review, editing, and status checks.</span></span>
+                <span class="settings-tool-arrow" aria-hidden="true">›</span>
+              </a>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="common.js"></script>
+
+  <script>
+    let ADMIN_PW = '1751'; // RTDB에서 로드됨
+    const ROLE_OPTIONS = [
+      { key: 'default', label: '기본권한 | Default', group: '기본 업무' },
+      { key: 'confirm', label: '디텐션 확정 | Detention Confirm', group: '기본 업무' },
+      { key: 'ms_notice', label: '중등 알림 | MS Notice', group: '알림' },
+      { key: 'hs_notice', label: '고등 알림 | HS Notice', group: '알림' },
+      { key: 'ms_restore', label: '중등 회복교육 | MS Restore', group: '회복교육' },
+      { key: 'hs_restore', label: '고등 회복교육 | HS Restore', group: '회복교육' },
+      { key: 'committee_view', label: '조회 | View', group: '위원회' },
+      { key: 'committee_edit', label: '수정 | Edit', group: '위원회' },
+      { key: 'master', label: 'Master', group: '관리 권한' },
+      { key: 'admin', label: 'Admin', group: '관리 권한' }
+    ];
+    const PRIVILEGED_ROLES = new Set(['master', 'admin']);
+
+    let teachersRaw = {};
+    let studentsRaw = {};
+    let teacherRows = [];
+    let studentRows = [];
+    let selectedTeacherIndex = -1;
+    let selectedStudentIndex = -1;
+    let teacherSnapshot = '';
+    let studentSnapshot = '';
+
+    /* ── Dirty-check ────────────────────────────────── */
+    function teacherRowSig(r) {
+      return [String(r.name||'').trim(), String(r.email||'').trim().toLowerCase(),
+              String(r.password||'').trim(), String(r.homeroom||'').trim(),
+              [...normalizeRoles(r.roles)].sort().join(','), r.active !== false,
+              String(r.loginProvider||'').trim(), !!r._delete].join('|');
+    }
+    function studentRowSig(r) {
+      return [String(r.name||'').trim(), String(r.englishName||'').trim(),
+              String(r.className||'').trim(), String(r.selfEmail||'').trim(),
+              String(r.fatherEmail||'').trim(), String(r.motherEmail||'').trim(),
+              String(r.parentEmailTarget||'').trim(), String(r.parentEmail||'').trim(),
+              !!r._delete].join('|');
+    }
+    function takeTeacherSnapshot() { teacherSnapshot = JSON.stringify([...teacherRows.map(teacherRowSig)].sort()); }
+    function takeStudentSnapshot() { studentSnapshot = JSON.stringify([...studentRows.map(studentRowSig)].sort()); }
+    function setButtonState(id, dirty) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.disabled       = !dirty;
+      btn.style.opacity  = dirty ? '1' : '0.4';
+      btn.style.cursor   = dirty ? 'pointer' : 'not-allowed';
+      btn.textContent    = dirty ? '변경 저장 | Save Changes' : '저장할 내용 없음 | No Changes';
+    }
+    function teacherIsDirty() {
+      return JSON.stringify([...teacherRows.map(teacherRowSig)].sort()) !== teacherSnapshot;
+    }
+    function updateTeacherPageSummary(dirty = teacherIsDirty()) {
+      const el = document.getElementById('teacher-page-summary');
+      if (!el) return;
+      const pending = dirty ? 1 : 0;
+      el.textContent = `교사 ${teacherRows.filter(row => !row._delete).length}명 · 수정 대기 ${pending}건 | ${teacherRows.filter(row => !row._delete).length} teachers · ${pending} pending`;
+    }
+    function checkTeacherDirty() {
+      const dirty = teacherIsDirty();
+      setButtonState('btn-save-teachers', dirty);
+      updateTeacherPageSummary(dirty);
+    }
+    function studentIsDirty() {
+      return JSON.stringify([...studentRows.map(studentRowSig)].sort()) !== studentSnapshot;
+    }
+    function updateStudentPageSummary(dirty = studentIsDirty()) {
+      const el = document.getElementById('student-page-summary');
+      if (!el) return;
+      const count = studentRows.filter(row => !row._delete).length;
+      const pending = dirty ? 1 : 0;
+      el.textContent = `학생 ${count}명 · 수정 대기 ${pending}건 | ${count} students · ${pending} pending`;
+    }
+    function checkStudentDirty() {
+      const dirty = studentIsDirty();
+      setButtonState('btn-save-students', dirty);
+      updateStudentPageSummary(dirty);
+    }
+
+    function statusPill(status) {
+      if (status === '오류') return '<span class="pill err">오류 | Error</span>';
+      if (status === '저장됨') return '<span class="pill ok">저장됨 | Saved</span>';
+      if (status === '업로드됨') return '<span class="pill">업로드됨 | Uploaded</span>';
+      if (status === '신규') return '<span class="pill">신규 | New</span>';
+      return '<span class="pill">기존 | Existing</span>';
+    }
+
+    function normalizeRoles(roles) {
+      let values = [];
+      if (Array.isArray(roles)) values = roles;
+      else if (typeof roles === 'string') values = roles.split(/[|,\s]+/);
+      else if (roles && typeof roles === 'object') values = Object.keys(roles).filter(k => roles[k]);
+      const normalized = [...new Set(values.map(v => String(v || '').trim().toLowerCase()).filter(Boolean))];
+      // 구형 committee 권한은 새 체계에서 조회+수정으로 호환합니다.
+      if (normalized.includes('committee')) {
+        if (!normalized.includes('committee_view')) normalized.push('committee_view');
+        if (!normalized.includes('committee_edit')) normalized.push('committee_edit');
+      }
+      return normalized.filter(v => v !== 'committee');
+    }
+
+    function currentManagerRoles() {
+      if (sessionStorage.getItem('his_admin_session') === '1') return ['admin'];
+      try {
+        const teacher = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+        return normalizeRoles(teacher.roles ?? teacher.role ?? []);
+      } catch (e) { return []; }
+    }
+    function isCurrentAdmin() { return currentManagerRoles().includes('admin'); }
+    function isCurrentMaster() { return isCurrentAdmin() || currentManagerRoles().includes('master'); }
+    function rowIsPrivileged(row) {
+      const roles = normalizeRoles(row?.roles);
+      return roles.some(role => PRIVILEGED_ROLES.has(role));
+    }
+    function masterCanEditRow(row) {
+      return isCurrentAdmin() || (isCurrentMaster() && !rowIsPrivileged(row));
+    }
+    function canEditRole(row, roleKey) {
+      if (isCurrentAdmin()) return true;
+      if (!isCurrentMaster() || rowIsPrivileged(row)) return false;
+      return !PRIVILEGED_ROLES.has(roleKey);
+    }
+
+    function hasRole(row, roleKey) {
+      return normalizeRoles(row.roles).includes(roleKey);
+    }
+
+    function toggleRole(idx, roleKey, checked) {
+      const current = normalizeRoles(teacherRows[idx].roles);
+      if (checked) {
+        if (!current.includes(roleKey)) current.push(roleKey);
+      } else {
+        teacherRows[idx].roles = current.filter(r => r !== roleKey);
+        checkTeacherDirty();
+        return;
+      }
+      teacherRows[idx].roles = current;
+      checkTeacherDirty();
+    }
+
+    function rolesCellHtml(idx, row) {
+      return '<div class="role-box">' + ROLE_OPTIONS.map(role => `
+        <label>
+          <input type="checkbox" ${hasRole(row, role.key) ? 'checked' : ''} onchange="toggleRole(${idx}, '${role.key}', this.checked)">
+          ${role.label}
+        </label>
+      `).join('') + '</div>';
+    }
+
+    function getHomeroomTeacherEmail(className) {
+      const target = String(className || '').trim().toLowerCase();
+      if (!target) return '';
+
+      const foundInRows = teacherRows.find(r =>
+        !r._delete &&
+        String(r.homeroom || '').trim().toLowerCase() === target &&
+        String(r.email || '').trim()
+      );
+      if (foundInRows) return String(foundInRows.email || '').trim().toLowerCase();
+
+      const foundInRaw = Object.values(teachersRaw).find(v =>
+        String(v.homeroom || '').trim().toLowerCase() === target &&
+        String(v.email || '').trim()
+      );
+      return foundInRaw ? String(foundInRaw.email || '').trim().toLowerCase() : '';
+    }
+    function normalizeEmailList(value) {
+      const list = String(value || '')
+        .split(/[;,\n]/)
+        .map(v => v.trim())
+        .filter(Boolean);
+      return [...new Set(list)].join(', ');
+    }
+
+    function getField(row, names) {
+      for (const name of names) {
+        if (row && Object.prototype.hasOwnProperty.call(row, name)) return row[name];
+      }
+      return '';
+    }
+
+    function normalizeParentEmailTarget(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.includes('@')) return '';
+      const v = raw.toLowerCase().replace(/[\s_\-]/g, '');
+      if (['부', '아버지', '부이메일', 'father', 'dad', 'fatheremail', 'fatheronly', 'f'].includes(v)) return 'father';
+      if (['모', '어머니', '모이메일', 'mother', 'mom', 'motheremail', 'motheronly', 'm'].includes(v)) return 'mother';
+      if (['둘다', '부모', '부모님', '부모모두', '부모전체', 'fatherandmother', 'motherandfather', 'both', 'all', 'fathermother', 'fm', 'mf'].includes(v)) return 'both';
+      if (['직접', '직접입력', '수동', '별도', 'custom', 'manual'].includes(v)) return 'custom';
+      return '';
+    }
+
+    function parentTargetLabel(value) {
+      const t = normalizeParentEmailTarget(value) || value;
+      if (t === 'father') return '부';
+      if (t === 'mother') return '모';
+      if (t === 'both') return '둘다';
+      if (t === 'custom') return '직접입력';
+      return '';
+    }
+
+    function buildParentNoticeEmail(target, explicitEmail, fatherEmail, motherEmail) {
+      const explicit = normalizeEmailList(explicitEmail);
+      const t = normalizeParentEmailTarget(target) || (explicit ? 'custom' : '');
+      if (t === 'father') return normalizeEmailList(fatherEmail);
+      if (t === 'mother') return normalizeEmailList(motherEmail);
+      if (t === 'both') return normalizeEmailList([fatherEmail, motherEmail].filter(Boolean).join(', '));
+      if (explicit) return explicit;
+      return normalizeEmailList([fatherEmail, motherEmail].filter(Boolean).join(', '));
+    }
+
+    function inferParentEmailTarget(target, parentEmail, fatherEmail, motherEmail) {
+      const t = normalizeParentEmailTarget(target);
+      if (t) return t;
+      const p = normalizeEmailList(parentEmail).toLowerCase();
+      const f = normalizeEmailList(fatherEmail).toLowerCase();
+      const m = normalizeEmailList(motherEmail).toLowerCase();
+      if (p && f && p === f) return 'father';
+      if (p && m && p === m) return 'mother';
+      if (p && f && m && p === normalizeEmailList([fatherEmail, motherEmail].filter(Boolean).join(', ')).toLowerCase()) return 'both';
+      if (p) return 'custom';
+      if (f && m) return 'both';
+      if (f) return 'father';
+      if (m) return 'mother';
+      return '';
+    }
+
+    function normalizeStudentUploadRow(raw) {
+      const name = String(getField(raw, ['name','이름','학생이름','학생 이름','성명','학생명']) || '').trim();
+      const englishName = String(getField(raw, ['englishName','영문명','영문 이름','영어이름','영어 이름','English Name']) || '').trim();
+      const className = String(getField(raw, ['className','학반','반','Class','class']) || '').trim();
+      const selfEmail = normalizeEmailList(getField(raw, ['selfEmail','본인이메일','본인 이메일','학생이메일','학생 이메일','studentEmail','Student Email']));
+      const fatherEmail = normalizeEmailList(getField(raw, ['fatherEmail','부이메일','부 이메일','아버지이메일','아버지 이메일','Father Email']));
+      const motherEmail = normalizeEmailList(getField(raw, ['motherEmail','모이메일','모 이메일','어머니이메일','어머니 이메일','Mother Email']));
+
+      let parentEmailTarget = getField(raw, ['parentEmailTarget','representativeParent','대표메일대상','대표 메일 대상','대표메일 대상','대표수신대상','대표 수신 대상','학부모대표','학부모 대표','parentTarget']);
+      let parentEmail = getField(raw, ['parentEmail','representativeEmail','대표메일','대표 메일','학부모대표메일','학부모 대표메일','학부모메일','부모이메일','Parent Email']);
+
+      // “대표메일” 칸에 부/모/둘다 값이 들어간 경우 대상값으로 처리합니다.
+      if (!parentEmailTarget && normalizeParentEmailTarget(parentEmail) && !String(parentEmail || '').includes('@')) {
+        parentEmailTarget = parentEmail;
+        parentEmail = '';
+      }
+      // “대표메일대상” 칸에 실제 이메일이 들어간 경우 대표메일로 처리합니다.
+      if (!parentEmail && String(parentEmailTarget || '').includes('@')) {
+        parentEmail = parentEmailTarget;
+        parentEmailTarget = '';
+      }
+
+      parentEmailTarget = inferParentEmailTarget(parentEmailTarget, parentEmail, fatherEmail, motherEmail);
+      parentEmail = buildParentNoticeEmail(parentEmailTarget, parentEmail, fatherEmail, motherEmail);
+
+      const explicitKey = String(getField(raw, ['studentKey','key','학생Key','학생 Key','학생키']) || '').trim();
+      const stableKey = explicitKey || studentKey(name, className);
+
+      return {
+        oldKey: stableKey && studentsRaw[stableKey] ? stableKey : '',
+        keyCandidate: stableKey,
+        name,
+        englishName,
+        className,
+        selfEmail,
+        fatherEmail,
+        motherEmail,
+        parentEmailTarget,
+        parentEmail,
+        homeroomTeacherEmail: getHomeroomTeacherEmail(className),
+        _delete: false,
+        _status: '업로드됨'
+      };
+    }
+
+
+    function getSessionRoleNames() {
+      try {
+        const teacher = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+        const raw = teacher.roles ?? teacher.role ?? [];
+        if (Array.isArray(raw)) return raw.map(v => String(v).toLowerCase());
+        if (raw && typeof raw === 'object') return Object.keys(raw).filter(k => raw[k]).map(k => String(k).toLowerCase());
+        return String(raw || '').split(/[|,\s]+/).filter(Boolean).map(v => v.toLowerCase());
+      } catch (e) { return []; }
+    }
+
+    function hasAdminCenterSession() {
+      if (sessionStorage.getItem('his_admin_session') === '1') return true;
+      return getSessionRoleNames().some(role => role === 'admin' || role === 'master');
+    }
+
+    function ensurePasswordAdminIdentity() {
+      if (sessionStorage.getItem('his_admin_session') !== '1') return null;
+      try {
+        const current = JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {};
+        const roles = normalizeRoles(current.roles ?? current.role ?? []);
+        if (String(current.name || '').trim() && roles.some(role => role === 'admin' || role === 'master')) return current;
+      } catch (_) {}
+      const synthetic = { name: '관리자', email: 'admin', id: 'admin', roles: ['admin'], source: 'admin-password-session' };
+      sessionStorage.setItem('his_teacher', JSON.stringify(synthetic));
+      return synthetic;
+    }
+
+    function googleVerifyEscapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function googleVerifyItem(label, value, state) {
+      const safeLabel = googleVerifyEscapeHtml(String(label || ''));
+      const safeValue = googleVerifyEscapeHtml(String(value || '-'));
+      const cls = state === 'ok' ? 'ok' : (state === 'err' ? 'err' : (state === 'warn' ? 'warn' : ''));
+      return `<div class="google-verify-item"><div class="google-verify-label">${safeLabel}</div><div class="google-verify-value ${cls}">${safeValue}</div></div>`;
+    }
+
+    async function renderGoogleLoginVerification() {
+      const box = document.getElementById('google-login-verification');
+      const note = document.getElementById('google-login-verification-note');
+      if (!box || !note) return;
+
+      let session = {};
+      try { session = JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {}; }
+      catch (_) { session = {}; }
+
+      const provider = String(session.authProvider || session.source || '').trim();
+      const sessionEmail = String(session.authEmail || session.email || '').trim().toLowerCase();
+      const matched = teacherRows.find(row => !row._delete && String(row.email || '').trim().toLowerCase() === sessionEmail) || null;
+      const googleSession = provider === 'google';
+      const schoolEmail = !!(sessionEmail && sessionEmail.endsWith('@his.sc.kr'));
+      const emailMatch = !!(matched && sessionEmail);
+      const active = !!(matched && matched.active !== false);
+      const providerReady = !!(matched && String(matched.loginProvider || '').trim() === 'google');
+      const roles = normalizeRoles(session.roles ?? session.role ?? []);
+      const registered = teacherRows.filter(row => !row._delete && String(row.email || '').trim().toLowerCase().endsWith('@his.sc.kr')).length;
+      const prepared = teacherRows.filter(row => !row._delete && String(row.email || '').trim().toLowerCase().endsWith('@his.sc.kr') && row.active !== false && String(row.loginProvider || '').trim() === 'google').length;
+      const matchedRoles = normalizeRoles(matched ? matched.roles : []);
+      const auditManager = matchedRoles.includes('admin') || matchedRoles.includes('master');
+      const emailAccessReady = googleSession && schoolEmail && emailMatch && active && session.authEmailVerified === true;
+
+      box.innerHTML = [
+        googleVerifyItem('현재 로그인 | Current Login', googleSession ? 'Google' : '기존 로그인 | Legacy', googleSession ? 'ok' : 'warn'),
+        googleVerifyItem('학교 이메일 | HIS Email', sessionEmail || '확인되지 않음 | Not available', googleSession && schoolEmail ? 'ok' : 'warn'),
+        googleVerifyItem('교사 등록 일치 | Teacher Match', emailMatch ? '일치 | Matched' : '미등록 | Not registered', emailMatch ? 'ok' : 'err'),
+        googleVerifyItem('계정 상태 | Account Status', active ? '사용 | Active' : (matched ? '사용 중지 | Inactive' : '미확인 | Unknown'), active ? 'ok' : (matched ? 'err' : 'warn')),
+        googleVerifyItem('로그인 필드 | Login Fields', providerReady ? 'Google 준비 완료' : (matched ? '보완 필요 | Needs setup' : '미확인 | Unknown'), providerReady ? 'ok' : 'warn'),
+        googleVerifyItem('이메일 인증 | Email Verified', session.authEmailVerified === true ? '확인됨 | Verified' : (googleSession ? '확인되지 않음' : 'Google 로그인 후 확인'), session.authEmailVerified === true ? 'ok' : 'warn'),
+        googleVerifyItem('이메일 허용목록 | Email Allowlist', emailAccessReady ? '접근 가능 | Access ready' : (googleSession ? '조건 미충족 | Not ready' : 'Google 로그인 후 확인'), emailAccessReady ? 'ok' : 'warn'),
+        googleVerifyItem('적용 권한 | Applied Roles', roles.length ? roles.join(', ') : '권한 없음 | No roles', roles.length ? 'ok' : 'err'),
+        googleVerifyItem('감사 로그 권한 | Audit Logs', auditManager ? '관리자·마스터 읽기/작성 가능 | Audit access ready' : '일반 교사 | Standard teacher', auditManager ? 'ok' : 'warn'),
+        googleVerifyItem('전체 이메일 준비 | Email Readiness', `${prepared} / ${registered}명`, prepared === registered && registered > 0 ? 'ok' : 'warn')
+      ].join('');
+
+      if (googleSession) {
+        note.textContent = emailAccessReady
+          ? '현재 Google 이메일이 관리자·마스터가 등록한 교사 이메일과 일치합니다. UID 사전 연결 없이 이메일 등록만으로 접근할 수 있는 조건입니다.'
+          : '학교 Google 이메일, 교사 등록 이메일, active 상태와 이메일 인증 여부를 확인해 주세요.';
+      } else {
+        note.textContent = '현재는 기존 로그인입니다. 기존 로그인은 전환 기간 동안 유지되며, Google 로그인은 관리자·마스터가 등록한 교사 이메일을 기준으로 허용됩니다.';
+      }
+      renderGoogleEmailReadinessAudit();
+      renderGoogleFirstLoginHistory();
+    }
+
+    function renderGoogleEmailReadinessAudit() {
+      const summary = document.getElementById('google-email-readiness-summary');
+      const list = document.getElementById('google-email-readiness-list');
+      if (!summary || !list) return;
+
+      const rows = teacherRows.filter(row => row && !row._delete);
+      const emailCounts = new Map();
+      rows.forEach(row => {
+        const email = String(row.email || '').trim().toLowerCase();
+        if (email) emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
+      });
+
+      let ready = 0;
+      let inactive = 0;
+      let excluded = 0;
+      const issues = [];
+
+      rows.forEach(row => {
+        const name = String(row.name || '').trim() || '(이름 없음)';
+        const email = String(row.email || '').trim().toLowerCase();
+        const isSchoolEmail = /^[^\s@]+@his\.sc\.kr$/.test(email);
+        const isLegacyAdmin = email === 'admin' || (!email.includes('@') && normalizeRoles(row.roles).includes('admin'));
+        const isActive = row.active !== false;
+        const providerReady = String(row.loginProvider || '').trim() === 'google';
+        const expectedKey = teacherKey(email, name);
+        const currentKey = String(row.oldKey || '').trim();
+        const keyReady = !currentKey || currentKey === expectedKey;
+        const duplicate = !!email && (emailCounts.get(email) || 0) > 1;
+        const roles = normalizeRoles(row.roles);
+        const rowIssues = [];
+
+        if (isLegacyAdmin) {
+          excluded += 1;
+          return;
+        }
+        if (!isSchoolEmail) rowIssues.push(email ? '학교 이메일 아님' : '이메일 없음');
+        if (!isActive) {
+          inactive += 1;
+          rowIssues.push('사용 중지');
+        }
+        if (isSchoolEmail && !providerReady) rowIssues.push('로그인 방식 미설정');
+        if (isSchoolEmail && !keyReady) rowIssues.push('Firebase 교사 키 불일치');
+        if (duplicate) rowIssues.push('중복 이메일');
+        if (!roles.length) rowIssues.push('권한 없음');
+
+        if (isSchoolEmail && isActive && providerReady && keyReady && !duplicate && roles.length) ready += 1;
+        if (rowIssues.length) issues.push({ name, email: email || '-', issues: rowIssues.join(', ') });
+      });
+
+      const schoolTargets = rows.filter(row => /^[^\s@]+@his\.sc\.kr$/.test(String(row.email || '').trim().toLowerCase())).length;
+      const problemCount = issues.length;
+      summary.innerHTML = [
+        `<div class="google-readiness-card"><div class="google-readiness-card-label">Google 로그인 가능 | Ready</div><div class="google-readiness-card-value ${ready === schoolTargets && schoolTargets > 0 ? 'ok' : 'warn'}">${ready} / ${schoolTargets}</div></div>`,
+        `<div class="google-readiness-card"><div class="google-readiness-card-label">점검 필요 | Needs Review</div><div class="google-readiness-card-value ${problemCount ? 'err' : 'ok'}">${problemCount}</div></div>`,
+        `<div class="google-readiness-card"><div class="google-readiness-card-label">사용 중지 | Inactive</div><div class="google-readiness-card-value ${inactive ? 'warn' : 'ok'}">${inactive}</div></div>`,
+        `<div class="google-readiness-card"><div class="google-readiness-card-label">Google 대상 제외 | Excluded</div><div class="google-readiness-card-value">${excluded}</div></div>`
+      ].join('');
+
+      if (!issues.length) {
+        list.innerHTML = '<div class="google-readiness-empty">등록된 학교 Google 계정의 사전 점검 항목이 모두 정상입니다. | All registered HIS Google accounts are ready.</div>';
+        return;
+      }
+
+      list.innerHTML = `<table class="google-readiness-table"><thead><tr><th style="width:22%">교사 | Teacher</th><th style="width:35%">이메일 | Email</th><th style="width:43%">점검 항목 | Review</th></tr></thead><tbody>${issues.map(item => `<tr><td>${googleVerifyEscapeHtml(item.name)}</td><td>${googleVerifyEscapeHtml(item.email)}</td><td>${googleVerifyEscapeHtml(item.issues)}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function formatGoogleLoginDate(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '-';
+      const date = new Date(raw);
+      if (Number.isNaN(date.getTime())) return raw;
+      try {
+        return new Intl.DateTimeFormat('ko-KR', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(date);
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    function renderGoogleFirstLoginHistory() {
+      const summary = document.getElementById('google-login-history-summary');
+      const list = document.getElementById('google-login-history-list');
+      if (!summary || !list) return;
+
+      const targets = teacherRows.filter(row => {
+        if (!row || row._delete || row.active === false) return false;
+        const email = String(row.email || '').trim().toLowerCase();
+        return /^[^\s@]+@his\.sc\.kr$/.test(email) && String(row.loginProvider || '').trim() === 'google';
+      });
+      const signedIn = targets.filter(row => String(row.authUid || '').trim() && String(row.authEmail || '').trim());
+      const pending = targets.filter(row => !(String(row.authUid || '').trim() && String(row.authEmail || '').trim()));
+      const verified = signedIn.filter(row => row.authEmailVerified === true);
+
+      summary.innerHTML = [
+        `<div class="google-login-history-card"><div class="google-login-history-card-label">Google 로그인 완료 | Signed In</div><div class="google-login-history-card-value ${signedIn.length ? 'ok' : 'warn'}">${signedIn.length} / ${targets.length}</div></div>`,
+        `<div class="google-login-history-card"><div class="google-login-history-card-label">아직 미로그인 | Pending</div><div class="google-login-history-card-value ${pending.length ? 'warn' : 'ok'}">${pending.length}</div></div>`,
+        `<div class="google-login-history-card"><div class="google-login-history-card-label">이메일 인증 확인 | Verified</div><div class="google-login-history-card-value ${verified.length === signedIn.length && signedIn.length ? 'ok' : 'warn'}">${verified.length} / ${signedIn.length}</div></div>`
+      ].join('');
+
+      if (!signedIn.length) {
+        list.innerHTML = '<div class="google-login-history-empty">아직 Google 첫 로그인 기록이 없습니다. 기존 로그인은 계속 사용할 수 있습니다. | No Google first sign-in records yet.</div>';
+        return;
+      }
+
+      const ordered = signedIn.slice().sort((a, b) => {
+        const at = Date.parse(a.lastGoogleLoginAt || '') || 0;
+        const bt = Date.parse(b.lastGoogleLoginAt || '') || 0;
+        return bt - at || String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+      });
+      list.innerHTML = `<table class="google-login-history-table"><thead><tr><th style="width:18%">교사 | Teacher</th><th style="width:30%">등록 이메일 | Registered Email</th><th style="width:20%">인증 상태 | Verification</th><th style="width:32%">마지막 Google 로그인 | Last Sign-in</th></tr></thead><tbody>${ordered.map(row => {
+        const registeredEmail = String(row.email || '').trim().toLowerCase();
+        const authEmail = String(row.authEmail || '').trim().toLowerCase();
+        const matched = !!registeredEmail && registeredEmail === authEmail;
+        const status = matched && row.authEmailVerified === true ? '일치·인증됨 | Matched & verified' : (matched ? '일치·인증 미확인 | Matched' : '이메일 불일치 | Email mismatch');
+        return `<tr><td>${googleVerifyEscapeHtml(String(row.name || '').trim() || '(이름 없음)')}</td><td>${googleVerifyEscapeHtml(registeredEmail || '-')}</td><td>${googleVerifyEscapeHtml(status)}</td><td>${googleVerifyEscapeHtml(formatGoogleLoginDate(row.lastGoogleLoginAt))}</td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
+
+    function updateAdminIdentity() {
+      const el = document.getElementById('admin-center-identity');
+      if (!el) return;
+      if (sessionStorage.getItem('his_admin_session') === '1') {
+        const current = ensurePasswordAdminIdentity() || {};
+        el.textContent = `${String(current.name || '관리자')} · Admin${current.email ? ' · ' + current.email : ''}`;
+        return;
+      }
+      try {
+        const current = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+        const roles = normalizeRoles(current.roles ?? current.role ?? []);
+        const roleLabel = roles.includes('admin') ? 'Admin' : (roles.includes('master') ? 'Master' : 'Manager');
+        const name = String(current.name || '관리자').trim();
+        const email = String(current.email || '').trim();
+        el.textContent = `${name} · ${roleLabel}${email ? ' · ' + email : ''}`;
+      } catch (e) {
+        el.textContent = '관리자 · Admin';
+      }
+    }
+
+    async function checkAdmin() {
+      try { await ensureFirebaseAuth(); }
+      catch (e) { console.error(e); return toast('Firebase 인증에 실패했습니다.\nFirebase authentication failed.', 'err'); }
+      const pw = document.getElementById('admin-pw').value;
+      if (pw !== ADMIN_PW) {
+        document.getElementById('admin-pw').value = '';
+        return toast('비밀번호가 올바르지 않습니다.\nInvalid password.', 'err');
+      }
+      sessionStorage.setItem('his_admin_session', '1');
+      ensurePasswordAdminIdentity();
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('admin-screen').classList.remove('hidden');
+      updateAdminIdentity();
+      await refreshAll();
+      applyAdminHash();
+    }
+
+    function adminLogout() {
+      sessionStorage.removeItem('his_admin_session');
+      sessionStorage.removeItem('his_teacher');
+      document.documentElement.classList.remove('admin-session-restored');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('admin-screen').classList.add('hidden');
+      document.getElementById('admin-pw').value = '';
+      document.getElementById('pw-change-box').classList.add('hidden');
+    }
+
+    function togglePwChangeBox() {
+      document.getElementById('pw-change-box').classList.toggle('hidden');
+    }
+
+    async function changeAdminPassword() {
+      await ensureFirebaseAuth();
+      const currentPw = document.getElementById('current-admin-pw').value;
+      const newPw = document.getElementById('new-admin-pw').value;
+      const confirmPw = document.getElementById('new-admin-pw-confirm').value;
+
+      if (currentPw !== ADMIN_PW) return toast('현재 비밀번호가 올바르지 않습니다.\nCurrent password is incorrect.', 'err');
+      if (!newPw) return toast('새 비밀번호를 입력해 주세요.\nPlease enter a new password.', 'err');
+      if (newPw !== confirmPw) return toast('새 비밀번호가 일치하지 않습니다.\nNew passwords do not match.', 'err');
+
+      await db.ref('adminConfig/password').set(newPw);
+      ADMIN_PW = newPw;
+      document.getElementById('current-admin-pw').value = '';
+      document.getElementById('new-admin-pw').value = '';
+      document.getElementById('new-admin-pw-confirm').value = '';
+      toast('관리자 비밀번호가 변경되었습니다.\nAdmin password changed.', 'ok');
+      document.getElementById('pw-change-box').classList.add('hidden');
+    }
+
+    function setFirebaseDiagnosticStatus(message, type = '') {
+      const el = document.getElementById('firebase-diagnostic-status');
+      if (!el) return;
+      el.textContent = message || '';
+      el.className = 'settings-tool-status' + (type ? ' ' + type : '');
+    }
+
+    function diagnosticSafeMessage(error) {
+      if (!error) return 'Unknown error';
+      const code = String(error.code || '').trim();
+      const message = String(error.message || error).trim();
+      return [code, message].filter(Boolean).join(': ');
+    }
+
+    function sanitizeFirebaseDiagnostic(value, keyName = '') {
+      const sensitiveKey = /^(password|passwd|pwd|secret|token|accessToken|refreshToken|authorization)$/i;
+      if (sensitiveKey.test(String(keyName || ''))) return '[REDACTED]';
+      if (Array.isArray(value)) return value.map(item => sanitizeFirebaseDiagnostic(item, ''));
+      if (value && typeof value === 'object') {
+        const out = {};
+        Object.entries(value).forEach(([key, child]) => {
+          out[key] = sanitizeFirebaseDiagnostic(child, key);
+        });
+        return out;
+      }
+      return value;
+    }
+
+    function diagnosticItemCount(value) {
+      if (Array.isArray(value)) return value.filter(item => item !== null && item !== undefined).length;
+      if (value && typeof value === 'object') return Object.keys(value).length;
+      return value === null || value === undefined ? 0 : 1;
+    }
+
+    function downloadDiagnosticJson(filename, payload) {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function downloadFirebaseDiagnostic() {
+      const button = document.getElementById('btn-firebase-diagnostic');
+      if (button && button.disabled) return;
+      if (!isCurrentMaster()) {
+        toast('Firebase 진단 데이터 다운로드 권한이 없습니다.\nYou do not have permission to download diagnostic data.', 'err');
+        return;
+      }
+
+      const paths = [
+        'teachers',
+        'students',
+        'detentionEntries',
+        'detentionNotices',
+        'recoveryEntries',
+        'committeeRecords',
+        'studentCycleState',
+        'detentionStandards',
+        'detentionStandards_meta',
+        'adminAuditLogs',
+        'adminConfig'
+      ];
+
+      try {
+        if (button) button.disabled = true;
+        setFirebaseDiagnosticStatus('Firebase 데이터를 읽는 중입니다… | Reading Firebase data…');
+        await ensureFirebaseAuth();
+
+        const results = await Promise.allSettled(paths.map(path => db.ref(path).once('value')));
+        const data = {};
+        const readStatus = {};
+        const counts = {};
+
+        results.forEach((result, index) => {
+          const path = paths[index];
+          if (result.status === 'fulfilled') {
+            const sanitized = sanitizeFirebaseDiagnostic(result.value.val(), path);
+            data[path] = sanitized;
+            counts[path] = diagnosticItemCount(sanitized);
+            readStatus[path] = { ok: true, count: counts[path] };
+          } else {
+            const message = diagnosticSafeMessage(result.reason);
+            data[path] = null;
+            counts[path] = 0;
+            readStatus[path] = { ok: false, error: message };
+          }
+        });
+
+        const failedPaths = Object.entries(readStatus).filter(([, status]) => !status.ok).map(([path]) => path);
+        const manager = (() => {
+          try {
+            const teacher = (sessionStorage.getItem('his_admin_session') === '1' ? ensurePasswordAdminIdentity() : null) || JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {};
+            const roles = normalizeRoles(teacher.roles ?? teacher.role ?? currentManagerRoles());
+            return {
+              name: String(teacher.name || (roles.includes('admin') ? '관리자' : '')).trim(),
+              email: String(teacher.email || (roles.includes('admin') ? 'admin' : '')).trim(),
+              roles
+            };
+          } catch (_) {
+            const roles = currentManagerRoles();
+            return { name: roles.includes('admin') ? '관리자' : '', email: roles.includes('admin') ? 'admin' : '', roles };
+          }
+        })();
+
+        const exportedAt = new Date();
+        const payload = {
+          diagnosticFormat: 'his-firebase-diagnostic-v1',
+          exportedAt: exportedAt.toISOString(),
+          project: {
+            projectId: firebaseConfig.projectId,
+            databaseURL: firebaseConfig.databaseURL
+          },
+          firebaseAuth: {
+            authenticated: !!(window.firebaseAuth && window.firebaseAuth.currentUser),
+            uid: window.firebaseAuth && window.firebaseAuth.currentUser ? window.firebaseAuth.currentUser.uid : ''
+          },
+          exportedBy: manager,
+          privacy: {
+            passwordFields: 'redacted',
+            note: 'Teacher and administrator password-like fields are replaced with [REDACTED].'
+          },
+          summary: {
+            requestedPaths: paths.length,
+            successfulPaths: paths.length - failedPaths.length,
+            failedPaths,
+            counts
+          },
+          readStatus,
+          data
+        };
+
+        const stamp = exportedAt.toISOString().replace(/[:.]/g, '-');
+        downloadDiagnosticJson(`his-firebase-diagnostic-${stamp}.json`, payload);
+
+        if (failedPaths.length) {
+          setFirebaseDiagnosticStatus(`일부 경로를 제외하고 진단 파일을 저장했습니다: ${failedPaths.join(', ')} | Diagnostic file saved with partial read errors.`, 'err');
+          toast('Firebase 진단 파일을 저장했지만 일부 경로를 읽지 못했습니다.\nDiagnostic file saved with partial read errors.', 'err');
+        } else {
+          setFirebaseDiagnosticStatus('Firebase 진단 파일을 저장했습니다. 이 JSON 파일을 DB 점검용으로 업로드할 수 있습니다. | Diagnostic file downloaded.', 'ok');
+          toast('Firebase 진단 데이터 다운로드 완료 | Diagnostic data downloaded.', 'ok');
+        }
+      } catch (error) {
+        console.error('Firebase diagnostic export failed:', error);
+        setFirebaseDiagnosticStatus('다운로드 실패: ' + diagnosticSafeMessage(error), 'err');
+        toast('Firebase 진단 데이터 다운로드 실패\nDiagnostic download failed.', 'err');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function setDash(id, value) { const el=document.getElementById(id); if(!el) return; el.textContent = value; el.classList.toggle('compact', el.classList.contains('admin-task-value') && String(value).length > 4); }
+    function renderDashboardBase() {
+      setDash('dash-students', studentRows.filter(r=>!r._delete).length);
+      setDash('dash-teachers', teacherRows.filter(r=>!r._delete).length);
+    }
+    async function loadDashboardOperationalCounts() {
+      const specs = [
+        ['detentionEntries','dash-pending', obj => Object.values(obj||{}).filter(v => !v?._delete && String(v.status||'').trim() === '대기').length],
+        ['detentionNotices','dash-notices', obj => Object.values(obj||{}).filter(v => !v?._delete && !v.completedAt && !v.completedDate).length],
+        ['recoveryEntries','dash-recovery', obj => Object.values(obj||{}).filter(v => !v?._delete && !v.completedAt && !v.completedDate).length],
+        ['committeeRecords','dash-committee', obj => Object.values(obj||{}).filter(v => !v?._delete && !v.completedAt && !v.completedDate && String(v.status||'').toLowerCase() !== 'completed').length]
+      ];
+      await Promise.all(specs.map(async ([path,id,count]) => {
+        try { const snap=await db.ref(path).once('value'); setDash(id, count(snap.val())); }
+        catch(e) { setDash(id, '확인 불가'); console.warn('dashboard path failed', path, e); }
+      }));
+    }
+
+    async function refreshAll() {
+      updateAdminIdentity();
+      try {
+        await ensureFirebaseAuth();
+        const [t, s] = await Promise.all([
+          db.ref('teachers').once('value'),
+          db.ref('students').once('value')
+        ]);
+
+        teachersRaw = t.val() || {};
+        studentsRaw = s.val() || {};
+
+        teacherRows = Object.entries(teachersRaw).map(([k, v]) => ({
+          oldKey: k, name: v.name || '', email: v.email || '', password: v.password || '',
+          homeroom: v.homeroom || '', roles: normalizeRoles(v.roles || v.role || []),
+          active: v.active !== false, loginProvider: v.loginProvider || '',
+          authUid: v.authUid || '', authEmail: v.authEmail || '',
+          authEmailVerified: v.authEmailVerified === true, lastGoogleLoginAt: v.lastGoogleLoginAt || '',
+          _delete: false, _status: '기존'
+        }));
+
+        studentRows = Object.entries(studentsRaw).map(([k, v]) => {
+          const fatherEmail = normalizeEmailList(v.fatherEmail || '');
+          const motherEmail = normalizeEmailList(v.motherEmail || '');
+          const parentEmailTarget = inferParentEmailTarget(v.parentEmailTarget || v.representativeParent || '', v.parentEmail || v.representativeEmail || '', fatherEmail, motherEmail);
+          const parentEmail = buildParentNoticeEmail(parentEmailTarget, v.parentEmail || v.representativeEmail || '', fatherEmail, motherEmail);
+          return {
+            oldKey: k, keyCandidate: k, name: v.name || '', englishName: v.englishName || '', className: v.className || '',
+            selfEmail: normalizeEmailList(v.selfEmail || ''), fatherEmail, motherEmail,
+            parentEmailTarget, parentEmail,
+            homeroomTeacherEmail: v.homeroomTeacherEmail || getHomeroomTeacherEmail(v.className || ''),
+            _delete: false, _status: '기존'
+          };
+        });
+
+        renderTeachers();
+        renderGoogleLoginVerification();
+        renderStudents();
+        takeTeacherSnapshot();
+        takeStudentSnapshot();
+        setButtonState('btn-save-teachers', false);
+        setButtonState('btn-save-students', false);
+        renderDashboardBase();
+        loadDashboardOperationalCounts();
+      } catch (e) {
+        console.error(e);
+        toast('데이터 로드 실패\nFailed to load data', 'err');
+      }
+    }
+
+    function roleLabels(roles){
+      const map={default:'기본권한',confirm:'디텐션 확정',ms_notice:'중등 알림',hs_notice:'고등 알림',ms_restore:'중등 회복교육',hs_restore:'고등 회복교육',committee_view:'위원회 조회',committee_edit:'위원회 수정',master:'Master',admin:'Admin'};
+      return normalizeRoles(roles).map(r=>map[r]||r).join(', ') || '-';
+    }
+    function teacherMatchesRoleFilter(roles, filter) {
+      const set = new Set(normalizeRoles(roles));
+      if (!filter || filter === 'all') return true;
+      if (filter === 'basic') return set.has('default') && !['confirm','ms_notice','hs_notice','ms_restore','hs_restore','committee_view','committee_edit','master','admin'].some(role => set.has(role));
+      if (filter === 'confirm') return set.has('confirm');
+      if (filter === 'notice_recovery') return ['ms_notice','hs_notice','ms_restore','hs_restore'].some(role => set.has(role));
+      if (filter === 'committee') return set.has('committee_view') || set.has('committee_edit');
+      if (filter === 'admin') return set.has('master') || set.has('admin');
+      return true;
+    }
+    function teacherRoleBadgeHtml(roles) {
+      const set = new Set(normalizeRoles(roles));
+      const badges = [];
+      if (set.has('admin')) badges.push(['Admin','admin']);
+      else if (set.has('master')) badges.push(['Master','admin']);
+      if (set.has('confirm')) badges.push(['확정','primary']);
+      const notices = [set.has('ms_notice'), set.has('hs_notice')];
+      if (notices[0] && notices[1]) badges.push(['알림','']);
+      else if (notices[0]) badges.push(['MS 알림','']);
+      else if (notices[1]) badges.push(['HS 알림','']);
+      const recovery = [set.has('ms_restore'), set.has('hs_restore')];
+      if (recovery[0] && recovery[1]) badges.push(['회복','']);
+      else if (recovery[0]) badges.push(['MS 회복','']);
+      else if (recovery[1]) badges.push(['HS 회복','']);
+      if (set.has('committee_edit')) badges.push(['위원회 수정','']);
+      else if (set.has('committee_view')) badges.push(['위원회 조회','']);
+      if (!badges.length && set.has('default')) badges.push(['기본','primary']);
+      if (!badges.length) badges.push(['권한 없음','']);
+      const shown = badges.slice(0, 4);
+      const more = badges.length - shown.length;
+      return `<div class="teacher-role-badges">${shown.map(([label,type])=>`<span class="teacher-role-badge ${type}">${label}</span>`).join('')}${more>0?`<span class="teacher-role-badge more">+${more}</span>`:''}</div>`;
+    }
+    function teacherPrimaryRole(roles) {
+      const set = new Set(normalizeRoles(roles));
+      if (set.has('admin')) return 'Admin';
+      if (set.has('master')) return 'Master';
+      if (set.has('confirm')) return '디텐션 확정';
+      return '일반 교사';
+    }
+
+    function renderTeachers() {
+      const q=(document.getElementById('teacher-search')?.value||'').trim().toLowerCase();
+      const roleFilter=document.getElementById('teacher-role-filter')?.value||'all';
+      const tb=document.getElementById('teacher-tbody');
+      const visible=teacherRows.map((r,idx)=>({r,idx})).filter(({r})=>!r._delete && teacherMatchesRoleFilter(r.roles, roleFilter) && (!q || [r.name,r.email,r.homeroom,roleLabels(r.roles)].some(v=>String(v||'').toLowerCase().includes(q))))
+        .sort((a,b)=>String(a.r.name||'').localeCompare(String(b.r.name||''),'ko'));
+      const deleted=teacherRows.filter(r=>r._delete).length;
+      document.getElementById('teacher-list-summary').innerHTML=`<span class="admin-count-pill">전체 ${teacherRows.length}</span><span class="admin-count-pill">표시 ${visible.length}</span>${deleted?`<span class="admin-count-pill" style="background:#fee2e2;color:#b91c1c">삭제 표시 ${deleted}</span>`:''}`;
+      updateTeacherPageSummary();
+      renderGoogleEmailReadinessAudit();
+      renderGoogleFirstLoginHistory();
+      if(!visible.length){tb.innerHTML='<tr><td colspan="3" class="empty">조건에 맞는 교사 데이터가 없습니다.<br><span class="admin-secondary">No teachers match the current filters.</span></td></tr>';renderTeacherDetail();return;}
+      if(selectedTeacherIndex<0 || !teacherRows[selectedTeacherIndex] || teacherRows[selectedTeacherIndex]._delete || !visible.some(item=>item.idx===selectedTeacherIndex)){selectedTeacherIndex=visible[0].idx;}
+      tb.innerHTML=visible.map(({r,idx})=>`<tr class="admin-list-row ${idx===selectedTeacherIndex?'selected':''}" onclick="selectTeacher(${idx})">
+        <td><div class="admin-primary">${esc(r.name||'(이름 없음)')}</div><div class="admin-secondary">${esc(r.email||'-')}</div></td>
+        <td style="text-align:center">${r.homeroom?`<span class="teacher-role-badge">${esc(r.homeroom)}</span>`:'-'}</td><td>${teacherRoleBadgeHtml(r.roles)}</td></tr>`).join('');
+      renderTeacherDetail();
+    }
+
+    function selectTeacher(idx){selectedTeacherIndex=idx;renderTeachers();}
+    function updateTeacherField(idx,field,value){teacherRows[idx][field]=value;if(field==='homeroom')renderStudents();checkTeacherDirty();renderTeachers();}
+    function updateTeacherRole(idx, role, checked) {
+      const row = teacherRows[idx];
+      if (!row || !canEditRole(row, role)) {
+        toast('이 권한은 현재 계정으로 변경할 수 없습니다.\nYou do not have permission to change this role.', 'err');
+        renderTeacherDetail();
+        return;
+      }
+      const set = new Set(normalizeRoles(row.roles));
+      if (checked) set.add(role); else set.delete(role);
+      if (role === 'committee_edit' && checked) set.add('committee_view');
+      if (role === 'committee_view' && !checked) set.delete('committee_edit');
+      row.roles = [...set];
+      checkTeacherDirty();
+      renderTeachers();
+    }
+    function renderTeacherDetail(){
+      const box=document.getElementById('teacher-detail'); const label=document.getElementById('teacher-selected-label');
+      const r=teacherRows[selectedTeacherIndex];
+      if(!r||r._delete){label.textContent='';box.innerHTML='<div class="admin-detail-empty">왼쪽 목록에서 교사를 선택하세요.</div>';return;}
+      const roles=normalizeRoles(r.roles);
+      const editable = masterCanEditRow(r);
+      const disabledAttr = editable ? '' : 'disabled';
+      const statusText = r._status === '신규' ? '신규' : r._status === '저장됨' ? '저장됨' : '저장된 계정';
+      label.textContent=(r.name||'신규 교사')+(r.homeroom?` · ${r.homeroom}`:'');
+      const roleCheck = (key, labelText) => {
+        const roleDisabled = canEditRole(r, key) ? '' : 'disabled';
+        return `<label class="teacher-permission-item"><input type="checkbox" ${roles.includes(key)?'checked':''} ${roleDisabled} onchange="updateTeacherRole(${selectedTeacherIndex},'${key}',this.checked)"><span>${labelText}</span></label>`;
+      };
+      const matrixCheck = (key, labelText) => {
+        const roleDisabled = canEditRole(r, key) ? '' : 'disabled';
+        return `<input type="checkbox" aria-label="${labelText}" ${roles.includes(key)?'checked':''} ${roleDisabled} onchange="updateTeacherRole(${selectedTeacherIndex},'${key}',this.checked)">`;
+      };
+      const lockNotice = editable ? '' : '<div class="notice" style="margin-bottom:10px">Master는 Admin/Master 계정을 수정할 수 없습니다. | Master cannot edit Admin/Master accounts.</div>';
+      box.innerHTML=`
+        <div class="teacher-detail-identity ${editable?'':'locked'}">
+          <div class="teacher-detail-name">${esc(r.name||'신규 교사')} · ${esc(r.homeroom||'학반 미지정')}</div>
+          <div class="teacher-detail-meta">${esc(r.email||'이메일 미입력')} · ${esc(teacherPrimaryRole(r.roles))} · ${esc(statusText)}</div>
+        </div>
+        ${lockNotice}
+        <div class="admin-form-section"><div class="admin-form-title">기본 정보 | Account</div><div class="admin-form-grid">
+          <div><label class="label">이름 | Name</label><input class="edit-input" ${disabledAttr} value="${esc(r.name||'')}" oninput="teacherRows[${selectedTeacherIndex}].name=this.value;checkTeacherDirty()" onblur="renderTeachers()"></div>
+          <div><label class="label">담당학반 | Homeroom</label><input class="edit-input" ${disabledAttr} value="${esc(r.homeroom||'')}" oninput="teacherRows[${selectedTeacherIndex}].homeroom=this.value;checkTeacherDirty()" onblur="renderTeachers();renderStudents()"></div>
+          <div style="grid-column:1/-1"><label class="label">이메일 | Email</label><input class="edit-input" ${disabledAttr} value="${esc(r.email||'')}" oninput="teacherRows[${selectedTeacherIndex}].email=this.value;checkTeacherDirty()" onblur="renderTeachers()"></div>
+          <div style="grid-column:1/-1"><label class="label">비밀번호 | Password</label><input class="edit-input" ${disabledAttr} value="${esc(r.password||'')}" oninput="teacherRows[${selectedTeacherIndex}].password=this.value;checkTeacherDirty()"></div>
+          <div><label class="label">계정 상태 | Account Status</label><select class="edit-input" ${disabledAttr} onchange="teacherRows[${selectedTeacherIndex}].active=this.value==='active';checkTeacherDirty();renderTeacherDetail()"><option value="active" ${r.active!==false?'selected':''}>사용 | Active</option><option value="inactive" ${r.active===false?'selected':''}>사용 중지 | Inactive</option></select></div>
+          <div><label class="label">로그인 방식 | Login Provider</label><select class="edit-input" ${disabledAttr} onchange="teacherRows[${selectedTeacherIndex}].loginProvider=this.value;checkTeacherDirty()"><option value="google" ${r.loginProvider==='google'?'selected':''}>학교 Google 계정 | Google</option><option value="legacy" ${r.loginProvider==='legacy'?'selected':''}>기존 로그인 | Legacy</option><option value="" ${!r.loginProvider?'selected':''}>미지정 | Not set</option></select></div>
+        </div></div>
+        <div class="admin-form-section"><div class="admin-form-title">기본 업무 | Basic</div><div class="teacher-permission-grid">
+          ${roleCheck('default','기본권한 | Default')}
+          ${roleCheck('confirm','디텐션 확정 | Confirm')}
+        </div></div>
+        <div class="admin-form-section"><div class="admin-form-title">알림·회복교육 | Notice & Recovery</div>
+          <table class="teacher-permission-matrix"><thead><tr><th style="width:32%;text-align:left"></th><th>알림 | Notice</th><th>회복교육 | Recovery</th></tr></thead><tbody>
+            <tr><th>중등 | MS</th><td>${matrixCheck('ms_notice','중등 알림')}</td><td>${matrixCheck('ms_restore','중등 회복교육')}</td></tr>
+            <tr><th>고등 | HS</th><td>${matrixCheck('hs_notice','고등 알림')}</td><td>${matrixCheck('hs_restore','고등 회복교육')}</td></tr>
+          </tbody></table>
+        </div>
+        <div class="admin-form-section"><div class="admin-form-title">위원회 | Committee</div><div class="teacher-permission-grid">
+          ${roleCheck('committee_view','조회 | View')}
+          ${roleCheck('committee_edit','수정 | Edit')}
+        </div><div class="teacher-permission-note">수정 권한을 선택하면 조회 권한도 함께 유지됩니다. | Edit permission includes view access.</div></div>
+        <div class="admin-form-section"><div class="admin-form-title">관리 권한 | Administration</div><div class="teacher-permission-grid">
+          ${roleCheck('master','Master')}
+          ${roleCheck('admin','Admin')}
+        </div></div>
+        <div class="admin-form-section"><div class="admin-form-title">저장 상태 | Save Status</div><div class="admin-form-grid one"><div>${statusPill(r._status||'기존')}</div></div></div>
+        <div class="teacher-save-footer">
+          <label class="delete-toggle"><input type="checkbox" ${editable?'':'disabled'} onchange="teacherRows[${selectedTeacherIndex}]._delete=this.checked;checkTeacherDirty();renderTeachers()"> 이 교사를 삭제 표시</label>
+          <button class="btn btn-primary" ${editable?'':'disabled'} onclick="saveTeachers()">교사 데이터 저장</button>
+        </div>`;
+    }
+
+    function deleteTeacherRow(idx) {
+      const row = teacherRows[idx];
+      const name = row?.name || '';
+      const ok = confirm(`정말 삭제하시겠습니까?\n${name}\n\nAre you sure you want to delete this teacher?`);
+      if (!ok) return;
+      teacherRows[idx]._delete = true;
+      renderTeachers();
+      renderStudents();
+      checkTeacherDirty();
+    }
+
+    function studentEmailIssues(r) {
+      const issues = [];
+      if (!String(r.parentEmail || '').trim()) issues.push({ key:'parent', label:'대표메일 누락' });
+      if (!String(r.homeroomTeacherEmail || '').trim()) issues.push({ key:'homeroom', label:'담임메일 누락' });
+      if (!String(r.selfEmail || '').trim()) issues.push({ key:'self', label:'학생메일 누락' });
+      return issues;
+    }
+    function studentMatchesEmailFilter(r, filter) {
+      if (!filter || filter === 'all') return true;
+      return studentEmailIssues(r).some(issue => issue.key === filter);
+    }
+    function studentEmailStatusHtml(r) {
+      const issues = studentEmailIssues(r);
+      if (!issues.length) return `<span class="student-email-badge ok">정상 | Complete</span><div class="admin-secondary">${esc(r.parentEmail||'-')}</div>`;
+      const first = issues[0].label;
+      const label = issues.length > 1 ? `확인 필요 ${issues.length}` : first;
+      return `<span class="student-email-badge warn">${esc(label)}</span>${r.parentEmail?`<div class="admin-secondary">${esc(r.parentEmail)}</div>`:''}`;
+    }
+    function updateStudentClassFilterOptions() {
+      const select = document.getElementById('student-class-filter');
+      if (!select) return;
+      const classes = [...new Set(studentRows.filter(r => !r._delete).map(r => String(r.className||'').trim()).filter(Boolean))]
+        .sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
+      const signature = classes.join('|');
+      if (select.dataset.signature === signature) return;
+      const current = select.value || 'all';
+      select.innerHTML = `<option value="all">전체 학반 | All Classes</option>${classes.map(value=>`<option value="${esc(value)}">${esc(value)}</option>`).join('')}`;
+      select.value = classes.includes(current) ? current : 'all';
+      select.dataset.signature = signature;
+    }
+    function renderStudents() {
+      const q=(document.getElementById('student-search')?.value||'').trim().toLowerCase();
+      studentRows.forEach(r=>r.homeroomTeacherEmail=getHomeroomTeacherEmail(r.className||''));
+      updateStudentClassFilterOptions();
+      const classFilter=document.getElementById('student-class-filter')?.value||'all';
+      const emailFilter=document.getElementById('student-email-filter')?.value||'all';
+      const activeRows=studentRows.filter(r=>!r._delete);
+      const reviewCount=activeRows.filter(r=>studentEmailIssues(r).length>0).length;
+      const visible=studentRows.map((r,idx)=>({r,idx})).filter(({r})=>!r._delete
+        && (classFilter==='all' || String(r.className||'')===classFilter)
+        && studentMatchesEmailFilter(r,emailFilter)
+        && (!q || [r.name,r.englishName,r.className,r.selfEmail,r.fatherEmail,r.motherEmail,r.parentEmail,r.homeroomTeacherEmail,r.oldKey].some(v=>String(v||'').toLowerCase().includes(q))))
+        .sort((a,b)=>String(a.r.className||'').localeCompare(String(b.r.className||''),'ko',{numeric:true})||String(a.r.name||'').localeCompare(String(b.r.name||''),'ko'));
+      const tb=document.getElementById('student-tbody'); const deleted=studentRows.filter(r=>r._delete).length;
+      document.getElementById('student-list-summary').innerHTML=`<span class="admin-count-pill">전체 ${activeRows.length}</span><span class="admin-count-pill">표시 ${visible.length}</span>${reviewCount?`<span class="admin-count-pill" style="background:#fff4d6;color:#8a5a00">확인 필요 ${reviewCount}</span>`:''}${deleted?`<span class="admin-count-pill" style="background:#fee2e2;color:#b91c1c">삭제 표시 ${deleted}</span>`:''}`;
+      updateStudentPageSummary();
+      if(!visible.length){selectedStudentIndex=-1;tb.innerHTML='<tr><td colspan="3" class="empty">조건에 맞는 학생 데이터가 없습니다.</td></tr>';renderStudentDetail();return;}
+      if(!visible.some(({idx})=>idx===selectedStudentIndex)){selectedStudentIndex=visible[0].idx;}
+      tb.innerHTML=visible.map(({r,idx})=>`<tr class="admin-list-row ${idx===selectedStudentIndex?'selected':''}" onclick="selectStudent(${idx})">
+        <td><div class="student-name-line"><span class="admin-primary">${esc(r.name||'(이름 없음)')}</span>${r.englishName?` <span style="font-size:11px;color:var(--sb)">${esc(r.englishName)}</span>`:''}</div></td>
+        <td>${esc(r.className||'-')}</td><td>${studentEmailStatusHtml(r)}</td></tr>`).join('');
+      renderStudentDetail();
+    }
+    function selectStudent(idx){selectedStudentIndex=idx;renderStudents();}
+    function updateStudentField(idx,field,value){const r=studentRows[idx];r[field]=value;if(['fatherEmail','motherEmail','selfEmail','parentEmail'].includes(field))r[field]=normalizeEmailList(value);if(field==='className'){r.homeroomTeacherEmail=getHomeroomTeacherEmail(value);if(!r.oldKey)r.keyCandidate=studentKey(r.name,value);}if(field==='name'&&!r.oldKey)r.keyCandidate=studentKey(value,r.className);if(['fatherEmail','motherEmail','parentEmailTarget'].includes(field))r.parentEmail=buildParentNoticeEmail(r.parentEmailTarget,r.parentEmail,r.fatherEmail,r.motherEmail);checkStudentDirty();}
+    function renderStudentDetail(){
+      const box=document.getElementById('student-detail'); const label=document.getElementById('student-selected-label'); const r=studentRows[selectedStudentIndex];
+      if(!r||r._delete){label.textContent='';box.innerHTML='<div class="admin-detail-empty">왼쪽 목록에서 학생을 선택하세요.</div>';return;}
+      r.homeroomTeacherEmail=getHomeroomTeacherEmail(r.className||'');
+      const issues=studentEmailIssues(r);
+      label.textContent=issues.length?`확인 필요 ${issues.length}`:'이메일 정상';
+      const issueText=issues.map(issue=>issue.label).join(', ');
+      box.innerHTML=`
+       <div class="student-detail-identity"><div class="student-detail-name">${esc(r.name||'신규 학생')}${r.englishName?` <span style="font-weight:600">${esc(r.englishName)}</span>`:''} · ${esc(r.className||'학반 미지정')}</div><div class="student-detail-meta">${issues.length?`${esc(issueText)} · 이메일 정보 확인 필요`:'대표메일 정상 · 담임교사 연결됨 · 저장 상태 확인 가능'}</div></div>
+       ${issues.length?`<div class="student-detail-warning">${esc(issueText)}. 알림 발송 전에 이메일 정보를 확인하세요. | Please verify email information before sending notices.</div>`:''}
+       <div class="admin-form-section"><div class="admin-form-title">학생 정보 | Student</div><div class="admin-form-grid">
+        <div><label class="label">학생 이름 | Name</label><input class="edit-input" value="${esc(r.name||'')}" oninput="updateStudentField(${selectedStudentIndex},'name',this.value)" onblur="renderStudents()"></div>
+        <div><label class="label">영문 이름 | English Name</label><input class="edit-input" value="${esc(r.englishName||'')}" oninput="updateStudentField(${selectedStudentIndex},'englishName',this.value)" onblur="renderStudents()"></div>
+        <div><label class="label">학반 | Class</label><input class="edit-input" value="${esc(r.className||'')}" oninput="updateStudentField(${selectedStudentIndex},'className',this.value)" onblur="renderStudents()"></div>
+        <div><label class="label">학생 이메일 | Student Email</label><input class="edit-input" value="${esc(r.selfEmail||'')}" oninput="updateStudentField(${selectedStudentIndex},'selfEmail',this.value)" onblur="renderStudentDetail();renderStudents()"></div>
+       </div></div>
+       <div class="admin-form-section"><div class="admin-form-title">학부모 알림 이메일 | Parent Notice</div><div class="admin-form-grid">
+        <div><label class="label">부 이메일</label><input class="edit-input" value="${esc(r.fatherEmail||'')}" oninput="updateStudentField(${selectedStudentIndex},'fatherEmail',this.value)" onblur="renderStudentDetail();renderStudents()"></div>
+        <div><label class="label">모 이메일</label><input class="edit-input" value="${esc(r.motherEmail||'')}" oninput="updateStudentField(${selectedStudentIndex},'motherEmail',this.value)" onblur="renderStudentDetail();renderStudents()"></div>
+        <div><label class="label">대표메일 대상</label><select class="edit-input" onchange="updateStudentField(${selectedStudentIndex},'parentEmailTarget',this.value);renderStudentDetail();renderStudents()"><option value="" ${!r.parentEmailTarget?'selected':''}>자동</option><option value="father" ${r.parentEmailTarget==='father'?'selected':''}>부</option><option value="mother" ${r.parentEmailTarget==='mother'?'selected':''}>모</option><option value="both" ${r.parentEmailTarget==='both'?'selected':''}>둘다</option><option value="custom" ${r.parentEmailTarget==='custom'?'selected':''}>직접입력</option></select></div>
+        <div><label class="label">대표메일</label><input class="edit-input" value="${esc(r.parentEmail||'')}" oninput="updateStudentField(${selectedStudentIndex},'parentEmail',this.value)" onblur="renderStudentDetail();renderStudents()"></div>
+       </div></div>
+       <div class="admin-form-section"><div class="admin-form-title">자동 연결 정보 | Automatic Links</div><div class="student-auto-grid">
+        <div><div class="label">담임교사 이메일</div><div class="student-auto-value">${esc(r.homeroomTeacherEmail||'연결된 담임교사 이메일 없음')}</div></div>
+        <div><div class="label">연결 상태</div><div class="student-auto-value">${r.homeroomTeacherEmail?'<span class="student-email-badge ok">정상</span>':'<span class="student-email-badge warn">확인 필요</span>'}</div></div>
+       </div></div>
+       <details class="student-system-detail"><summary>시스템 정보 | System Information</summary><div>학생 Key: ${esc(r.oldKey||r.keyCandidate||studentKey(r.name,r.className)||'')}</div></details>
+       <div class="admin-form-section"><div class="admin-form-title">저장 상태 | Save Status</div><div class="admin-form-grid one"><div>${statusPill(r._status||'기존')}</div></div></div>
+       <div class="student-save-footer"><label class="delete-toggle"><input type="checkbox" onchange="studentRows[${selectedStudentIndex}]._delete=this.checked;checkStudentDirty();renderStudents()"> 이 학생을 삭제 표시</label><button class="btn btn-primary" onclick="saveStudents()">학생 데이터 저장</button></div>`;
+    }
+
+    function addTeacherRow() {
+      if (!isCurrentMaster()) return toast('교사 계정 관리 권한이 없습니다.', 'err');
+      teacherRows.unshift({ oldKey:'', name:'', email:'', password:'', homeroom:'', roles:[], active:true, loginProvider:'google', _delete:false, _status:'신규' });
+      selectedTeacherIndex=0;
+      renderTeachers();
+      checkTeacherDirty();
+    }
+
+    function prepareGoogleLoginFieldsForAllTeachers() {
+      if (!isCurrentMaster()) return toast('교사 계정 관리 권한이 없습니다.', 'err');
+      let changed = 0;
+      teacherRows.forEach(row => {
+        if (!row || row._delete) return;
+        let rowChanged = false;
+        if (row.active !== true) {
+          row.active = true;
+          rowChanged = true;
+        }
+        if (String(row.loginProvider || '').trim() !== 'google') {
+          row.loginProvider = 'google';
+          rowChanged = true;
+        }
+        if (rowChanged) changed += 1;
+      });
+      checkTeacherDirty();
+      renderTeachers();
+      renderTeacherDetail();
+      if (changed) {
+        toast(`${changed}명의 교사에 Google 로그인 필드를 저장 대기 상태로 준비했습니다.\nPrepared Google login fields for ${changed} teachers.`, 'ok');
+      } else {
+        toast('모든 교사에 Google 로그인 필드가 이미 설정되어 있습니다.\nGoogle login fields are already set for all teachers.', 'ok');
+      }
+    }
+
+    function addStudentRow() {
+      studentRows.unshift({ oldKey:'', keyCandidate:'', name:'', englishName:'', className:'', selfEmail:'', fatherEmail:'', motherEmail:'', parentEmailTarget:'', parentEmail:'', homeroomTeacherEmail:'', _delete:false, _status:'신규' });
+      selectedStudentIndex=0;
+      renderStudents();
+      checkStudentDirty();
+    }
+
+    async function saveTeachers() {
+      if (!isCurrentMaster()) return toast('교사 계정 관리 권한이 없습니다.', 'err');
+      if (!isCurrentAdmin()) {
+        const protectedChanged = teacherRows.some(row => rowIsPrivileged(row) && teacherRowSig(row) !== teacherRowSig({...(teachersRaw[row.oldKey] || row), _delete:false, roles: normalizeRoles((teachersRaw[row.oldKey] || row).roles)}));
+        if (protectedChanged) return toast('Master는 Admin/Master 계정을 수정하거나 삭제할 수 없습니다.', 'err');
+        const elevated = teacherRows.some(row => !rowIsPrivileged(teachersRaw[row.oldKey] || {}) && normalizeRoles(row.roles).some(role => PRIVILEGED_ROLES.has(role)));
+        if (elevated) return toast('Master는 Admin 또는 Master 권한을 부여할 수 없습니다.', 'err');
+      }
+      try {
+        const updates = {};
+        const removes = [];
+
+        teacherRows.forEach(r => {
+          const key = teacherKey(r.email, r.name);
+          if (!key || !String(r.name || '').trim()) {
+            r._status = '오류';
+            return;
+          }
+
+          if (r._delete) {
+            // 기존 키가 있으면 삭제 대상에 추가
+            if (r.oldKey) removes.push(r.oldKey);
+            return;
+          }
+
+          const existing = (r.oldKey && teachersRaw[r.oldKey] && typeof teachersRaw[r.oldKey] === 'object')
+            ? teachersRaw[r.oldKey]
+            : {};
+          const data = {
+            ...existing,
+            name: String(r.name || '').trim(),
+            email: String(r.email || '').trim().toLowerCase(),
+            password: String(r.password || '').trim(),
+            homeroom: String(r.homeroom || '').trim(),
+            roles: normalizeRoles(r.roles),
+            roleFlags: {
+              admin: normalizeRoles(r.roles).includes('admin'),
+              master: normalizeRoles(r.roles).includes('master'),
+              auditManager: normalizeRoles(r.roles).some(role => role === 'admin' || role === 'master')
+            },
+            active: r.active !== false,
+            loginProvider: String(r.loginProvider || 'google').trim() || 'google',
+            updatedAt: new Date().toISOString()
+          };
+
+          // 키가 바뀐 경우(이메일 변경) 구 키 삭제 후 새 키에 저장
+          if (r.oldKey && r.oldKey !== key) {
+            removes.push(r.oldKey);
+          }
+
+          updates[`teachers/${key}`] = data;
+          r._status = '저장됨';
+          r.oldKey = key;
+        });
+
+        // 개별 update (다른 키 건드리지 않음)
+        if (Object.keys(updates).length) {
+          await db.ref().update(updates);
+        }
+        // 삭제는 개별 remove
+        await Promise.all(removes.map(k => db.ref(`teachers/${k}`).remove()));
+
+        toast('교사 데이터가 저장되었습니다.\nTeacher data has been saved.', 'ok');
+        refreshAll();
+      } catch (e) {
+        console.error(e);
+        toast('교사 데이터 저장 실패\nFailed to save teacher data', 'err');
+      }
+    }
+
+    async function saveStudents() {
+      try {
+        const updates = {};
+        const removes = [];
+
+        studentRows.forEach(r => {
+          if (!String(r.name || '').trim()) { r._status = '오류'; return; }
+
+          const homeroomTeacherEmail = getHomeroomTeacherEmail(r.className);
+          const fatherEmail = normalizeEmailList(r.fatherEmail || '');
+          const motherEmail = normalizeEmailList(r.motherEmail || '');
+          const parentEmailTarget = inferParentEmailTarget(r.parentEmailTarget || '', r.parentEmail || '', fatherEmail, motherEmail);
+          const parentEmail = buildParentNoticeEmail(parentEmailTarget, r.parentEmail || '', fatherEmail, motherEmail);
+          const data = {
+            name: String(r.name || '').trim(),
+            englishName: String(r.englishName || '').trim(),
+            className: String(r.className || '').trim(),
+            selfEmail: normalizeEmailList(r.selfEmail || ''),
+            fatherEmail,
+            motherEmail,
+            parentEmailTarget,
+            parentEmail,
+            homeroomTeacherEmail: String(homeroomTeacherEmail || '').trim(),
+            updatedAt: new Date().toISOString()
+          };
+
+          if (r._delete) {
+            if (r.oldKey) removes.push(r.oldKey);
+            return;
+          }
+
+          if (r.oldKey) {
+            // 기존 학생: oldKey로 update (불변 ID 유지)
+            updates[`students/${r.oldKey}`] = data;
+            r._status = '저장됨';
+            r.homeroomTeacherEmail = homeroomTeacherEmail;
+            r.parentEmailTarget = parentEmailTarget;
+            r.parentEmail = parentEmail;
+          } else {
+            // 신규/전체 업로드 학생: className + name 기반의 안정 key 사용
+            // 기존 디텐션 기록의 studentKey와 학생 DB key가 맞아야 하므로 push key를 사용하지 않습니다.
+            const newKey = r.keyCandidate || studentKey(r.name, r.className);
+            if (!newKey) { r._status = '오류'; return; }
+            updates[`students/${newKey}`] = data;
+            r.oldKey = newKey;
+            r.keyCandidate = newKey;
+            r._status = '저장됨';
+            r.homeroomTeacherEmail = homeroomTeacherEmail;
+            r.parentEmailTarget = parentEmailTarget;
+            r.parentEmail = parentEmail;
+          }
+        });
+
+        // 개별 update (다른 학생 키 건드리지 않음)
+        if (Object.keys(updates).length) {
+          await db.ref().update(updates);
+        }
+        // 삭제는 개별 remove
+        await Promise.all(removes.map(k => db.ref(`students/${k}`).remove()));
+
+        toast('학생 데이터가 저장되었습니다.\nStudent data has been saved.', 'ok');
+        refreshAll();
+      } catch (e) {
+        console.error(e);
+        toast('학생 데이터 저장 실패\nFailed to save student data', 'err');
+      }
+    }
+
+    async function uploadStudentsCsv() {
+      try {
+        const file = document.getElementById('student-csv').files[0];
+        const enc = document.getElementById('student-csv-enc').value;
+        const msg = document.getElementById('student-upload-msg');
+        if (!file) return toast('CSV 파일을 선택해 주세요.\nPlease select a CSV file.', 'err');
+
+        const text = await readFileText(file, enc);
+        const rows = parseCsv(text);
+        if (!rows.length) {
+          msg.textContent = 'CSV 내용이 비어 있습니다. | CSV is empty.';
+          return toast('CSV 내용이 비어 있습니다.\nCSV is empty.', 'err');
+        }
+
+        studentRows = rows.map(normalizeStudentUploadRow).filter(r => r.name && r.className);
+
+        msg.textContent = `${studentRows.length}명의 학생 데이터를 불러왔습니다. | Loaded ${studentRows.length} student rows.`;
+        toast('CSV를 불러왔습니다.\nCSV loaded.', 'ok');
+
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector('.tab-btn[data-tab="students"]').classList.add('active');
+        document.getElementById('tab-students').classList.add('active');
+        renderStudents();
+        checkStudentDirty();
+      } catch (e) {
+        console.error(e);
+        toast('CSV 업로드 실패\nCSV upload failed', 'err');
+      }
+    }
+
+    async function uploadTeachersCsv() {
+      try {
+        const file = document.getElementById('teacher-csv').files[0];
+        const enc = document.getElementById('teacher-csv-enc').value;
+        const msg = document.getElementById('teacher-upload-msg');
+        if (!file) return toast('교사 CSV 파일을 선택해 주세요.\nPlease select a teacher CSV file.', 'err');
+
+        const text = await readFileText(file, enc);
+        const rows = parseCsv(text);
+        if (!rows.length) {
+          msg.textContent = 'CSV 내용이 비어 있습니다. | CSV is empty.';
+          return toast('CSV 내용이 비어 있습니다.\nCSV is empty.', 'err');
+        }
+
+        teacherRows = rows.map(r => ({
+          oldKey: '',
+          name: String(r.name || '').trim(),
+          email: String(r.email || '').trim().toLowerCase(),
+          password: String(r.password || '').trim(),
+          homeroom: String(r.homeroom || '').trim(),
+          roles: normalizeRoles(r.roles || ''),
+          active: true,
+          loginProvider: 'google',
+          _delete: false,
+          _status: '업로드됨'
+        }));
+
+        msg.textContent = `${teacherRows.length}명의 교사 데이터를 불러왔습니다. | Loaded ${teacherRows.length} teacher rows.`;
+        toast('교사 CSV를 불러왔습니다.\nTeacher CSV loaded.', 'ok');
+
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector('.tab-btn[data-tab="teachers"]').classList.add('active');
+        document.getElementById('tab-teachers').classList.add('active');
+        renderTeachers();
+        renderStudents();
+        checkTeacherDirty();
+      } catch (e) {
+        console.error(e);
+        toast('교사 CSV 업로드 실패\nTeacher CSV upload failed', 'err');
+      }
+    }
+
+    document.getElementById('teacher-search').addEventListener('input', renderTeachers);
+    document.getElementById('teacher-role-filter').addEventListener('change', renderTeachers);
+    document.getElementById('student-search').addEventListener('input', renderStudents);
+    document.getElementById('student-class-filter').addEventListener('change', renderStudents);
+    document.getElementById('student-email-filter').addEventListener('change', renderStudents);
+
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('.tab-btn[data-tab]');
+      if (!btn) return;
+      switchAdminView(btn.dataset.tab);
+    });
+
+    function parseTsv(text) {
+      return text.replace(/\r\n/g,'\n').replace(/\r/g,'\n')
+        .split('\n').map(l => l.split('\t').map(v => v.trim()))
+        .filter(cols => cols.some(v => v !== ''));
+    }
+    const ADMIN_VIEWS = ['home','teachers','students','csv','settings'];
+    function updateAdminNav(name) {
+      document.querySelectorAll('.admin-center-nav [data-admin-tab], .admin-center-nav [data-admin-link]').forEach(el => el.classList.remove('active'));
+      const current = document.querySelector(`.admin-center-nav [data-admin-tab="${name}"]`);
+      if (current) current.classList.add('active');
+    }
+    function switchAdminView(name, options = {}) {
+      const target = ADMIN_VIEWS.includes(name) ? name : 'home';
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById('tab-' + target);
+      if (panel) panel.classList.add('active');
+      document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === target));
+      updateAdminNav(target);
+      if (!options.skipHash) history.replaceState(null, '', '#' + target);
+      if (target !== 'settings') document.getElementById('pw-change-box')?.classList.add('hidden');
+      window.scrollTo({top:0, behavior: options.instant ? 'auto' : 'smooth'});
+    }
+    function switchToTab(name) { switchAdminView(name); }
+    function openAdminSettings() { switchAdminView('settings'); }
+    function applyAdminHash() {
+      const raw = (location.hash || '#home').slice(1).toLowerCase();
+      switchAdminView(ADMIN_VIEWS.includes(raw) ? raw : 'home', {skipHash:true, instant:true});
+    }
+    function pasteStudents() {
+      const raw = (document.getElementById('student-paste-area').value || '').trim();
+      const msg = document.getElementById('student-paste-msg');
+      if (!raw) { msg.textContent = '데이터가 없습니다.'; return; }
+      const rows = parseTsv(raw);
+      const dataRows = document.getElementById('student-paste-header').checked ? rows.slice(1) : rows;
+      const COLS = ['name','englishName','className','selfEmail','fatherEmail','motherEmail','parentEmailTarget','parentEmail'];
+      const loaded = dataRows.map(cols => { const o={}; COLS.forEach((k,i) => { o[k]=cols[i]||''; }); return o; }).filter(r => r.name);
+      if (!loaded.length) { msg.textContent = '유효한 데이터가 없습니다.'; return; }
+      studentRows = loaded.map(normalizeStudentUploadRow).filter(r => r.name && r.className);
+      msg.textContent = `✅ ${studentRows.length}명 불러옴`;
+      toast('붙여넣기 완료', 'ok');
+      switchToTab('students'); renderStudents(); checkStudentDirty();
+    }
+    function pasteTeachers() {
+      const raw = (document.getElementById('teacher-paste-area').value || '').trim();
+      const msg = document.getElementById('teacher-paste-msg');
+      if (!raw) { msg.textContent = '데이터가 없습니다.'; return; }
+      const rows = parseTsv(raw);
+      const dataRows = document.getElementById('teacher-paste-header').checked ? rows.slice(1) : rows;
+      const COLS = ['name','email','password','homeroom','roles'];
+      const loaded = dataRows.map(cols => { const o={}; COLS.forEach((k,i) => { o[k]=cols[i]||''; }); return o; }).filter(r => r.name);
+      if (!loaded.length) { msg.textContent = '유효한 데이터가 없습니다.'; return; }
+      teacherRows = loaded.map(r => ({ oldKey:'', name:r.name, email:String(r.email||'').toLowerCase(), password:r.password, homeroom:r.homeroom, roles:normalizeRoles(r.roles), active:true, loginProvider:'google', _delete:false, _status:'업로드됨' }));
+      msg.textContent = `✅ ${teacherRows.length}명 불러옴`;
+      toast('붙여넣기 완료', 'ok');
+      switchToTab('teachers'); renderTeachers(); renderStudents(); checkTeacherDirty();
+    }
+
+    window.addEventListener('hashchange', applyAdminHash);
+
+    /* ── 세션 자동복원 ── */
+    (async function initSession() {
+      const hasAdminSession = hasAdminCenterSession();
+
+      // 세션 화면 전환은 Firebase 조회보다 먼저 처리합니다.
+      if (hasAdminSession) {
+        document.documentElement.classList.add('admin-session-restored');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('admin-screen').classList.remove('hidden');
+      } else {
+        document.documentElement.classList.remove('admin-session-restored');
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('admin-screen').classList.add('hidden');
+      }
+
+      // 비밀번호 설정과 실제 데이터는 화면 전환 뒤 비동기로 불러옵니다.
+      try{
+        await ensureFirebaseAuth();
+        const snap = await db.ref('adminConfig/password').once('value');
+        if(snap.val()) ADMIN_PW = snap.val();
+      }catch(e){ console.warn('adminConfig load failed, using default'); }
+
+      if (hasAdminSession) { updateAdminIdentity(); applyAdminHash(); refreshAll(); }
+    })();
+  </script>
+</body>
+</html>

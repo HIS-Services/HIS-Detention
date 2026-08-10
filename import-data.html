@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>데이터 가져오기 | Import Data</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#eef1f9;color:#111827;font-size:14px}
+.topbar{background:linear-gradient(120deg,#0f1f5c,#1b2f7a);padding:12px 16px;display:flex;align-items:center;gap:12px;color:#fff}
+.topbar h1{font-size:16px;font-weight:800}
+.content{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 8px rgba(15,31,92,.06)}
+.card-title{font-size:15px;font-weight:800;color:#0f1f5c;margin-bottom:12px}
+.btn{padding:8px 14px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:13px}
+.btn-primary{background:linear-gradient(135deg,#0f1f5c,#1b2f7a);color:#fff}
+.btn-secondary{background:#e9edf5;color:#111827}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-success{background:#15803d;color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.drop-zone{border:2px dashed #c5d5f5;border-radius:10px;padding:30px;text-align:center;color:#5b6888;cursor:pointer;transition:.2s}
+.drop-zone:hover,.drop-zone.over{border-color:#1b2f7a;background:#f0f4ff}
+.drop-zone input{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:#f0f4ff;border-radius:8px;padding:10px;text-align:center}
+.stat-num{font-size:22px;font-weight:900;color:#0f1f5c}
+.stat-lbl{font-size:11px;color:#5b6888}
+.tbl-wrap{overflow:auto;border:1px solid #d8dded;border-radius:8px;max-height:400px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#dce6f7;color:#0f1f5c;font-size:10px;padding:5px 8px;position:sticky;top:0;z-index:1;white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid #eef2ff;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+tr:hover td{background:#edf3ff}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+.badge-ok{background:#e8f8ee;color:#15803d}
+.badge-warn{background:#fff3cd;color:#5a3e00}
+.badge-err{background:#fde8e8;color:#dc2626}
+.badge-info{background:#e8f0fe;color:#0f1f5c}
+#progress-wrap{display:none}
+.prog-bar-bg{background:#e9edf5;border-radius:999px;height:10px;overflow:hidden;margin:8px 0}
+.prog-bar{background:linear-gradient(135deg,#0f1f5c,#1b2f7a);height:100%;width:0;transition:.2s;border-radius:999px}
+.log{background:#f8f9fc;border:1px solid #d8dded;border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;color:#374151}
+.notice{padding:10px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;color:#6b4f10;font-size:13px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>📥 데이터 가져오기 | Import from Google Sheets</h1>
+  <a href="admin.html" style="background:rgba(255,255,255,0.2);color:#fff;padding:7px 13px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;white-space:nowrap;">← 관리자 | Admin</a>
+</div>
+
+<div class="content">
+  <div class="notice">
+    ⚠️ <strong>주의:</strong> 이 도구는 기존 구글시트 데이터를 Firebase에 가져옵니다.
+    <strong>기존 Firebase 데이터와 겹칠 수 있습니다.</strong> DB 초기화 후 사용하거나, 중복 여부를 확인하세요.
+    <br>TSV 파일을 Google Sheets에서 <strong>파일 → 다운로드 → 탭으로 구분된 값(.tsv)</strong>으로 저장 후 업로드하세요.
+  </div>
+
+  <!-- Step 1: Upload -->
+  <div class="card" id="step1">
+    <div class="card-title">1단계. TSV 파일 업로드</div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div style="font-size:32px;margin-bottom:8px">📂</div>
+      <div style="font-weight:700;margin-bottom:4px">TSV 파일을 드래그하거나 클릭하여 선택</div>
+      <div style="font-size:12px;color:#5b6888">Google Sheets에서 저장한 .tsv 파일</div>
+      <input type="file" id="fileInput" accept=".tsv,.txt,text/tab-separated-values"/>
+    </div>
+  </div>
+
+  <!-- Step 2: Preview -->
+  <div class="card" id="step2" style="display:none">
+    <div class="card-title">
+      2단계. 데이터 미리보기 및 확인
+      <span id="sheetTypeLabel" style="font-size:12px;font-weight:600;color:#1b2f7a;background:#e8f0fe;padding:3px 10px;border-radius:999px;"></span>
+    </div>
+    <div class="stats" id="statsGrid"></div>
+
+    <div class="row">
+      <button class="btn btn-secondary" onclick="showMapping()">컬럼 매핑 보기</button>
+      <span id="mapNote" style="font-size:12px;color:#5b6888"></span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table id="previewTable">
+        <thead id="previewHead"></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-primary" id="importBtn" onclick="startImport()">Firebase에 업로드 시작</button>
+      <button class="btn btn-secondary" onclick="resetAll()">다시 선택</button>
+      <span id="importNote" style="font-size:12px;color:#5b6888"></span>
+    </div>
+  </div>
+
+  <!-- Step 3: Progress -->
+  <div class="card" id="step3" style="display:none">
+    <div class="card-title">3단계. 업로드 진행</div>
+    <div id="progress-wrap" style="display:block">
+      <div class="prog-bar-bg"><div class="prog-bar" id="progBar"></div></div>
+      <div id="progText" style="font-size:12px;color:#5b6888;margin-bottom:8px"></div>
+    </div>
+    <div class="log" id="logBox"></div>
+    <div style="margin-top:10px" id="doneNote"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+// ── studentCycleState 전체 재계산 ──
+// 실제 계산 기준은 common.js의 recalculateAllStudentCycleStates()만 사용합니다.
+async function recalculateAllStudentCycleStatesAfterImport(){
+  if (typeof window.recalculateAllStudentCycleStates !== 'function') {
+    throw new Error('공통 상태 계산 함수가 없습니다. common.js를 확인하세요.');
+  }
+  const result = await window.recalculateAllStudentCycleStates({ updatedBy: 'import-data' });
+  return result && typeof result.count === 'number' ? result.count : 0;
+}
+
+let parsedRows = [];
+let convertedEntries = [];
+let sheetType = ''; // 'detention' | 'notice' | 'restore'
+
+// ── Sheet type detection ──
+function detectSheetType(headers){
+  if(headers.includes('교육횟수') || headers.includes('회복점수')) return 'restore';
+  if(headers.includes('알림날짜') || headers.includes('학부모알림완료')) return 'notice';
+  return 'detention';
+}
+
+const SHEET_LABELS = {
+  detention:'디텐션 기록 (Detention)',
+  notice:'알림 기록 (Notices)',
+  restore:'회복교육 (Recovery)'
+};
+const SHEET_DB = {
+  detention:'detentionEntries',
+  notice:'detentionNotices',
+  restore:'recoveryEntries'
+};
+
+// ── Drag & Drop ──
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('over'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e=> handleFile(e.target.files[0]));
+
+function handleFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result.replace(/^\uFEFF/,'');
+    parseTSV(text);
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// ── TSV Parser ──
+function parseTSV(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if(lines.length < 2){ alert('데이터가 없습니다.'); return; }
+
+  const headers = lines[0].split('\t').map(h => h.trim());
+  sheetType = detectSheetType(headers);
+
+  parsedRows = [];
+  for(let i=1; i<lines.length; i++){
+    const cols = lines[i].split('\t');
+    const row = {};
+    headers.forEach((h,idx) => row[h] = (cols[idx]||'').trim());
+    if(row['ID'] || row['이름']) parsedRows.push(row);
+  }
+
+  if(sheetType === 'notice'){
+    // De_Notice는 위반별(violation-level) 행 → Firebase는 사이클별(cycle-level) 레코드
+    // (studentKey + 알림날짜)로 그룹핑 → 하나의 detentionNotices 레코드 생성
+    convertedEntries = groupNoticeRows(parsedRows);
+  } else if(sheetType === 'restore'){
+    convertedEntries = expandRestoreRows(parsedRows);
+  } else {
+    convertedEntries = parsedRows.map(convertDetentionRow).filter(Boolean);
+  }
+  showPreview();
+}
+
+// ── Shared helpers ──
+function normalizeImportedName(fullName){
+  const raw = String(fullName || '').replace(/\s+/g, ' ').trim();
+  if(!raw) return '';
+
+  // 영문명만 있는 구글시트 데이터에서 같은 이름이 2번 붙은 오류 보정
+  // 예: "Saiyah Brown Saiyah Brown" → "Saiyah Brown"
+  // 예: "CHEN YANG Chen Yang" → "CHEN YANG"
+  if(!/[가-힣]/.test(raw)){
+    const tokens = raw.split(' ').filter(Boolean);
+    if(tokens.length >= 2 && tokens.length % 2 === 0){
+      const half = tokens.length / 2;
+      const left = tokens.slice(0, half).join(' ');
+      const right = tokens.slice(half).join(' ');
+      const canon = v => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if(canon(left) && canon(left) === canon(right)) return left;
+    }
+  }
+
+  return raw;
+}
+
+function parseName(fullName){
+  const raw = normalizeImportedName(fullName);
+  if(!raw) return { ko: '', en: '' };
+
+  // 영문 이름만 있는 학생은 전체 이름을 studentName/studentKey 기준으로 사용한다.
+  // 예: "Saiyah Brown", "SAIYAH BROWN" → ko: 전체 이름, en: ''
+  if(!/[가-힣]/.test(raw)) return { ko: raw, en: '' };
+
+  // 한글명 + 괄호 영문명
+  // 예: "김사랑C (Sarah Kim)" → ko: 김사랑C, en: Sarah Kim
+  const bracket = raw.match(/^(.+?)\s*[\(\[]\s*([A-Za-z][A-Za-z\s.'-]*)\s*[\)\]]$/);
+  if(bracket && /[가-힣]/.test(bracket[1])){
+    return { ko: bracket[1].trim(), en: bracket[2].trim() };
+  }
+
+  // 한글명 + 공백 + 영문명
+  // 예: "김사랑C Sarah Kim" → ko: 김사랑C, en: Sarah Kim
+  const spaced = raw.match(/^(.+?[가-힣][가-힣A-Z0-9]*)\s+([A-Za-z][A-Za-z\s.'-]*)$/);
+  if(spaced){
+    return { ko: spaced[1].trim(), en: spaced[2].trim() };
+  }
+
+  return { ko: raw, en: '' };
+}
+
+function makeStudentKey(koreanName, className){
+  return [className, normalizeImportedName(koreanName)].filter(Boolean).join('_').replace(/[.#$/\[\]\s]/g,'_');
+}
+
+function getFirstDateValue(...values){
+  for(const value of values){
+    const raw = String(value || '').trim();
+    if(!raw) continue;
+    const match = raw.match(/\d{4}-\d{1,2}-\d{1,2}/);
+    if(match){
+      const [y,m,d] = match[0].split('-');
+      return [y, String(m).padStart(2,'0'), String(d).padStart(2,'0')].join('-');
+    }
+  }
+  return '';
+}
+
+function gradeToLevel(className){
+  const m = String(className||'').match(/^(\d+)/);
+  if(!m) return 'ms';
+  return Number(m[1]) >= 10 ? 'hs' : 'ms'; // 9학년 = 중등(HIS 기준)
+}
+
+function toISO(dateStr){
+  if(!dateStr) return undefined;
+  const clean = dateStr.replace(/\s.*/,'').trim();
+  return clean ? clean + 'T00:00:00' : undefined;
+}
+
+function generateKey(){
+  return '-imp'+Math.random().toString(36).substr(2,11);
+}
+
+// ── Converter: 디텐션 기록 ──
+function convertDetentionRow(row){
+  const fullName = (row['이름']||'').trim();
+  if(!fullName) return null;
+  const { ko, en } = parseName(fullName);
+  const className = (row['학년']||'').trim();
+  const sKey = makeStudentKey(ko, className);
+  const dateStr = (row['날짜']||'').trim();
+
+  const isConfirmed = (row['확정']||'').toUpperCase()==='TRUE';
+  const isCancelled = (row['취소']||'').toUpperCase()==='TRUE';
+  const confirmDate = (row['확인날짜고정']||'').trim();
+  let status;
+  if(isCancelled) status = '반려';
+  else if(isConfirmed && confirmDate) status = '확정';
+  else if(isConfirmed && !confirmDate) status = '임시저장'; // '대기' 미사용 - DB 상태값 통일
+  else status = '임시저장';
+
+  const warning = (row['경고']||'').trim();
+  const category = (row['종류']||'').trim();
+
+  return {
+    _key: (row['ID']||'').trim() || generateKey(),
+    studentKey: sKey,
+    studentName: ko,
+    englishName: en,
+    className,
+    category,
+    violation: (row['상세']||'').trim(),
+    totalPoints: Number(row['최종점수']||0) || 0,
+    manualPoints: Number(row['수동점수']||'') || undefined,
+    autoPoints: (row['자동점수']||row['자동점수검색']||'').trim() || undefined,
+    memo: (row['메모']||'').trim() || undefined,
+    adminNote: (row['관리자메모']||'').trim() || undefined,
+    teacherName: (row['교사']||'').trim(),
+    status,
+    createdAt: toISO(dateStr) || new Date().toISOString(),
+    confirmedAt: confirmDate ? confirmDate+'T00:00:00' : undefined,
+    studentEmail: (row['학생이메일']||'').trim() || undefined,
+    parentEmail: (row['부모이메일']||'').trim() || undefined,
+    homeroomEmail: (row['담임이메일']||'').trim() || undefined,
+    referralReason: warning || undefined,
+    isReferral: false,
+    importedAt: new Date().toISOString()
+  };
+}
+
+// ── Converter: 알림 기록 (그룹핑) ──
+// De_Notice = 위반별 행 → (studentKey + 알림날짜) 기준으로 사이클 단위로 묶음
+function groupNoticeRows(rows){
+  const cycleMap = {}; // key: "studentKey__알림날짜" → notice record
+
+  rows.forEach(row => {
+    const fullName = (row['이름']||'').trim();
+    if(!fullName) return;
+    const { ko, en } = parseName(fullName);
+    const className = (row['학년']||'').trim();
+    const sKey = makeStudentKey(ko, className);
+    const level = gradeToLevel(className);
+
+    const noticeDate = getFirstDateValue(row['알림날짜']);
+    const parentDone = (row['학부모알림완료']||'').toUpperCase()==='TRUE';
+    const parentDate = getFirstDateValue(row['학부모알림날짜']);
+    const isDone = (row['완료']||'').toUpperCase()==='TRUE';
+    const baseDate = getFirstDateValue(row['날짜'], row['날짜줄바꿈']);
+
+    // 최초 전체 이동용 보정:
+    // 알림날짜가 비어 있어도 학부모알림날짜가 있거나 완료된 행의 위반일이 있으면 기록으로 가져온다.
+    // 날짜가 전혀 없는 완료행은 임의 날짜를 넣지 않고 skip하여 연도/상태 계산 왜곡을 방지한다.
+    const effectiveNoticeDate = noticeDate || parentDate || ((isDone || parentDone) ? baseDate : '');
+    if(!effectiveNoticeDate) return;
+
+    // 그룹 키: studentKey + 유효 알림날짜
+    const groupKey = sKey + '__' + effectiveNoticeDate;
+
+    if(!cycleMap[groupKey]){
+      cycleMap[groupKey] = {
+        _key: (row['ID']||'').trim() || generateKey(),
+        studentKey: sKey,
+        studentName: ko,
+        englishName: en,
+        className,
+        level,
+        createdAt: toISO(baseDate || effectiveNoticeDate) || new Date().toISOString(),
+        studentTeacherMailAt: toISO(noticeDate || effectiveNoticeDate),
+        parentMailAt: undefined,
+        completedAt: undefined,
+        cycleViolationsSnapshot: '',
+        importedAt: new Date().toISOString()
+      };
+    }
+
+    const rec = cycleMap[groupKey];
+
+    // 학부모 알림: TRUE인 행의 날짜 사용 (가장 최신)
+    if(parentDone && parentDate){
+      const newISO = toISO(parentDate);
+      if(!rec.parentMailAt || newISO > rec.parentMailAt) rec.parentMailAt = newISO;
+    }
+
+    // 완료: 하나라도 완료=TRUE면 completedAt 설정
+    if(isDone && !rec.completedAt){
+      rec.completedAt = toISO(parentDate || noticeDate || baseDate || effectiveNoticeDate);
+    }
+
+    // 위반 행위 스냅샷 누적 (cycleViolationsSnapshot)
+    const category = (row['종류']||'').trim();
+    const detail = (row['상세']||'').trim();
+    const pts = (row['최종점수']||'').trim();
+    const memo = (row['메모']||'').trim();
+    const snippet = [baseDate, category, detail, pts+'점', memo].filter(Boolean).join(' / ');
+    if(snippet && !rec.cycleViolationsSnapshot.includes(snippet)){
+      rec.cycleViolationsSnapshot += (rec.cycleViolationsSnapshot ? '\n' : '') + snippet;
+    }
+  });
+
+  return Object.values(cycleMap);
+}
+
+// ── Converter: 회복교육 ──
+// TSV 1행 = 1사이클 (교육1~4 세션 포함)
+// Firebase = 세션 1개당 레코드 1개 (recoveryPoints=3/session)
+// 따라서 parseTSV에서 expandRestoreRows()로 flat 배열 생성
+function expandRestoreRows(rows){
+  const result = [];
+
+  rows.forEach(row => {
+    const fullName = (row['이름']||'').trim();
+    if(!fullName) return;
+    const { ko, en } = parseName(fullName);
+    const className = (row['학년']||'').trim();
+    const sKey = makeStudentKey(ko, className);
+    const level = gradeToLevel(className);
+
+    // 실제 진행된 세션 날짜만 추출 (교육1~4 중 값 있는 것)
+    const sessionDates = ['교육1','교육2','교육3','교육4']
+      .map(k => (row[k]||'').trim())
+      .filter(Boolean);
+
+    // 세션이 하나도 없으면 skip
+    if(!sessionDates.length) return;
+
+    // "# val1 # val2" 다중값 파싱
+    function parseMulti(str){
+      if(!str) return [];
+      if(!str.includes('#')) return [str.trim()];
+      return str.split('#').map(s=>s.trim()).filter(Boolean);
+    }
+
+    const dates   = parseMulti(row['날짜자르기'] || row['날짜']);
+    const cats    = parseMulti(row['종류자르기'] || row['종류']);
+    const details = parseMulti(row['상세자르기'] || row['상세']);
+    const memos   = parseMulti(row['메모자르기'] || row['메모']);
+
+    // 위반행위 스냅샷 (모든 세션 공통)
+    const maxLen = Math.max(dates.length, cats.length, details.length, 1);
+    const snapLines = [];
+    for(let i=0; i<maxLen; i++){
+      const parts = [dates[i]||'', cats[i]||'', details[i]||'', memos[i]||''].filter(Boolean);
+      if(parts.length) snapLines.push('[' + (i+1) + '] ' + parts.join(' / '));
+    }
+    const reasonsSnapshot = snapLines.join('\n') || (row['상세']||'').trim();
+    const violationSnapshot = (cats[0]||'') + ' ' + (details[0]||'');
+
+    // staffName
+    const staffArr = parseMulti(row['교사자르기'] || row['교사']);
+    const staffName = staffArr[staffArr.length-1] || '';
+
+    // 세션당 회복점수 = 총 회복점수 / 세션수 (보통 3)
+    const totalRecovery = Number(row['회복점수']||0) || 0;
+    const ptsPerSession = sessionDates.length > 0
+      ? Math.round(totalRecovery / sessionDates.length) || 3
+      : 3;
+
+    const baseId = (row['ID']||'').trim() || generateKey();
+    const baseCreatedAt = toISO(dates[0]) || new Date().toISOString();
+
+    // 세션 1개당 Firebase 레코드 1개 생성
+    sessionDates.forEach((sessionDate, idx) => {
+      result.push({
+        _key: sessionDates.length === 1 ? baseId : baseId + '_s' + (idx+1),
+        studentKey: sKey,
+        studentName: ko,
+        englishName: en,
+        className,
+        level,
+        staffName,
+        recoveryPoints: ptsPerSession,
+        reasonsSnapshot,
+        violationSnapshot: violationSnapshot.trim(),
+        completedAt: toISO(sessionDate),
+        createdAt: baseCreatedAt,
+        importedAt: new Date().toISOString()
+      });
+    });
+  });
+
+  return result;
+}
+
+// ── Preview ──
+function showPreview(){
+  document.getElementById('step2').style.display='block';
+
+  // Sheet type badge
+  const labelEl = document.getElementById('sheetTypeLabel');
+  if(labelEl) labelEl.textContent = '📋 시트: ' + SHEET_LABELS[sheetType];
+
+  const total = convertedEntries.length;
+  const students = new Set(convertedEntries.map(r=>r.studentKey)).size;
+  let statsHtml = `
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-lbl">전체 기록</div></div>
+    <div class="stat"><div class="stat-num">${students}</div><div class="stat-lbl">학생 수</div></div>`;
+
+  let headHtml, bodyHtml;
+
+  if(sheetType === 'detention'){
+    const confirmed = convertedEntries.filter(r=>r.status==='확정').length;
+    const pending = convertedEntries.filter(r=>r.status==='임시저장').length;
+    const rejected = convertedEntries.filter(r=>r.status==='반려').length;
+    statsHtml += `
+      <div class="stat"><div class="stat-num" style="color:#15803d">${confirmed}</div><div class="stat-lbl">확정</div></div>
+      <div class="stat"><div class="stat-num" style="color:#b45309">${pending}</div><div class="stat-lbl">대기</div></div>
+      <div class="stat"><div class="stat-num" style="color:#dc2626">${rejected}</div><div class="stat-lbl">반려</div></div>`;
+    headHtml = `<tr><th>#</th><th>학생명</th><th>학반</th><th>날짜</th><th>구분</th><th>점수</th><th>상태</th><th>교사</th></tr>`;
+    bodyHtml = convertedEntries.slice(0,100).map((r,i)=>{
+      const sb = r.status==='확정'?'badge-ok':r.status==='반려'?'badge-err':'badge-warn';
+      return `<tr><td>${i+1}</td><td>${esc(r.studentName)}</td><td>${esc(r.className)}</td>
+        <td>${(r.createdAt||'').substr(0,10)}</td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis">${esc(r.category)}</td>
+        <td style="text-align:center">${r.totalPoints}</td>
+        <td><span class="badge ${sb}">${r.status}</span></td>
+        <td>${esc(r.teacherName)}</td></tr>`;
+    }).join('');
+
+  } else if(sheetType === 'notice'){
+    const withTeacher = convertedEntries.filter(r=>r.studentTeacherMailAt).length;
+    const withParent = convertedEntries.filter(r=>r.parentMailAt).length;
+    const completed = convertedEntries.filter(r=>r.completedAt).length;
+    statsHtml += `
+      <div class="stat"><div class="stat-num" style="color:#0f1f5c">${withTeacher}</div><div class="stat-lbl">학생/교사 알림</div></div>
+      <div class="stat"><div class="stat-num" style="color:#15803d">${withParent}</div><div class="stat-lbl">학부모 알림</div></div>
+      <div class="stat"><div class="stat-num" style="color:#7c3aed">${completed}</div><div class="stat-lbl">완료</div></div>`;
+    headHtml = `<tr><th>#</th><th>학생명</th><th>학반</th><th>구분</th><th>학생/교사 알림일</th><th>학부모 알림일</th><th>완료일</th></tr>`;
+    bodyHtml = convertedEntries.slice(0,100).map((r,i)=>`
+      <tr><td>${i+1}</td><td>${esc(r.studentName)}</td><td>${esc(r.className)}</td>
+      <td><span class="badge badge-info">${r.level==='hs'?'고등':'중등'}</span></td>
+      <td>${(r.studentTeacherMailAt||'').substr(0,10)||'-'}</td>
+      <td>${(r.parentMailAt||'').substr(0,10)||'-'}</td>
+      <td>${(r.completedAt||'').substr(0,10)||'-'}</td></tr>`).join('');
+
+  } else { // restore
+    const msCount = convertedEntries.filter(r=>r.level==='ms').length;
+    const hsCount = convertedEntries.filter(r=>r.level==='hs').length;
+    const uniqueStudents = new Set(convertedEntries.map(r=>r.studentKey)).size;
+    const totalRecovery = convertedEntries.reduce((s,r)=>s+(r.recoveryPoints||0),0);
+    statsHtml += `
+      <div class="stat"><div class="stat-num">${msCount}</div><div class="stat-lbl">중등 세션</div></div>
+      <div class="stat"><div class="stat-num">${hsCount}</div><div class="stat-lbl">고등 세션</div></div>
+      <div class="stat"><div class="stat-num" style="color:#15803d">${uniqueStudents}</div><div class="stat-lbl">학생 수</div></div>
+      <div class="stat"><div class="stat-num" style="color:#1b2f7a">${totalRecovery}</div><div class="stat-lbl">총 회복점수</div></div>`;
+    headHtml = `<tr><th>#</th><th>학생명</th><th>학반</th><th>구분</th><th>세션 회복점수</th><th>담당교사</th><th>세션 완료일 (completedAt)</th><th>위반행위 스냅샷</th></tr>`;
+    bodyHtml = convertedEntries.slice(0,100).map((r,i)=>`
+      <tr><td>${i+1}</td><td>${esc(r.studentName)}</td><td>${esc(r.className)}</td>
+      <td><span class="badge badge-info">${r.level==='hs'?'고등':'중등'}</span></td>
+      <td style="text-align:center;font-weight:700;color:#15803d">+${r.recoveryPoints}</td>
+      <td>${esc(r.staffName)}</td>
+      <td>${(r.completedAt||'').substr(0,10)||'-'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#5b6888">${esc((r.reasonsSnapshot||'').split('\n')[0]||'-')}</td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('statsGrid').innerHTML = statsHtml;
+  document.getElementById('previewHead').innerHTML = headHtml;
+  document.getElementById('previewBody').innerHTML = bodyHtml;
+  document.getElementById('importNote').textContent =
+    total>100 ? `미리보기: 상위 100개 / 전체 ${total}개` : '';
+}
+
+function showMapping(){
+  const maps = {
+    detention: ['ID→_key','이름→studentName+englishName','학년→className','날짜→createdAt','교사→teacherName','종류→category','상세→violation','최종점수→totalPoints','수동점수→manualPoints','메모→memo','확정+취소+확인날짜→status','경고→referralReason(참고용, 자동 회부 없음)'],
+    notice: ['그룹핑: (studentKey + 유효 알림날짜) → 1개 notice 레코드','알림날짜 우선, 없으면 학부모알림날짜, 완료행은 위반일로 보정','학부모알림완료+학부모알림날짜→parentMailAt','완료=TRUE→completedAt','종류+상세+메모 누적→cycleViolationsSnapshot','날짜가 전혀 없는 행만 skip'],
+    restore: ['교육1~4 날짜가 있으면 회복교육 세션으로 가져옴','완료=FALSE라도 교육일이 있으면 최초 이전 기록으로 인정','날짜자르기/종류자르기/상세자르기: #분리 파싱','교사자르기→staffName(마지막)','회복점수→recoveryPoints','교육1~4→sessions[]','종류+상세+날짜 조합→reasonsSnapshot(위반행위)']
+  };
+  document.getElementById('mapNote').textContent = (maps[sheetType]||[]).join(' | ');
+}
+
+function esc(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function resetAll(){
+  parsedRows=[];convertedEntries=[];
+  document.getElementById('step2').style.display='none';
+  document.getElementById('step3').style.display='none';
+  document.getElementById('fileInput').value='';
+}
+
+// ── Import to Firebase ──
+async function startImport(){
+  if(!convertedEntries.length){ alert('데이터가 없습니다.'); return; }
+  try {
+    await ensureFirebaseAuth();
+  } catch (e) {
+    console.error(e);
+    alert('Firebase 익명 인증에 실패했습니다. Authentication 설정과 배포 파일을 확인하세요.');
+    return;
+  }
+  const dbPath = SHEET_DB[sheetType] || 'detentionEntries';
+
+  const confirmed = confirm(
+    `[${SHEET_LABELS[sheetType]}]\n`+
+    `총 ${convertedEntries.length}개 기록을 Firebase(${dbPath})에 업로드합니다.\n`+
+    `기존 같은 ID의 데이터는 덮어씁니다.\n\n계속하시겠습니까?`
+  );
+  if(!confirmed) return;
+
+  document.getElementById('importBtn').disabled = true;
+  document.getElementById('step3').style.display='block';
+  document.getElementById('logBox').innerHTML='';
+  document.getElementById('doneNote').innerHTML='';
+
+  const total = convertedEntries.length;
+  let done = 0, errors = 0;
+  const batchSize = 100;
+
+  for(let start=0; start<total; start+=batchSize){
+    const batch = convertedEntries.slice(start, start+batchSize);
+    const updates = {};
+
+    batch.forEach(entry => {
+      const key = entry._key;
+      const data = {...entry};
+      delete data._key;
+      Object.keys(data).forEach(k => data[k]===undefined && delete data[k]);
+      updates[`${dbPath}/${key}`] = data;
+    });
+
+    try{
+      await db.ref().update(updates);
+      done += batch.length;
+      log(`✅ ${done}/${total} 완료`, 'ok');
+    } catch(e){
+      errors++;
+      log(`❌ 오류 (${start}~${start+batchSize}): ${e.message}`, 'err');
+    }
+
+    updateProgress(done, total);
+    await sleep(200);
+  }
+
+  if(done > 0){
+    try{
+      log('🔄 studentCycleState 재계산 중...', 'info');
+      const stateCount = await recalculateAllStudentCycleStatesAfterImport();
+      log(`✅ studentCycleState 재계산 완료 (${stateCount}명)`, 'ok');
+    }catch(e){
+      errors++;
+      log(`❌ studentCycleState 재계산 실패: ${e.message}`, 'err');
+    }
+  }
+
+  if(errors===0){
+    document.getElementById('doneNote').innerHTML =
+      `<span style="color:#15803d;font-weight:700;font-size:14px">
+       ✅ 완료! ${done}개 기록이 Firebase(${dbPath})에 저장되었고 studentCycleState가 재계산되었습니다.
+       </span><br>
+       <span style="font-size:12px;color:#5b6888">페이지를 새로고침하면 데이터를 확인할 수 있습니다.</span>`;
+  } else {
+    document.getElementById('doneNote').innerHTML =
+      `<span style="color:#dc2626;font-weight:700">완료 (오류 ${errors}건). 로그를 확인하세요.</span>`;
+  }
+  document.getElementById('importBtn').disabled = false;
+}
+
+function updateProgress(done, total){
+  const pct = Math.round(done/total*100);
+  document.getElementById('progBar').style.width = pct+'%';
+  document.getElementById('progText').textContent = `${done} / ${total} (${pct}%)`;
+}
+
+function log(msg, type){
+  const box = document.getElementById('logBox');
+  const color = type==='ok'?'#15803d':type==='err'?'#dc2626':'#374151';
+  box.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString()} ${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
