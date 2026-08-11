@@ -1,12 +1,12 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyCmugtHVJsEL929N6eGC2quOY_mLTXzlpE",
-  authDomain: "his-detention-e6d2f.firebaseapp.com",
-  databaseURL: "https://his-detention-e6d2f-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "his-detention-e6d2f",
-  storageBucket: "his-detention-e6d2f.firebasestorage.app",
-  messagingSenderId: "81711445183",
-  appId: "1:81711445183:web:8539e413ab41bbcb7e020a",
-  measurementId: "G-VWBLPX866N"
+  "apiKey": "AIzaSyCc3rwlIlZd7NaFkd2viT-tYhS9IemsV9o",
+  "authDomain": "his-detention.firebaseapp.com",
+  "databaseURL": "https://his-detention-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  "projectId": "his-detention",
+  "storageBucket": "his-detention.firebasestorage.app",
+  "messagingSenderId": "357843127217",
+  "appId": "1:357843127217:web:88175e347add4931294b90",
+  "measurementId": "G-K3X22E8JL5"
 };
 
 // Firebase 앱이 이미 초기화된 화면(import-data 등)에서도 common.js를 재사용할 수 있게 방어합니다.
@@ -243,9 +243,20 @@ function readFileText(file, enc = 'utf-8') {
     return String((v && (v.confirmedAt || v.createdAt || v.completedAt)) || '');
   }
 
+  let hisConfiguredAcademicYear = '';
+
+  function setHisConfiguredAcademicYear(value){
+    const normalized = String(value || '').trim();
+    hisConfiguredAcademicYear = /^\d{4}$/.test(normalized) ? normalized : '';
+    window.hisConfiguredAcademicYear = hisConfiguredAcademicYear;
+    return hisConfiguredAcademicYear;
+  }
+
   function hisCurrentYear(){
+    const configured = String(window.hisConfiguredAcademicYear || hisConfiguredAcademicYear || '').trim();
+    if (/^\d{4}$/.test(configured)) return configured;
     const now = new Date();
-    // HIS 학년도는 3월 시작이므로 1~2월은 직전 연도로 계산합니다.
+    // 관리자가 학년도를 지정하지 않은 기존 데이터에서는 HIS 3월 시작 기준을 그대로 사용합니다.
     return String(now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear());
   }
 
@@ -409,13 +420,16 @@ function readFileText(file, enc = 'utf-8') {
   }
 
   async function readStateData(){
-    const [studentsSnap, entriesSnap, noticesSnap, recoverySnap, committeeSnap] = await Promise.all([
+    const [studentsSnap, entriesSnap, noticesSnap, recoverySnap, committeeSnap, adminConfigSnap] = await Promise.all([
       db.ref('students').once('value'),
       db.ref('detentionEntries').once('value'),
       db.ref('detentionNotices').once('value'),
       db.ref('recoveryEntries').once('value'),
-      db.ref('committeeRecords').once('value')
+      db.ref('committeeRecords').once('value'),
+      db.ref('adminConfig').once('value')
     ]);
+    const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
+    setHisConfiguredAcademicYear(adminConfig.academicYear || '');
     return {
       students: studentsSnap.val() || {},
       entries: entriesSnap.val() || {},
@@ -490,6 +504,8 @@ function readFileText(file, enc = 'utf-8') {
     return { count: Object.keys(newStates).length, states: newStates };
   }
 
+  window.setHisConfiguredAcademicYear = setHisConfiguredAcademicYear;
+  window.hisCurrentYear = hisCurrentYear;
   window.hisLevelFromClassName = hisLevelFromClassName;
   window.hisSafeStateKey = hisSafeStateKey;
   window.hisRecordYear = hisRecordYear;

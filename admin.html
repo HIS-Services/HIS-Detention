@@ -263,6 +263,7 @@
       <button type="button" data-admin-tab="home" onclick="switchAdminView('home')">홈 | Home</button>
       <button type="button" data-admin-tab="teachers" onclick="switchAdminView('teachers')">교사 계정 | Teachers</button>
       <button type="button" data-admin-tab="students" onclick="switchAdminView('students')">학생 명단 | Students</button>
+      <button type="button" data-admin-tab="csv" onclick="switchAdminView('csv')">명단 일괄 등록 | Bulk Roster</button>
       <a href="detention-admin.html#entries" data-admin-link="detention">디텐션 DB | Database</a>
       <button type="button" data-admin-tab="settings" onclick="switchAdminView('settings')">설정 | Settings</button>
     </nav>
@@ -296,7 +297,7 @@
         <a href="detention-admin.html#entries" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center;">
           디텐션 DB 관리 | Detention DB
         </a>
-        <button class="tab-btn" data-tab="csv">CSV 업로드 | CSV Upload</button>
+        <button class="tab-btn" data-tab="csv">명단 일괄 등록 | Bulk Roster</button>
       </div>
 
       <div id="tab-home" class="tab-panel active">
@@ -339,7 +340,7 @@
               <span><span class="admin-management-main">학생 명단</span><span class="admin-management-sub">학생·학반·보호자 이메일 관리 | Student roster and emails</span></span><span class="admin-management-arrow">›</span>
             </button>
             <button type="button" class="admin-management-item" onclick="switchAdminView('csv')">
-              <span><span class="admin-management-main">CSV 업로드</span><span class="admin-management-sub">교사·학생 명단 대량 등록 | Bulk roster upload</span></span><span class="admin-management-arrow">›</span>
+              <span><span class="admin-management-main">명단 일괄 등록</span><span class="admin-management-sub">학생·교사 명단 엑셀 붙여넣기 및 CSV 등록 | Excel paste & CSV roster upload</span></span><span class="admin-management-arrow">›</span>
             </button>
             <a class="admin-management-item" href="import-data.html">
               <span><span class="admin-management-main">데이터 가져오기</span><span class="admin-management-sub">기존 운영 데이터 가져오기 | Import existing data</span></span><span class="admin-management-arrow">›</span>
@@ -540,6 +541,21 @@
         </div>
 
         <div class="settings-grid">
+          <section class="settings-section" aria-labelledby="settings-year-title">
+            <div id="settings-year-title" class="settings-section-head">운영 학년도 | Academic Year</div>
+            <div class="settings-action-row">
+              <div class="settings-action-copy">
+                <div class="settings-action-title">현재 학년도 | Current Academic Year</div>
+                <div class="settings-action-sub">새로 작성되는 기록과 현재 학년도 조회 기준에 사용합니다. 기존 기록의 학년도 값은 변경하지 않습니다. | Used for new records and current-year views. Existing records are not changed.</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input id="academic-year-input" type="number" min="2000" max="2100" step="1" class="edit-input" style="width:110px;" placeholder="2026">
+                <button class="btn btn-primary" onclick="saveAcademicYearSetting()">학년도 저장 | Save Year</button>
+              </div>
+            </div>
+            <div id="academic-year-status" class="settings-tool-status" aria-live="polite"></div>
+          </section>
+
           <section class="settings-section" aria-labelledby="settings-access-title">
             <div id="settings-access-title" class="settings-section-head">관리자 인증 | Administrator Access</div>
             <div class="settings-action-row">
@@ -1306,17 +1322,58 @@
       }));
     }
 
+    function applyAcademicYearSetting(config) {
+      const configured = String((config || {}).academicYear || '').trim();
+      const input = document.getElementById('academic-year-input');
+      const status = document.getElementById('academic-year-status');
+      if (typeof window.setHisConfiguredAcademicYear === 'function') {
+        window.setHisConfiguredAcademicYear(configured);
+      }
+      const effectiveYear = /^\d{4}$/.test(configured)
+        ? configured
+        : (typeof window.hisCurrentYear === 'function' ? String(window.hisCurrentYear()) : String(new Date().getFullYear()));
+      if (input) input.value = effectiveYear;
+      if (status) {
+        status.textContent = /^\d{4}$/.test(configured)
+          ? `현재 운영 학년도: ${configured} | Current academic year: ${configured}`
+          : `저장된 학년도가 없어 기존 자동 기준을 사용 중입니다: ${effectiveYear} | No saved year; using existing automatic fallback.`;
+      }
+    }
+
+    async function saveAcademicYearSetting() {
+      const input = document.getElementById('academic-year-input');
+      const status = document.getElementById('academic-year-status');
+      const year = String(input ? input.value : '').trim();
+      if (!/^\d{4}$/.test(year) || Number(year) < 2000 || Number(year) > 2100) {
+        toast('학년도는 2000~2100 사이의 4자리 숫자로 입력하세요. | Enter a 4-digit year from 2000 to 2100.', 'err');
+        return;
+      }
+      if (!confirm(`${year}학년도를 현재 운영 학년도로 설정하시겠습니까?\n기존 기록의 학년도 값은 변경되지 않습니다.`)) return;
+      try {
+        await ensureFirebaseAuth();
+        await db.ref('adminConfig/academicYear').set(year);
+        if (typeof window.setHisConfiguredAcademicYear === 'function') window.setHisConfiguredAcademicYear(year);
+        if (status) status.textContent = `현재 운영 학년도: ${year} | Current academic year: ${year}`;
+        toast(`운영 학년도를 ${year}학년도로 변경했습니다. | Academic year saved.`, 'ok');
+      } catch (e) {
+        console.error(e);
+        toast('학년도 저장 실패 | Failed to save academic year', 'err');
+      }
+    }
+
     async function refreshAll() {
       updateAdminIdentity();
       try {
         await ensureFirebaseAuth();
-        const [t, s] = await Promise.all([
+        const [t, s, configSnap] = await Promise.all([
           db.ref('teachers').once('value'),
-          db.ref('students').once('value')
+          db.ref('students').once('value'),
+          db.ref('adminConfig').once('value')
         ]);
 
         teachersRaw = t.val() || {};
         studentsRaw = s.val() || {};
+        applyAcademicYearSetting(configSnap.val() || {});
 
         teacherRows = Object.entries(teachersRaw).map(([k, v]) => ({
           oldKey: k, name: v.name || '', email: v.email || '', password: v.password || '',

@@ -1799,6 +1799,7 @@
     }
 
     function getCurrentYear(){
+      if (typeof window.hisCurrentYear === 'function') return String(window.hisCurrentYear());
       return String(new Date().getFullYear());
     }
 
@@ -3106,7 +3107,8 @@
           db.ref(RECOVERY_DB_PATH).once('value'),
           db.ref(NOTICE_DB_PATH).once('value'),
           db.ref(COMMITTEE_DB_PATH).once('value'),
-          db.ref(CYCLE_STATE_PATH).once('value')
+          db.ref(CYCLE_STATE_PATH).once('value'),
+          db.ref('adminConfig').once('value')
         ]);
         const standardsPromise = Promise.allSettled([
           db.ref(DETENTION_STANDARD_PATH).once('value'),
@@ -3114,7 +3116,11 @@
         ]);
 
         const [coreSnaps, standardResults] = await Promise.all([corePromise, standardsPromise]);
-        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap] = coreSnaps;
+        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap, adminConfigSnap] = coreSnaps;
+        const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
+        if (typeof window.setHisConfiguredAcademicYear === 'function') {
+          window.setHisConfiguredAcademicYear(adminConfig.academicYear || '');
+        }
         const standardResult = standardResults[0];
         const metaResult = standardResults[1];
 

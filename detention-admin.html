@@ -1112,6 +1112,7 @@
       return local + 'T00:00:00';
     }
     function currentAdminYear(){
+      if (typeof window.hisCurrentYear === 'function') return Number(window.hisCurrentYear());
       const d = new Date();
       return d.getMonth() < 2 ? d.getFullYear() - 1 : d.getFullYear();
     }
@@ -1884,15 +1885,21 @@
 
     async function loadAllData(){
       try{
-        const [entriesSnap, noticesSnap, recoverySnap, committeeAdminSnap, cycleSnap, studentsSnap, teachersSnap] = await Promise.all([
+        const [entriesSnap, noticesSnap, recoverySnap, committeeAdminSnap, cycleSnap, studentsSnap, teachersSnap, adminConfigSnap] = await Promise.all([
           db.ref('detentionEntries').once('value'),
           db.ref('detentionNotices').once('value'),
           db.ref('recoveryEntries').once('value'),
           db.ref('committeeRecords').once('value'),
           db.ref('studentCycleState').once('value'),
           db.ref('students').once('value'),
-          db.ref('teachers').once('value').catch(err => { console.warn('[teachers load failed]', err); return null; })
+          db.ref('teachers').once('value').catch(err => { console.warn('[teachers load failed]', err); return null; }),
+          db.ref('adminConfig').once('value')
         ]);
+
+        const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
+        if (typeof window.setHisConfiguredAcademicYear === 'function') {
+          window.setHisConfiguredAcademicYear(adminConfig.academicYear || '');
+        }
 
         adminTeacherRows = Object.entries((teachersSnap && teachersSnap.val()) || {}).map(([key, value]) => ({
           key,
