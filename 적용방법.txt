@@ -1,0 +1,9 @@
+성공 후 적용 순서
+다른 교사 1명의 첫 Google 로그인이 정상인지 확인
+현재 운영 파일 백업
+index.html과 common.js 배포
+Firebase Realtime Database Rules에 아래 파일 내용 적용
+firebase-rules-final-google-only-step10.json
+석진우 Google 계정으로 다시 로그인
+관리자 화면과 일반 교사 화면 확인
+문제가 없다면 Firebase Authentication에서 익명 인증 비활성화

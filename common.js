@@ -16,8 +16,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 window.db = db;
 
-// Firebase Realtime Database 보안 규칙이 auth != null을 요구할 때,
-// 기존 교사/관리자 로그인 기능을 유지하기 위한 익명 Firebase Auth 세션입니다.
+// 최종 전환 이후에는 등록된 학교 Google 계정만 Firebase 인증에 사용합니다.
 const firebaseAuth = (typeof firebase.auth === 'function') ? firebase.auth() : null;
 window.firebaseAuth = firebaseAuth;
 let _firebaseAuthPromise = null;
@@ -26,31 +25,34 @@ async function ensureFirebaseAuth() {
   if (!firebaseAuth) {
     throw new Error('Firebase Auth SDK가 로드되지 않았습니다. firebase-auth-compat.js를 확인하세요.');
   }
-  if (firebaseAuth.currentUser) return firebaseAuth.currentUser;
+  if (firebaseAuth.currentUser && !firebaseAuth.currentUser.isAnonymous) return firebaseAuth.currentUser;
   if (_firebaseAuthPromise) return _firebaseAuthPromise;
+
   _firebaseAuthPromise = new Promise((resolve, reject) => {
-    const unsubscribe = firebaseAuth.onAuthStateChanged(async user => {
-      if (user) {
-        try { unsubscribe(); } catch(_) {}
+    let settled = false;
+    const finishReject = () => {
+      if (settled) return;
+      settled = true;
+      _firebaseAuthPromise = null;
+      reject(new Error('학교 Google 로그인이 필요합니다.'));
+    };
+
+    const unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+      if (settled) return;
+      try { unsubscribe(); } catch (_) {}
+      if (user && !user.isAnonymous) {
+        settled = true;
         resolve(user);
         return;
       }
-      try {
-        const cred = await firebaseAuth.signInAnonymously();
-        try { unsubscribe(); } catch(_) {}
-        resolve(cred.user);
-      } catch (err) {
-        try { unsubscribe(); } catch(_) {}
-        console.error('Firebase anonymous auth failed:', err);
-        _firebaseAuthPromise = null;
-        reject(err);
-      }
+      finishReject();
     }, err => {
       console.error('Firebase auth state failed:', err);
-      _firebaseAuthPromise = null;
-      reject(err);
+      try { unsubscribe(); } catch (_) {}
+      finishReject();
     });
   });
+
   return _firebaseAuthPromise;
 }
 window.ensureFirebaseAuth = ensureFirebaseAuth;
@@ -107,40 +109,35 @@ function studentKey(name, className) {
 function requireTeacherSession() {
   const raw = sessionStorage.getItem('his_teacher');
   if (!raw) {
-    // 관리자 화면에서 먼저 로그인한 경우, 관리자 세션을 교사 화면의 Admin 권한으로 이어갑니다.
-    // 별도의 교사 로그인 정보를 만들거나 기존 교사 세션을 덮어쓰지 않습니다.
-    if (sessionStorage.getItem('his_admin_session') === '1') {
-      return {
-        name: '관리자',
-        email: 'admin',
-        homeroom: '',
-        roles: ['admin'],
-        source: 'admin-session'
-      };
-    }
     location.href = 'index.html';
     return null;
   }
 
   try {
-    return JSON.parse(raw);
-  } catch (e) {
-    if (sessionStorage.getItem('his_admin_session') === '1') {
-      return {
-        name: '관리자',
-        email: 'admin',
-        homeroom: '',
-        roles: ['admin'],
-        source: 'admin-session'
-      };
+    const teacher = JSON.parse(raw);
+    if (!teacher || teacher.authProvider !== 'google' || !teacher.authEmailVerified) {
+      sessionStorage.removeItem('his_teacher');
+      location.href = 'index.html';
+      return null;
     }
+    return teacher;
+  } catch (e) {
+    sessionStorage.removeItem('his_teacher');
     location.href = 'index.html';
     return null;
   }
 }
 
-function logoutTeacher() {
+async function logoutTeacher() {
   sessionStorage.removeItem('his_teacher');
+  sessionStorage.removeItem('his_admin_session');
+  try {
+    if (firebaseAuth && firebaseAuth.currentUser) {
+      await firebaseAuth.signOut();
+    }
+  } catch (e) {
+    console.error('Google logout failed:', e);
+  }
   location.href = 'index.html';
 }
 
@@ -243,20 +240,9 @@ function readFileText(file, enc = 'utf-8') {
     return String((v && (v.confirmedAt || v.createdAt || v.completedAt)) || '');
   }
 
-  let hisConfiguredAcademicYear = '';
-
-  function setHisConfiguredAcademicYear(value){
-    const normalized = String(value || '').trim();
-    hisConfiguredAcademicYear = /^\d{4}$/.test(normalized) ? normalized : '';
-    window.hisConfiguredAcademicYear = hisConfiguredAcademicYear;
-    return hisConfiguredAcademicYear;
-  }
-
   function hisCurrentYear(){
-    const configured = String(window.hisConfiguredAcademicYear || hisConfiguredAcademicYear || '').trim();
-    if (/^\d{4}$/.test(configured)) return configured;
     const now = new Date();
-    // 관리자가 학년도를 지정하지 않은 기존 데이터에서는 HIS 3월 시작 기준을 그대로 사용합니다.
+    // HIS 학년도는 3월 시작이므로 1~2월은 직전 연도로 계산합니다.
     return String(now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear());
   }
 
@@ -420,16 +406,13 @@ function readFileText(file, enc = 'utf-8') {
   }
 
   async function readStateData(){
-    const [studentsSnap, entriesSnap, noticesSnap, recoverySnap, committeeSnap, adminConfigSnap] = await Promise.all([
+    const [studentsSnap, entriesSnap, noticesSnap, recoverySnap, committeeSnap] = await Promise.all([
       db.ref('students').once('value'),
       db.ref('detentionEntries').once('value'),
       db.ref('detentionNotices').once('value'),
       db.ref('recoveryEntries').once('value'),
-      db.ref('committeeRecords').once('value'),
-      db.ref('adminConfig').once('value')
+      db.ref('committeeRecords').once('value')
     ]);
-    const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
-    setHisConfiguredAcademicYear(adminConfig.academicYear || '');
     return {
       students: studentsSnap.val() || {},
       entries: entriesSnap.val() || {},
@@ -504,8 +487,6 @@ function readFileText(file, enc = 'utf-8') {
     return { count: Object.keys(newStates).length, states: newStates };
   }
 
-  window.setHisConfiguredAcademicYear = setHisConfiguredAcademicYear;
-  window.hisCurrentYear = hisCurrentYear;
   window.hisLevelFromClassName = hisLevelFromClassName;
   window.hisSafeStateKey = hisSafeStateKey;
   window.hisRecordYear = hisRecordYear;

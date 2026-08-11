@@ -276,51 +276,10 @@
       </h1>
 
       <p>
-        <span class="desc-ko">교사를 선택하고 비밀번호를 입력해 주세요.</span>
-        <span class="desc-en">Please select a teacher and enter the password.</span>
+        <span class="desc-ko">학교 Google 계정으로 로그인해 주세요.</span>
+        <span class="desc-en">Please sign in with your HIS Google account.</span>
       </p>
 
-      <div class="grid">
-        <div>
-          <label class="label">
-            교사 선택 | Teacher
-            <span class="label-en">이름으로 검색할 수 있습니다.</span>
-            <span class="label-en">You can search by teacher name.</span>
-          </label>
-
-          <div id="teacher-autocomplete" class="autocomplete-shell">
-            <input
-              id="teacher-search"
-              class="edit-input"
-              placeholder="교사 이름 또는 이메일 / Teacher name or email"
-              autocomplete="off"
-              aria-autocomplete="list"
-              aria-controls="teacher-suggestions"
-              aria-expanded="false"
-            />
-            <button id="teacher-dropdown-toggle" class="autocomplete-toggle" type="button" tabindex="-1" aria-label="교사 목록 열기 | Open teacher list">▼</button>
-            <div id="teacher-suggestions" class="autocomplete-menu" role="listbox" hidden></div>
-          </div>
-          <div id="teacher-selection-state" class="selection-confirm" aria-live="polite">검색 결과에서 교사를 선택하세요. | Select a teacher from the results.</div>
-        </div>
-
-        <div>
-          <label class="label">
-            비밀번호 | Password
-          </label>
-          <input
-            id="pw"
-            type="password"
-            class="edit-input"
-            placeholder="비밀번호 / Password"
-            onkeydown="if(event.key === 'Enter') login()"
-          />
-        </div>
-
-        <button class="btn btn-primary" onclick="login()">로그인 | Login</button>
-      </div>
-
-      <div class="login-divider">학교 계정 | School Account</div>
       <button id="google-login-btn" class="google-login-btn" type="button" onclick="loginWithGoogle()">
         <svg class="google-mark" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.38a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.98-4.33 2.98-7.39Z"/>
@@ -350,13 +309,19 @@
 
     async function init() {
       try {
-        await ensureFirebaseAuth();
-        const snap = await db.ref('teachers').once('value');
-        teachers = snap.val() || {};
-        renderTeachers();
+        const user = firebaseAuth && firebaseAuth.currentUser ? firebaseAuth.currentUser : null;
+        if (user && user.email && user.emailVerified) {
+          const email = String(user.email || '').trim().toLowerCase();
+          if (email.endsWith('@his.sc.kr')) {
+            const matched = await loadGoogleTeacherByEmail(email);
+            if (matched && matched.teacher.active !== false) {
+              const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
+              saveTeacherSession(matched.key, matched.teacher, roles, 'google', user);
+            }
+          }
+        }
       } catch (e) {
-        console.error(e);
-        toast('교사 목록을 불러오지 못했습니다.\nFailed to load teacher list.', 'err');
+        console.error('Existing Google session check failed:', e);
       }
     }
 
@@ -663,16 +628,10 @@
 
       try {
         await db.ref(`teachers/${teacherKeyValue}`).update({
-          active: teacher.active !== false,
           loginProvider: 'google',
           authUid: user.uid,
           authEmail,
           authEmailVerified: !!user.emailVerified,
-          roleFlags: {
-            admin: isAdmin,
-            master: isMaster,
-            auditManager: isAuditManager
-          },
           lastGoogleLoginAt: linkedAt
         });
         teacherUpdated = true;
@@ -699,16 +658,6 @@
       return { teacherUpdated, indexUpdated };
     }
 
-    async function restoreAnonymousAuth() {
-      try {
-        if (firebaseAuth && !firebaseAuth.currentUser) {
-          await firebaseAuth.signInAnonymously();
-        }
-      } catch (restoreError) {
-        console.error('Firebase anonymous auth restore failed:', restoreError);
-      }
-    }
-
     async function loginWithGoogle() {
       const button = document.getElementById('google-login-btn');
       if (button) button.disabled = true;
@@ -731,14 +680,12 @@
 
         if (!email || !email.endsWith('@his.sc.kr') || !emailVerified) {
           await firebaseAuth.signOut();
-          await restoreAnonymousAuth();
           return toast('학교에서 승인한 @his.sc.kr Google 계정으로 로그인해 주세요.\nPlease sign in with an approved HIS Google account.', 'err');
         }
 
         const matched = await loadGoogleTeacherByEmail(email);
         if (!matched || matched.teacher.active === false) {
           await firebaseAuth.signOut();
-          await restoreAnonymousAuth();
           return toast('관리자센터에 등록되지 않았거나 비활성화된 교사 계정입니다.\nThis teacher account is not registered or is inactive.', 'err');
         }
 
@@ -760,77 +707,9 @@
         if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
           return;
         }
-        await restoreAnonymousAuth();
         toast('Google 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\nAn error occurred during Google sign-in.', 'err');
       } finally {
         if (button) button.disabled = false;
-      }
-    }
-
-    async function login() {
-      const selectedEmail = syncTeacherSelection();
-      const pw = (document.getElementById('pw').value || '').trim();
-
-      if (!selectedEmail || !pw) {
-        return toast('교사와 비밀번호를 입력해 주세요.\nPlease select a teacher and enter the password.', 'err');
-      }
-
-      try {
-        const snap = await db.ref('teachers').once('value');
-
-        let found = null;
-        let key = '';
-
-        snap.forEach(child => {
-          const t = child.val() || {};
-          if (String(t.email || '').trim().toLowerCase() === selectedEmail) {
-            found = t;
-            key = child.key;
-          }
-        });
-
-        if (!found) {
-          document.getElementById('pw').value = '';
-          return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
-        }
-
-        // admin 판별: roles에 admin 포함 OR email/name에 admin/관리자 포함
-        const roles = normalizeRoles(found.roles || found.role || []);
-        const emailStr = String(found.email || '').toLowerCase();
-        const nameStr  = String(found.name  || '').toLowerCase();
-        const isAdmin  = roles.includes('admin')
-                      || roles.includes('master')
-                      || emailStr === 'admin'
-                      || nameStr.includes('관리자');
-
-        if (isAdmin) {
-          // admin: teachers.password 또는 adminConfig/password 둘 다 허용
-          let adminConfigPw = null;
-          try {
-            const adminSnap = await db.ref('adminConfig/password').once('value');
-            adminConfigPw = adminSnap.val() || null;
-          } catch(e) {}
-
-          const teacherPw = String(found.password || '');
-          const validPws = [teacherPw, adminConfigPw].filter(Boolean);
-
-          if (!validPws.includes(pw)) {
-            document.getElementById('pw').value = '';
-            return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
-          }
-        } else {
-          if (String(found.password || '') !== pw) {
-            document.getElementById('pw').value = '';
-            return toast('아이디 또는 비밀번호가 올바르지 않습니다.\nInvalid teacher or password.', 'err');
-          }
-        }
-
-        saveTeacherSession(key, found, roles, 'legacy');
-
-        location.href = 'teacher.html';
-      } catch (e) {
-        console.error(e);
-        toast('로그인 중 오류가 발생했습니다.\nAn error occurred during login.', 'err');
       }
     }
 
