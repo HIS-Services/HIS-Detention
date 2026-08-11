@@ -1,12 +1,12 @@
 const firebaseConfig = {
-  "apiKey": "AIzaSyCc3rwlIlZd7NaFkd2viT-tYhS9IemsV9o",
-  "authDomain": "his-detention.firebaseapp.com",
-  "databaseURL": "https://his-detention-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  "projectId": "his-detention",
-  "storageBucket": "his-detention.firebasestorage.app",
-  "messagingSenderId": "357843127217",
-  "appId": "1:357843127217:web:88175e347add4931294b90",
-  "measurementId": "G-K3X22E8JL5"
+  apiKey: "AIzaSyCmugtHVJsEL929N6eGC2quOY_mLTXzlpE",
+  authDomain: "his-detention-e6d2f.firebaseapp.com",
+  databaseURL: "https://his-detention-e6d2f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "his-detention-e6d2f",
+  storageBucket: "his-detention-e6d2f.firebasestorage.app",
+  messagingSenderId: "81711445183",
+  appId: "1:81711445183:web:8539e413ab41bbcb7e020a",
+  measurementId: "G-VWBLPX866N"
 };
 
 // Firebase 앱이 이미 초기화된 화면(import-data 등)에서도 common.js를 재사용할 수 있게 방어합니다.
