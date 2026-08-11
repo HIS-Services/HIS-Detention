@@ -1,0 +1,107 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "teachers": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('roleFlags/auditManager').val() === true))"
+    },
+    "teacherAuthIndex": {
+      "$uid": {
+        ".read": "auth != null && ($uid === auth.uid || auth != null && auth.token.email != null && auth.token.email_verified === true && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('roleFlags/auditManager').val() === true)",
+        ".write": "auth != null && $uid === auth.uid && auth.token.email != null && auth.token.email_verified === true && newData.child('email').val() === auth.token.email && newData.child('teacherKey').isString() && root.child('teachers').child(newData.child('teacherKey').val()).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(newData.child('teacherKey').val()).child('active').val() === true"
+      }
+    },
+    "students": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))"
+    },
+    "adminConfig": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))"
+    },
+    "detentionEntries": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "className",
+        "createdAt",
+        "confirmedAt",
+        "status",
+        "year"
+      ]
+    },
+    "detentionRecords": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "className",
+        "createdAt",
+        "confirmedAt",
+        "status",
+        "year"
+      ]
+    },
+    "detentionNotices": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "level",
+        "completedAt",
+        "year"
+      ]
+    },
+    "recoveryEntries": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "level",
+        "completedAt",
+        "year"
+      ]
+    },
+    "committeeRecords": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "type",
+        "completedAt",
+        "year"
+      ]
+    },
+    "studentCycleState": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".indexOn": [
+        "studentKey",
+        "level",
+        "phase",
+        "committeeStatus",
+        "year"
+      ]
+    },
+    "detentionStandards": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))"
+    },
+    "detentionStandards_meta": {
+      ".read": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))",
+      ".write": "auth != null && (auth.provider === 'anonymous' || (auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true))"
+    },
+    "adminAuditLogs": {
+      ".read": "auth != null && auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('roleFlags/auditManager').val() === true",
+      "$logId": {
+        ".write": "auth != null && !data.exists() && newData.exists() && auth.token.email != null && auth.token.email_verified === true && auth.token.email.toLowerCase().matches(/^[^@]+@his\\.sc\\.kr$/) && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('email').val() === auth.token.email.toLowerCase() && root.child('teachers').child(auth.token.email.toLowerCase().replace('.', '_')).child('active').val() === true && newData.child('actorEmail').val() === auth.token.email.toLowerCase()"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
