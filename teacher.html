@@ -820,9 +820,9 @@
           <span class="teacher-top-stat">미확정 <b id="pending-count">0</b>건</span>
           <span class="teacher-top-stat">전체 <b id="total-count">0</b>건</span>
         </div>
-        <a id="admin-center-link" href="admin.html#home" class="btn btn-secondary" style="display:none;font-size:12px;padding:5px 10px;text-decoration:none;align-items:center;">관리자센터</a>
-        <button class="btn btn-secondary" onclick="refreshData()" style="font-size:12px;padding:5px 10px;">새로고침</button>
-        <button class="btn btn-danger" onclick="logoutTeacher()" style="font-size:12px;padding:5px 10px;">로그아웃</button>
+        <a id="admin-center-link" href="admin.html#home" class="btn btn-secondary" style="display:none;font-size:12px;padding:5px 10px;text-decoration:none;align-items:center;">관리자센터 | Admin</a>
+        <button class="btn btn-secondary" onclick="refreshData()" style="font-size:12px;padding:5px 10px;">새로고침 | Refresh</button>
+        <button class="btn btn-danger" onclick="logoutTeacher()" style="font-size:12px;padding:5px 10px;">로그아웃 | Logout</button>
       </div>
     </div>
   </div>
@@ -842,17 +842,17 @@
       <div style="margin-bottom:12px;">
         <div style="font-size:12px;color:var(--sb);margin-bottom:4px;">위원회 종류 | Committee Type</div>
         <select id="modal-committee-type" class="edit-input">
-          <option value="manual_referral">위원회 (수동)</option>
-          <option value="manual_edu">위원회 (수동)</option>
+          <option value="manual_referral">위원회 (수동) | Committee (Manual)</option>
+          <option value="manual_edu">위원회 (수동) | Committee (Manual)</option>
         </select>
       </div>
       <div style="margin-bottom:16px;">
         <div style="font-size:12px;color:var(--sb);margin-bottom:4px;">회부 사유 | Reason</div>
-        <textarea id="modal-committee-reason" class="edit-input" rows="3" placeholder="회부 사유를 입력해 주세요." style="resize:vertical;"></textarea>
+        <textarea id="modal-committee-reason" class="edit-input" rows="3" placeholder="회부 사유를 입력해 주세요. | Enter the referral reason." style="resize:vertical;"></textarea>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="closeManualCommittee()">취소</button>
-        <button class="btn btn-primary" onclick="submitManualCommittee()">회부 확정</button>
+        <button class="btn btn-secondary" onclick="closeManualCommittee()">취소 | Cancel</button>
+        <button class="btn btn-primary" onclick="submitManualCommittee()">회부 확정 | Confirm Referral</button>
       </div>
     </div>
   </div>
@@ -1001,10 +1001,10 @@
       </div>
 
       <nav class="mobile-entry-shortcuts" aria-label="모바일 바로가기">
-        <button type="button" onclick="activateTeacherTab('all')"><span>⌕</span>조회</button>
-        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육</button>
-        <button type="button" onclick="activateTeacherTab('notify')"><span>♢</span>알림</button>
-        <button type="button" onclick="activateTeacherTab('discipline')"><span>♙</span>위원회</button>
+        <button type="button" onclick="activateTeacherTab('all')"><span>⌕</span>조회 | Search</button>
+        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육 | Recovery</button>
+        <button type="button" onclick="activateTeacherTab('notify')"><span>♢</span>알림 | Notice</button>
+        <button type="button" onclick="activateTeacherTab('discipline')"><span>♙</span>위원회 | Committee</button>
       </nav>
     </div>
 
@@ -1136,8 +1136,8 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">대기 | Pending</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
@@ -1256,8 +1256,8 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">진행 중 | Active</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
@@ -1312,8 +1312,8 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">진행 중 | Active</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
@@ -1370,14 +1370,14 @@
               <div id="student-mgmt-suggestions" class="entry-autocomplete-menu" role="listbox" hidden></div>
             </div>
             <select id="student-mgmt-level" class="edit-input" style="width:100px;font-size:12px" onchange="refreshStudentLookup()">
-              <option value="">전체 학년</option>
-              <option value="ms">중등 (7-9)</option>
-              <option value="hs">고등 (10-12)</option>
+              <option value="">전체 학년 | All Grades</option>
+              <option value="ms">중등 (7-9) | Middle School</option>
+              <option value="hs">고등 (10-12) | High School</option>
             </select>
             <select id="student-mgmt-class" class="edit-input" style="width:80px;font-size:12px" onchange="refreshStudentLookup()">
-              <option value="">전체 반</option>
+              <option value="">전체 반 | All Classes</option>
             </select>
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="resetStudentOverview()">조회하기</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="resetStudentOverview()">조회하기 | Search</button>
           </div>
         </div>
 
@@ -1799,7 +1799,6 @@
     }
 
     function getCurrentYear(){
-      if (typeof window.hisCurrentYear === 'function') return String(window.hisCurrentYear());
       return String(new Date().getFullYear());
     }
 
@@ -2245,8 +2244,8 @@
       const start = (safePage - 1) * PAGE_SIZE + 1;
       const end = Math.min(total, safePage * PAGE_SIZE);
       box.innerHTML = `
-        <button class="btn btn-secondary btn-xs" onclick="${call(1)}" ${safePage<=1?'disabled':''}>처음</button>
-        <button class="btn btn-secondary btn-xs" onclick="${call(safePage-1)}" ${safePage<=1?'disabled':''}>이전</button>
+        <button class="btn btn-secondary btn-xs" onclick="${call(1)}" ${safePage<=1?'disabled':''}>처음 | First</button>
+        <button class="btn btn-secondary btn-xs" onclick="${call(safePage-1)}" ${safePage<=1?'disabled':''}>이전 | Previous</button>
         <span class="pager-info">${start}-${end} / 총 ${total}건 · ${safePage}/${totalPages}</span>
         <button class="btn btn-secondary btn-xs" onclick="${call(safePage+1)}" ${safePage>=totalPages?'disabled':''}>다음</button>
         <button class="btn btn-secondary btn-xs" onclick="${call(totalPages)}" ${safePage>=totalPages?'disabled':''}>끝</button>
@@ -3107,8 +3106,7 @@
           db.ref(RECOVERY_DB_PATH).once('value'),
           db.ref(NOTICE_DB_PATH).once('value'),
           db.ref(COMMITTEE_DB_PATH).once('value'),
-          db.ref(CYCLE_STATE_PATH).once('value'),
-          db.ref('adminConfig').once('value')
+          db.ref(CYCLE_STATE_PATH).once('value')
         ]);
         const standardsPromise = Promise.allSettled([
           db.ref(DETENTION_STANDARD_PATH).once('value'),
@@ -3116,11 +3114,7 @@
         ]);
 
         const [coreSnaps, standardResults] = await Promise.all([corePromise, standardsPromise]);
-        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap, adminConfigSnap] = coreSnaps;
-        const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
-        if (typeof window.setHisConfiguredAcademicYear === 'function') {
-          window.setHisConfiguredAcademicYear(adminConfig.academicYear || '');
-        }
+        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap] = coreSnaps;
         const standardResult = standardResults[0];
         const metaResult = standardResults[1];
 
@@ -3223,13 +3217,13 @@
                 ${r.isReferral ? '<span class="recent-chip" style="background:#fde8e8;color:#7f1d1d;font-weight:700;">위원회 회부</span>' : ''}
               </div>
               <div class="recent-entry-violation">${esc(r.violation || '')}</div>
-              <button type="button" class="recent-entry-expand" onclick="this.closest('.recent-entry-item').classList.toggle('expanded');this.textContent=this.closest('.recent-entry-item').classList.contains('expanded')?'접기':'전체 보기'">전체 보기</button>
+              <button type="button" class="recent-entry-expand" onclick="this.closest('.recent-entry-item').classList.toggle('expanded');this.textContent=this.closest('.recent-entry-item').classList.contains('expanded')?'접기':'전체 보기'">전체 보기 | View All</button>
             </div>
             <div class="recent-entry-side">
               <div class="recent-entry-points">${esc(String(r.totalPoints || 0))}점</div>
               <div>${statusBadge(r.status || '임시저장')}</div>
               <div class="recent-entry-datetime">${fmt(r.createdAt)}</div>
-              ${canCancelDraftDetention(r) ? `<button class="btn btn-danger btn-xs" style="margin-top:6px" onclick="cancelDraftDetention('${esc(r.key)}')">입력 취소</button>` : ''}
+              ${canCancelDraftDetention(r) ? `<button class="btn btn-danger btn-xs" style="margin-top:6px" onclick="cancelDraftDetention('${esc(r.key)}')">입력 취소 | Cancel Entry</button>` : ''}
             </div>
           </div>
         </div>
@@ -3399,8 +3393,8 @@
               ${noteTd(r)}
               <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:150px">
                 <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
-                  ${canConfirm?`<button class="btn btn-primary btn-xs" onclick="confirmDetention('${esc(r.key)}')">확정</button>`:''}
-                  ${canReject ?`<button class="btn btn-danger btn-xs"  onclick="rejectDetention('${esc(r.key)}')">반려</button>`:''}
+                  ${canConfirm?`<button class="btn btn-primary btn-xs" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
+                  ${canReject ?`<button class="btn btn-danger btn-xs"  onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                   ${!canManage?'-':''}
                 </div>
               </td>
@@ -3410,7 +3404,7 @@
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
                 <div class="detail-section"><div class="detail-title">처리 정보</div><div class="detail-content">작성: ${fmt(r.createdAt)}\n확정: ${fmt(r.confirmedAt)}\n반려: ${fmt(r.rejectedAt)}\n노트: ${esc(r.adminNote||'-')}</div></div>
-                ${canCancelDraftDetention(r)?`<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="event.stopPropagation();cancelDraftDetention('${esc(r.key)}')">입력취소</button></div>`:''}
+                ${canCancelDraftDetention(r)?`<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="event.stopPropagation();cancelDraftDetention('${esc(r.key)}')">입력취소 | Cancel Entry</button></div>`:''}
               </div></td>
             </tr>`;
         }).join('');
@@ -3463,9 +3457,9 @@
                 ${(canReject||canCommittee||canManage)?`
                 <div class="detail-section"><div class="detail-title">처리 | Actions</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-                    ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려</button>`:''}
+                    ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                     ${canManage   ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${String(r.status||'')==='확정'?'확정취소':'반려취소'}</button>`:''}
-                    ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동</button>`:''}
+                    ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동 | Manual Committee</button>`:''}
                   </div>
                 </div>`:''}
               </div></td>
@@ -3710,7 +3704,7 @@
       if(!sel) return;
       const classes = [...new Set(getStudentCatalog().map(s=>String(s.className||'').trim()).filter(Boolean))]
         .sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
-      sel.innerHTML = '<option value="">전체 반</option>' + classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      sel.innerHTML = '<option value="">전체 반 | All Classes</option>' + classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
     }
 
 
@@ -3864,7 +3858,7 @@
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
             <td style="text-align:center;font-size:11px;color:var(--sb);white-space:nowrap">${overall}</td>
             <td style="text-align:center;padding:0 2px;white-space:nowrap">
-              <button class="btn-view" style="padding:1px 6px;font-size:11px;line-height:1.1;white-space:nowrap;min-width:34px" onclick="switchToSplitView('${esc(s.key)}')">보기</button>
+              <button class="btn-view" style="padding:1px 6px;font-size:11px;line-height:1.1;white-space:nowrap;min-width:34px" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
             </td>
           </tr>`;
         }).join('');
@@ -3933,7 +3927,7 @@
         backBtn.id = 'btn-back-overview';
         backBtn.className = 'btn btn-secondary';
         backBtn.style.cssText = 'font-size:12px;padding:5px 12px';
-        backBtn.textContent = '← 조회하기';
+        backBtn.textContent = '← 조회하기 | Search';
         backBtn.onclick = backToOverview;
         const header = document.querySelector('#tab-students .card > div:first-child');
         if(header) header.appendChild(backBtn);
@@ -4665,10 +4659,10 @@
             ${s.homeroomTeacherEmail?`<div style="font-size:11px;color:var(--sb)">담임: ${esc(s.homeroomTeacherEmail)}</div>`:''}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(false)">전체 접기</button>
-            <button class="btn-det" onclick="goToDetentionEntry('${esc(studentKey)}')">디텐션 입력</button>
-            ${hasFullWorkRole() && students[studentKey] ? `<button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="hideStudentFromList('${esc(studentKey)}')">학생 삭제</button>` : ''}
+            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(false)">전체 접기 | Collapse All</button>
+            <button class="btn-det" onclick="goToDetentionEntry('${esc(studentKey)}')">디텐션 입력 | Add Detention</button>
+            ${hasFullWorkRole() && students[studentKey] ? `<button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="hideStudentFromList('${esc(studentKey)}')">학생 삭제 | Delete Student</button>` : ''}
           </div>
         </div>
 
@@ -5120,8 +5114,8 @@
               </td>
               <td class="nowrap tc" onclick="event.stopPropagation()">
                 ${(s.state && s.state.committeeStatus === 'pending_referral')
-                  ? '<button class="btn btn-xs" style="background:#fde8e8;color:#7f1d1d;border:1px solid #fca5a5;cursor:not-allowed;line-height:1.3;" disabled>위원회 회부<br>회복 일시정지</button>'
-                  : `<button class="btn btn-primary btn-xs" onclick="completeRecovery('${esc(s.key)}','${level}')">회복교육 완료</button>`
+                  ? '<button class="btn btn-xs" style="background:#fde8e8;color:#7f1d1d;border:1px solid #fca5a5;cursor:not-allowed;line-height:1.3;" disabled>위원회 회부 | Committee Referral<br>회복 일시정지 | Recovery Paused</button>'
+                  : `<button class="btn btn-primary btn-xs" onclick="completeRecovery('${esc(s.key)}','${level}')">회복교육 완료 | Complete Recovery</button>`
                 }
               </td>
             </tr>
@@ -5181,7 +5175,7 @@
             '<div class="detail-title">위반 행위 | Violations</div>'+
             '<div class="detail-content">'+esc(reasonText)+'</div>'+
             '</div>'+(()=>{ const memos=getConfirmedEntriesForStudent(profile.key).filter(e=>e.memo||e.adminNote).map((e,i)=>'['+(i+1)+'] '+(e.memo?'메모: '+e.memo:'')+(e.memo&&e.adminNote?' / ':'')+(e.adminNote?'관리자: '+e.adminNote:'')).join('\n'); return memos?'<div class="detail-section"><div class="detail-title">메모 | Notes</div><div class="detail-content">'+esc(memos)+'</div></div>':''; })()+
-            (canManageRecoveryLevel(level)?'<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelRecoveryCompletion(\''+r.key+'\')">완료취소</button></div>':'')+
+            (canManageRecoveryLevel(level)?'<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelRecoveryCompletion(\''+r.key+'\')">완료취소 | Undo Completion</button></div>':'')+
             '</div></td></tr>'
           );
         });
@@ -5314,8 +5308,8 @@
           '<td class="tc" onclick="event.stopPropagation()">'+categorySelectHtml(token,category,pendingKey,c.type)+'</td>'+
           '<td class="wrap-cell" onclick="event.stopPropagation()">'+noteEditorHtml(token,c.pending,pendingKey,c.type)+'</td>'+
           '<td class="tc" onclick="event.stopPropagation()"><div class="committee-action-group">'+(c.pending
-            ? '<div style="width:100%;font-size:10px;color:var(--mut);margin-bottom:2px;">회부확정됨</div><button class="btn btn-primary committee-action-btn" '+(canManageCommittee()?'onclick="completeCommittee(\''+(c.type==='referral'?(c.pending.type||'referral'):(c.pending.type||'edu'))+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+esc(pendingKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>완료</button>'
-            : '<button class="btn btn-secondary committee-action-btn" '+(canManageCommittee()?'onclick="referCommitteeCase(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>회부확정</button><button class="btn btn-exception committee-action-btn" '+(canManageCommittee()?'onclick="exceptionToRecovery(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>예외→회복</button>')+'</div></td></tr>'+
+            ? '<div style="width:100%;font-size:10px;color:var(--mut);margin-bottom:2px;">회부확정됨</div><button class="btn btn-primary committee-action-btn" '+(canManageCommittee()?'onclick="completeCommittee(\''+(c.type==='referral'?(c.pending.type||'referral'):(c.pending.type||'edu'))+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+esc(pendingKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>완료 | Complete</button>'
+            : '<button class="btn btn-secondary committee-action-btn" '+(canManageCommittee()?'onclick="referCommitteeCase(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>회부확정 | Confirm Referral</button><button class="btn btn-exception committee-action-btn" '+(canManageCommittee()?'onclick="exceptionToRecovery(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>예외→회복 | Exception → Recovery</button>')+'</div></td></tr>'+
           '<tr class="committee-detail-row '+stripeClass+'" id="'+did+'"><td colspan="9"><div class="committee-inline-panel">'+identity+
             '<div class="committee-detail-grid">'+
               '<div class="detail-section"><div class="detail-title">위원회 사유 | Committee Reason</div><div class="detail-content">'+esc(c.reason||'-')+'</div></div>'+
@@ -5600,7 +5594,7 @@
           return '<b>'+esc(item.name)+'</b><span style="margin-left:3px;padding:1px 5px;background:#fef3cd;border-radius:4px;font-size:10px;">'+esc(label)+'</span>';
         }).join('  ');
         banner.classList.remove('expanded');
-        banner.innerHTML='<div class="committee-summary"><div class="committee-summary-main">⚠️ 위원회 처리 대기 <b>'+pending.length+'건</b> · '+items+'</div><button type="button" class="committee-summary-toggle" onclick="toggleCommitteeBanner()">펼치기</button></div>';
+        banner.innerHTML='<div class="committee-summary"><div class="committee-summary-main">⚠️ 위원회 처리 대기 <b>'+pending.length+'건</b> · '+items+'</div><button type="button" class="committee-summary-toggle" onclick="toggleCommitteeBanner()">펼치기 | Expand</button></div>';
       } else {
         banner.style.display='none';
         banner.classList.remove('expanded');

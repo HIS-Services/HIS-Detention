@@ -263,7 +263,6 @@
       <button type="button" data-admin-tab="home" onclick="switchAdminView('home')">홈 | Home</button>
       <button type="button" data-admin-tab="teachers" onclick="switchAdminView('teachers')">교사 계정 | Teachers</button>
       <button type="button" data-admin-tab="students" onclick="switchAdminView('students')">학생 명단 | Students</button>
-      <button type="button" data-admin-tab="csv" onclick="switchAdminView('csv')">명단 일괄 등록 | Bulk Roster</button>
       <a href="detention-admin.html#entries" data-admin-link="detention">디텐션 DB | Database</a>
       <button type="button" data-admin-tab="settings" onclick="switchAdminView('settings')">설정 | Settings</button>
     </nav>
@@ -297,7 +296,7 @@
         <a href="detention-admin.html#entries" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center;">
           디텐션 DB 관리 | Detention DB
         </a>
-        <button class="tab-btn" data-tab="csv">명단 일괄 등록 | Bulk Roster</button>
+        <button class="tab-btn" data-tab="csv">CSV 업로드 | CSV Upload</button>
       </div>
 
       <div id="tab-home" class="tab-panel active">
@@ -340,7 +339,7 @@
               <span><span class="admin-management-main">학생 명단</span><span class="admin-management-sub">학생·학반·보호자 이메일 관리 | Student roster and emails</span></span><span class="admin-management-arrow">›</span>
             </button>
             <button type="button" class="admin-management-item" onclick="switchAdminView('csv')">
-              <span><span class="admin-management-main">명단 일괄 등록</span><span class="admin-management-sub">학생·교사 명단 엑셀 붙여넣기 및 CSV 등록 | Excel paste & CSV roster upload</span></span><span class="admin-management-arrow">›</span>
+              <span><span class="admin-management-main">CSV 업로드</span><span class="admin-management-sub">교사·학생 명단 대량 등록 | Bulk roster upload</span></span><span class="admin-management-arrow">›</span>
             </button>
             <a class="admin-management-item" href="import-data.html">
               <span><span class="admin-management-main">데이터 가져오기</span><span class="admin-management-sub">기존 운영 데이터 가져오기 | Import existing data</span></span><span class="admin-management-arrow">›</span>
@@ -475,13 +474,13 @@
         <div class="card">
           <div class="card-title">학생 명단 엑셀 붙여넣기 | Student Excel Paste</div>
           <div class="notice">열 순서 | Columns: <strong>이름 · 영문명 · 학반 · 본인이메일 · 부이메일 · 모이메일 · 대표메일대상 · 대표메일</strong><br><span class="small">대표메일대상 값: 부 / 모 / 둘다 / 직접입력. 대표메일은 실제 발송 대상 이메일이며, 비워두면 대표메일대상에 따라 자동 생성됩니다.</span></div>
-          <textarea id="student-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V)"></textarea>
+          <textarea id="student-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V) | Paste from Excel"></textarea>
           <div class="filter-bar" style="margin-top:8px;align-items:center;">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
               <input type="checkbox" id="student-paste-header" checked> 첫 행 = 헤더 | First row is header
             </label>
             <button class="btn btn-primary" onclick="pasteStudents()">붙여넣기 적용 | Apply</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('student-paste-area').value=''">지우기</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('student-paste-area').value=''">지우기 | Clear</button>
           </div>
           <div id="student-paste-msg" class="small" style="margin-top:6px;"></div>
         </div>
@@ -508,13 +507,13 @@
         <div class="card">
           <div class="card-title">교사 계정 엑셀 붙여넣기 | Teacher Excel Paste</div>
           <div class="notice">열 순서 | Columns: <strong>이름 · 이메일 · 비밀번호 · 담당학반 · 권한</strong></div>
-          <textarea id="teacher-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V)"></textarea>
+          <textarea id="teacher-paste-area" class="edit-input" rows="5" style="font-family:monospace;font-size:12px;resize:vertical;margin-top:6px;" placeholder="엑셀에서 복사(Ctrl+C) 후 붙여넣기(Ctrl+V) | Paste from Excel"></textarea>
           <div class="filter-bar" style="margin-top:8px;align-items:center;">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;white-space:nowrap;">
               <input type="checkbox" id="teacher-paste-header" checked> 첫 행 = 헤더 | First row is header
             </label>
             <button class="btn btn-primary" onclick="pasteTeachers()">붙여넣기 적용 | Apply</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('teacher-paste-area').value=''">지우기</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('teacher-paste-area').value=''">지우기 | Clear</button>
           </div>
           <div id="teacher-paste-msg" class="small" style="margin-top:6px;"></div>
         </div>
@@ -541,21 +540,6 @@
         </div>
 
         <div class="settings-grid">
-          <section class="settings-section" aria-labelledby="settings-year-title">
-            <div id="settings-year-title" class="settings-section-head">운영 학년도 | Academic Year</div>
-            <div class="settings-action-row">
-              <div class="settings-action-copy">
-                <div class="settings-action-title">현재 학년도 | Current Academic Year</div>
-                <div class="settings-action-sub">새로 작성되는 기록과 현재 학년도 조회 기준에 사용합니다. 기존 기록의 학년도 값은 변경하지 않습니다. | Used for new records and current-year views. Existing records are not changed.</div>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input id="academic-year-input" type="number" min="2000" max="2100" step="1" class="edit-input" style="width:110px;" placeholder="2026">
-                <button class="btn btn-primary" onclick="saveAcademicYearSetting()">학년도 저장 | Save Year</button>
-              </div>
-            </div>
-            <div id="academic-year-status" class="settings-tool-status" aria-live="polite"></div>
-          </section>
-
           <section class="settings-section" aria-labelledby="settings-access-title">
             <div id="settings-access-title" class="settings-section-head">관리자 인증 | Administrator Access</div>
             <div class="settings-action-row">
@@ -1322,58 +1306,17 @@
       }));
     }
 
-    function applyAcademicYearSetting(config) {
-      const configured = String((config || {}).academicYear || '').trim();
-      const input = document.getElementById('academic-year-input');
-      const status = document.getElementById('academic-year-status');
-      if (typeof window.setHisConfiguredAcademicYear === 'function') {
-        window.setHisConfiguredAcademicYear(configured);
-      }
-      const effectiveYear = /^\d{4}$/.test(configured)
-        ? configured
-        : (typeof window.hisCurrentYear === 'function' ? String(window.hisCurrentYear()) : String(new Date().getFullYear()));
-      if (input) input.value = effectiveYear;
-      if (status) {
-        status.textContent = /^\d{4}$/.test(configured)
-          ? `현재 운영 학년도: ${configured} | Current academic year: ${configured}`
-          : `저장된 학년도가 없어 기존 자동 기준을 사용 중입니다: ${effectiveYear} | No saved year; using existing automatic fallback.`;
-      }
-    }
-
-    async function saveAcademicYearSetting() {
-      const input = document.getElementById('academic-year-input');
-      const status = document.getElementById('academic-year-status');
-      const year = String(input ? input.value : '').trim();
-      if (!/^\d{4}$/.test(year) || Number(year) < 2000 || Number(year) > 2100) {
-        toast('학년도는 2000~2100 사이의 4자리 숫자로 입력하세요. | Enter a 4-digit year from 2000 to 2100.', 'err');
-        return;
-      }
-      if (!confirm(`${year}학년도를 현재 운영 학년도로 설정하시겠습니까?\n기존 기록의 학년도 값은 변경되지 않습니다.`)) return;
-      try {
-        await ensureFirebaseAuth();
-        await db.ref('adminConfig/academicYear').set(year);
-        if (typeof window.setHisConfiguredAcademicYear === 'function') window.setHisConfiguredAcademicYear(year);
-        if (status) status.textContent = `현재 운영 학년도: ${year} | Current academic year: ${year}`;
-        toast(`운영 학년도를 ${year}학년도로 변경했습니다. | Academic year saved.`, 'ok');
-      } catch (e) {
-        console.error(e);
-        toast('학년도 저장 실패 | Failed to save academic year', 'err');
-      }
-    }
-
     async function refreshAll() {
       updateAdminIdentity();
       try {
         await ensureFirebaseAuth();
-        const [t, s, configSnap] = await Promise.all([
+        const [t, s] = await Promise.all([
           db.ref('teachers').once('value'),
-          db.ref('students').once('value'),
-          db.ref('adminConfig').once('value')
+          db.ref('students').once('value')
         ]);
 
         teachersRaw = t.val() || {};
         studentsRaw = s.val() || {};
-        applyAcademicYearSetting(configSnap.val() || {});
 
         teacherRows = Object.entries(teachersRaw).map(([k, v]) => ({
           oldKey: k, name: v.name || '', email: v.email || '', password: v.password || '',
@@ -1546,7 +1489,7 @@
         <div class="admin-form-section"><div class="admin-form-title">저장 상태 | Save Status</div><div class="admin-form-grid one"><div>${statusPill(r._status||'기존')}</div></div></div>
         <div class="teacher-save-footer">
           <label class="delete-toggle"><input type="checkbox" ${editable?'':'disabled'} onchange="teacherRows[${selectedTeacherIndex}]._delete=this.checked;checkTeacherDirty();renderTeachers()"> 이 교사를 삭제 표시</label>
-          <button class="btn btn-primary" ${editable?'':'disabled'} onclick="saveTeachers()">교사 데이터 저장</button>
+          <button class="btn btn-primary" ${editable?'':'disabled'} onclick="saveTeachers()">교사 데이터 저장 | Save Teacher Data</button>
         </div>`;
     }
 
@@ -1644,7 +1587,7 @@
        </div></div>
        <details class="student-system-detail"><summary>시스템 정보 | System Information</summary><div>학생 Key: ${esc(r.oldKey||r.keyCandidate||studentKey(r.name,r.className)||'')}</div></details>
        <div class="admin-form-section"><div class="admin-form-title">저장 상태 | Save Status</div><div class="admin-form-grid one"><div>${statusPill(r._status||'기존')}</div></div></div>
-       <div class="student-save-footer"><label class="delete-toggle"><input type="checkbox" onchange="studentRows[${selectedStudentIndex}]._delete=this.checked;checkStudentDirty();renderStudents()"> 이 학생을 삭제 표시</label><button class="btn btn-primary" onclick="saveStudents()">학생 데이터 저장</button></div>`;
+       <div class="student-save-footer"><label class="delete-toggle"><input type="checkbox" onchange="studentRows[${selectedStudentIndex}]._delete=this.checked;checkStudentDirty();renderStudents()"> 이 학생을 삭제 표시</label><button class="btn btn-primary" onclick="saveStudents()">학생 데이터 저장 | Save Student Data</button></div>`;
     }
 
     function addTeacherRow() {
