@@ -143,7 +143,9 @@ p{
 
 /* 버튼 공통 */
 .btn{
-  padding:8px 14px;
+  padding:8px 13px;
+  min-height:36px;
+  line-height:1.25;
   border-radius:8px;
   border:none;
   font-weight:700;
@@ -184,7 +186,7 @@ p{
   top:0;
   z-index:10;
   background:linear-gradient(120deg,var(--nv),var(--nv2));
-  padding:10px 14px;
+  padding:11px 20px;
   display:flex;
   justify-content:space-between;
   gap:10px;
@@ -206,9 +208,10 @@ p{
 
 /* 본문 컨텐츠 영역 */
 .content{
-  max-width:1120px;
+  max-width:1360px;
+  width:calc(100% - 28px);
   margin:0 auto;
-  padding:12px;
+  padding:14px;
 }
 
 /* 카드 스타일 */
@@ -379,6 +382,7 @@ select.edit-input{
 
 /* 모바일 대응 */
 @media (max-width: 768px){
+  .content{width:100%;}
   body{
     font-size:13px;
   }

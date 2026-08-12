@@ -719,7 +719,21 @@
       #panel-entries .card{padding:10px}
     }
 
-  </style>
+  
+/* Bilingual layout spacing */
+    .content{max-width:1720px;width:calc(100% - 24px);padding-left:12px;padding-right:12px}
+    .admin-center-topbar{padding-left:24px;padding-right:24px}
+    .admin-center-actions{gap:9px}
+    .admin-center-actions .btn,.admin-center-actions a.btn{min-height:36px;padding:7px 13px;font-size:12px;line-height:1.2}
+    .admin-center-nav{padding-left:24px;padding-right:24px;gap:4px}
+    .admin-center-nav a,.admin-center-nav button{padding-left:15px;padding-right:15px}
+    .subtabs{gap:6px}
+    .subtab-btn{padding:7px 14px;line-height:1.2}
+    .entry-status-buttons{gap:6px}
+    .entry-filter-btn{padding:6px 10px;line-height:1.2}
+    .small-btn{line-height:1.2;min-height:28px}
+    @media(max-width:760px){.content{width:100%}}
+</style>
 </head>
 <body>
   <div id="toast"></div>
@@ -771,10 +785,10 @@
         </div>
         <div class="entry-filter-bar">
           <div class="entry-status-buttons" role="group" aria-label="학생별 데이터 필터">
-            <button type="button" class="entry-filter-btn active" data-student-data-filter="all" onclick="setStudentDataFilter('all')">전체 | All <b id="student-count-total">0</b></button>
-            <button type="button" class="entry-filter-btn" data-student-data-filter="records" onclick="setStudentDataFilter('records')">기록 있음 | Has Records <b id="student-count-records">0</b></button>
-            <button type="button" class="entry-filter-btn" data-student-data-filter="committee" onclick="setStudentDataFilter('committee')">위원회 | Committee <b id="student-count-committee">0</b></button>
-            <button type="button" class="entry-filter-btn problem" data-student-data-filter="problem" onclick="setStudentDataFilter('problem')">문제/확인 | Issues/Review <b id="student-count-problem">0</b></button>
+            <button type="button" class="entry-filter-btn active" data-student-data-filter="all" onclick="setStudentDataFilter('all')">전체 <b id="student-count-total">0</b></button>
+            <button type="button" class="entry-filter-btn" data-student-data-filter="records" onclick="setStudentDataFilter('records')">기록 있음 <b id="student-count-records">0</b></button>
+            <button type="button" class="entry-filter-btn" data-student-data-filter="committee" onclick="setStudentDataFilter('committee')">위원회 <b id="student-count-committee">0</b></button>
+            <button type="button" class="entry-filter-btn problem" data-student-data-filter="problem" onclick="setStudentDataFilter('problem')">문제/확인 <b id="student-count-problem">0</b></button>
           </div>
           <div class="entry-result-summary">검색 결과 <b id="student-count-visible">0</b>명</div>
         </div>
@@ -838,12 +852,12 @@
         <input type="hidden" id="entry-status-filter" value="">
         <div class="entry-filter-bar">
           <div class="entry-status-buttons" role="group" aria-label="디텐션 상태 필터">
-            <button type="button" class="entry-filter-btn active" data-entry-filter="all" onclick="setEntryStatusFilter('all')">전체 | All <b id="entry-count-total">0</b></button>
-            <button type="button" class="entry-filter-btn" data-entry-filter="pending" onclick="setEntryStatusFilter('pending')">대기 | Pending <b id="entry-count-pending">0</b></button>
-            <button type="button" class="entry-filter-btn" data-entry-filter="confirmed" onclick="setEntryStatusFilter('confirmed')">확정 | Confirmed <b id="entry-count-confirmed">0</b></button>
-            <button type="button" class="entry-filter-btn" data-entry-filter="rejected" onclick="setEntryStatusFilter('rejected')">반려 | Rejected <b id="entry-count-rejected">0</b></button>
-            <button type="button" class="entry-filter-btn problem" data-entry-filter="problem" onclick="setEntryStatusFilter('problem')">검토 필요 | Needs Review <b id="entry-count-problem">0</b></button>
-            <button type="button" class="entry-filter-btn deleted" data-entry-filter="deleted" onclick="setEntryStatusFilter('deleted')">삭제 표시 | Marked for Deletion <b id="entry-count-deleted">0</b></button>
+            <button type="button" class="entry-filter-btn active" data-entry-filter="all" onclick="setEntryStatusFilter('all')">전체 <b id="entry-count-total">0</b></button>
+            <button type="button" class="entry-filter-btn" data-entry-filter="pending" onclick="setEntryStatusFilter('pending')">대기 <b id="entry-count-pending">0</b></button>
+            <button type="button" class="entry-filter-btn" data-entry-filter="confirmed" onclick="setEntryStatusFilter('confirmed')">확정 <b id="entry-count-confirmed">0</b></button>
+            <button type="button" class="entry-filter-btn" data-entry-filter="rejected" onclick="setEntryStatusFilter('rejected')">반려 <b id="entry-count-rejected">0</b></button>
+            <button type="button" class="entry-filter-btn problem" data-entry-filter="problem" onclick="setEntryStatusFilter('problem')">검토 필요 <b id="entry-count-problem">0</b></button>
+            <button type="button" class="entry-filter-btn deleted" data-entry-filter="deleted" onclick="setEntryStatusFilter('deleted')">삭제 표시 <b id="entry-count-deleted">0</b></button>
           </div>
           <div class="entry-filter-actions">
             <select id="entry-issue-filter" class="edit-input" onchange="renderEntriesTable()"><option value="all">세부 점검 전체 | All Checks</option><option value="problem">검토 필요 | Needs Review</option><option value="duplicate">중복 가능 | Possible Duplicate</option><option value="missing">필수정보 누락 | Missing Required Info</option><option value="date">날짜 오류 | Date Error</option><option value="email">이메일 스냅샷 누락 | Missing Email Snapshot</option><option value="audit">처리 이력 누락 | Missing Action History</option><option value="clean">정상만 | Valid Only</option></select>
@@ -886,11 +900,11 @@
       </details>
       <div class="entry-filter-bar">
         <div class="entry-status-buttons" role="group" aria-label="알림 기록 필터">
-          <button type="button" class="entry-filter-btn active" data-notice-filter="all" onclick="setNoticeStatusFilter('all')">전체 | All <b id="notice-count-total">0</b></button>
-          <button type="button" class="entry-filter-btn" data-notice-filter="active" onclick="setNoticeStatusFilter('active')">진행 중 | In Progress <b id="notice-count-active">0</b></button>
-          <button type="button" class="entry-filter-btn" data-notice-filter="done" onclick="setNoticeStatusFilter('done')">완료 | Completed <b id="notice-count-done">0</b></button>
-          <button type="button" class="entry-filter-btn problem" data-notice-filter="problem" onclick="setNoticeStatusFilter('problem')">검토 필요 | Needs Review <b id="notice-count-problem">0</b></button>
-          <button type="button" class="entry-filter-btn deleted" data-notice-filter="deleted" onclick="setNoticeStatusFilter('deleted')">삭제 표시 | Marked for Deletion <b id="notice-count-deleted">0</b></button>
+          <button type="button" class="entry-filter-btn active" data-notice-filter="all" onclick="setNoticeStatusFilter('all')">전체 <b id="notice-count-total">0</b></button>
+          <button type="button" class="entry-filter-btn" data-notice-filter="active" onclick="setNoticeStatusFilter('active')">진행 중 <b id="notice-count-active">0</b></button>
+          <button type="button" class="entry-filter-btn" data-notice-filter="done" onclick="setNoticeStatusFilter('done')">완료 <b id="notice-count-done">0</b></button>
+          <button type="button" class="entry-filter-btn problem" data-notice-filter="problem" onclick="setNoticeStatusFilter('problem')">검토 필요 <b id="notice-count-problem">0</b></button>
+          <button type="button" class="entry-filter-btn deleted" data-notice-filter="deleted" onclick="setNoticeStatusFilter('deleted')">삭제 표시 <b id="notice-count-deleted">0</b></button>
         </div>
         <div class="entry-result-summary">검색 결과 <b id="notice-count-visible">0</b>건</div>
       </div>
@@ -903,11 +917,11 @@
       <div class="admin-toolbar"><input id="recovery-search" class="edit-input admin-search" placeholder="학생명·영문명·학반·studentKey·DB Key 검색 | Search name, English name, class, studentKey, or DB Key" oninput="renderRecoveryTable()"><input type="hidden" id="recovery-level-filter" value="all"><select id="recovery-issue-filter" class="edit-input" onchange="renderRecoveryTable()"><option value="all">전체 점검 상태 | All Check Status</option><option value="problem">검토 필요 | Needs Review</option><option value="missing">필수정보 누락 | Missing Required Info</option><option value="points">점수 오류 | Point Error</option><option value="date">날짜 오류 | Date Error</option><option value="audit">처리 이력 누락 | Missing Action History</option><option value="clean">정상만 | Valid Only</option></select><button class="btn btn-secondary" onclick="clearRecoveryFilters()">필터 초기화 | Reset Filters</button><button class="btn btn-secondary" onclick="addRecoveryRow()">행 추가 | Add Row</button><button id="btn-save-recovery" class="btn btn-primary" onclick="saveRecovery()" disabled style="opacity:.4;cursor:not-allowed;">저장할 내용 없음 | No Changes</button></div>
       <div class="entry-filter-bar">
         <div class="entry-status-buttons" role="group" aria-label="회복교육 기록 필터">
-          <button type="button" class="entry-filter-btn active" data-recovery-filter="all" onclick="setRecoveryLevelFilter('all')">전체 | All <b id="recovery-count-total">0</b></button>
-          <button type="button" class="entry-filter-btn" data-recovery-filter="ms" onclick="setRecoveryLevelFilter('ms')">중등 | MS <b id="recovery-count-ms">0</b></button>
-          <button type="button" class="entry-filter-btn" data-recovery-filter="hs" onclick="setRecoveryLevelFilter('hs')">고등 | HS <b id="recovery-count-hs">0</b></button>
-          <button type="button" class="entry-filter-btn problem" data-recovery-filter="problem" onclick="setRecoveryLevelFilter('problem')">검토 필요 | Needs Review <b id="recovery-count-problem">0</b></button>
-          <button type="button" class="entry-filter-btn deleted" data-recovery-filter="deleted" onclick="setRecoveryLevelFilter('deleted')">삭제 표시 | Marked for Deletion <b id="recovery-count-deleted">0</b></button>
+          <button type="button" class="entry-filter-btn active" data-recovery-filter="all" onclick="setRecoveryLevelFilter('all')">전체 <b id="recovery-count-total">0</b></button>
+          <button type="button" class="entry-filter-btn" data-recovery-filter="ms" onclick="setRecoveryLevelFilter('ms')">중등 <b id="recovery-count-ms">0</b></button>
+          <button type="button" class="entry-filter-btn" data-recovery-filter="hs" onclick="setRecoveryLevelFilter('hs')">고등 <b id="recovery-count-hs">0</b></button>
+          <button type="button" class="entry-filter-btn problem" data-recovery-filter="problem" onclick="setRecoveryLevelFilter('problem')">검토 필요 <b id="recovery-count-problem">0</b></button>
+          <button type="button" class="entry-filter-btn deleted" data-recovery-filter="deleted" onclick="setRecoveryLevelFilter('deleted')">삭제 표시 <b id="recovery-count-deleted">0</b></button>
         </div>
         <div class="entry-result-summary">검색 결과 <b id="recovery-count-visible">0</b>건</div>
       </div>
@@ -944,11 +958,11 @@
 
         <div class="entry-filter-bar">
           <div class="entry-status-buttons" role="group" aria-label="위원회 기록 필터">
-            <button type="button" class="entry-filter-btn active" data-committee-filter="all" onclick="setCommitteeStatusFilter('all')">전체 | All <b id="committee-count-total">0</b></button>
-            <button type="button" class="entry-filter-btn" data-committee-filter="active" onclick="setCommitteeStatusFilter('active')">진행 중 | In Progress <b id="committee-count-active">0</b></button>
-            <button type="button" class="entry-filter-btn" data-committee-filter="done" onclick="setCommitteeStatusFilter('done')">완료 | Completed <b id="committee-count-done">0</b></button>
-            <button type="button" class="entry-filter-btn problem" data-committee-filter="problem" onclick="setCommitteeStatusFilter('problem')">검토 필요 | Needs Review <b id="committee-count-problem">0</b></button>
-            <button type="button" class="entry-filter-btn deleted" data-committee-filter="deleted" onclick="setCommitteeStatusFilter('deleted')">삭제 표시 | Marked for Deletion <b id="committee-count-deleted">0</b></button>
+            <button type="button" class="entry-filter-btn active" data-committee-filter="all" onclick="setCommitteeStatusFilter('all')">전체 <b id="committee-count-total">0</b></button>
+            <button type="button" class="entry-filter-btn" data-committee-filter="active" onclick="setCommitteeStatusFilter('active')">진행 중 <b id="committee-count-active">0</b></button>
+            <button type="button" class="entry-filter-btn" data-committee-filter="done" onclick="setCommitteeStatusFilter('done')">완료 <b id="committee-count-done">0</b></button>
+            <button type="button" class="entry-filter-btn problem" data-committee-filter="problem" onclick="setCommitteeStatusFilter('problem')">검토 필요 <b id="committee-count-problem">0</b></button>
+            <button type="button" class="entry-filter-btn deleted" data-committee-filter="deleted" onclick="setCommitteeStatusFilter('deleted')">삭제 표시 <b id="committee-count-deleted">0</b></button>
           </div>
           <div class="entry-result-summary">검색 결과 <b id="committee-count-visible">0</b>건</div>
         </div>
