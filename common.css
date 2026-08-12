@@ -208,7 +208,7 @@ p{
 
 /* 본문 컨텐츠 영역 */
 .content{
-  max-width:1360px;
+  max-width:1580px;
   width:calc(100% - 28px);
   margin:0 auto;
   padding:14px;
