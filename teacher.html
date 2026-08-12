@@ -872,6 +872,36 @@
       .student-overview-grid .student-view-btn{min-width:68px;}
     }
 
+
+    /* 2026-08 balanced density + bilingual recovery pass */
+    .teacher-nav-groups{gap:6px;margin-bottom:7px}
+    .teacher-nav-group{padding:8px 9px}
+    .teacher-nav-buttons{gap:5px}
+    .teacher-nav-buttons .tab-btn{padding:7px 10px;font-size:13px}
+    .student-overview-grid{gap:10px}
+    #student-overview-view{padding:10px !important}
+    .student-overview-grid > div{border-radius:7px !important}
+    .student-overview-grid th{font-size:11.5px !important;padding:5px 7px !important}
+    .student-overview-grid td{font-size:12.5px !important;padding-top:5px !important;padding-bottom:5px !important}
+    .student-overview-grid td:nth-child(2){font-size:12px !important}
+    .student-overview-grid td:nth-child(3){font-size:13.5px !important}
+    .student-overview-grid .student-view-btn{min-width:76px;padding:4px 9px;font-size:11.5px}
+    .section-title-row{margin-top:8px;margin-bottom:6px}
+    .section-title-row.notice-divider{margin-top:12px}
+    .section-btn-group{gap:5px}
+    .btn-xs{padding:5px 8px;min-height:30px;font-size:11.5px}
+    .lookup-page-head{margin-bottom:8px}
+    .lookup-filter-card{padding:10px}
+    .lookup-result-head{margin-bottom:6px}
+    #tab-confirm .card{padding-top:9px}
+    #tab-confirm .notice{margin-bottom:8px}
+    #tab-confirm .edit-input{min-height:36px}
+    #tab-recovery-ms .card,#tab-recovery-hs .card{padding:10px 12px}
+    #tab-recovery-ms .notice,#tab-recovery-hs .notice{margin-bottom:7px}
+    #tab-recovery-ms th,#tab-recovery-hs th{line-height:1.15;white-space:normal}
+    #tab-recovery-ms .th-en,#tab-recovery-hs .th-en{display:block;font-size:9.5px;font-weight:600;margin-top:1px;line-height:1.05}
+    .admin-note-input{font-size:12.5px}
+
   </style>
 </head>
 <body>
@@ -1071,7 +1101,7 @@
 
       <nav class="mobile-entry-shortcuts" aria-label="모바일 바로가기">
         <button type="button" onclick="activateTeacherTab('all')"><span>⌕</span>조회</button>
-        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육</button>
+        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육 | Recovery</button>
         <button type="button" onclick="activateTeacherTab('notify')"><span>♢</span>알림</button>
         <button type="button" onclick="activateTeacherTab('discipline')"><span>♙</span>위원회</button>
       </nav>
@@ -1333,14 +1363,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:6%;">학반</th>
-                <th class="nowrap tc" style="width:6%;">잔여</th>
-                <th class="nowrap tc" style="width:6%;">누적</th>
-                <th style="width:28%;">위반 행위</th>
-                <th class="nowrap tc" style="width:12%;">알림완료</th>
-                <th class="nowrap tc" style="width:10%;">완료점수</th>
-                <th class="nowrap tc" style="width:10%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:6%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
+                <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
+                <th style="width:28%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
+                <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:10%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-active-tbody"></tbody>
@@ -1352,14 +1382,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:7%;">학반</th>
-                <th style="width:30%;">위반 행위</th>
-                <th class="nowrap tc" style="width:9%;">회복점수</th>
-                <th class="nowrap tc" style="width:9%;">잔여점수</th>
-                <th class="nowrap tc" style="width:9%;">누적디텐션점수</th>
-                <th class="nowrap" style="width:12%;">완료시간</th>
-                <th class="nowrap tc" style="width:8%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:7%;">학반<span class="th-en">Class</span></th>
+                <th style="width:30%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:9%;">회복점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:9%;">잔여점수<span class="th-en">Remaining Points</span></th>
+                <th class="nowrap tc" style="width:9%;">누적디텐션점수<span class="th-en">Total Detention Points</span></th>
+                <th class="nowrap" style="width:12%;">완료시간<span class="th-en">Completed</span></th>
+                <th class="nowrap tc" style="width:8%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-done-tbody"></tbody>
@@ -1389,14 +1419,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:6%;">학반</th>
-                <th class="nowrap tc" style="width:6%;">잔여</th>
-                <th class="nowrap tc" style="width:6%;">누적</th>
-                <th style="width:28%;">위반 행위</th>
-                <th class="nowrap tc" style="width:12%;">알림완료</th>
-                <th class="nowrap tc" style="width:10%;">완료점수</th>
-                <th class="nowrap tc" style="width:10%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:6%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
+                <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
+                <th style="width:28%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
+                <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:10%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-active-tbody"></tbody>
@@ -1408,14 +1438,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:7%;">학반</th>
-                <th style="width:30%;">위반 행위</th>
-                <th class="nowrap tc" style="width:9%;">회복점수</th>
-                <th class="nowrap tc" style="width:9%;">잔여점수</th>
-                <th class="nowrap tc" style="width:9%;">누적디텐션점수</th>
-                <th class="nowrap" style="width:12%;">완료시간</th>
-                <th class="nowrap tc" style="width:8%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:7%;">학반<span class="th-en">Class</span></th>
+                <th style="width:30%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:9%;">회복점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:9%;">잔여점수<span class="th-en">Remaining Points</span></th>
+                <th class="nowrap tc" style="width:9%;">누적디텐션점수<span class="th-en">Total Detention Points</span></th>
+                <th class="nowrap" style="width:12%;">완료시간<span class="th-en">Completed</span></th>
+                <th class="nowrap tc" style="width:8%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-done-tbody"></tbody>
@@ -3437,7 +3467,7 @@
           return `<td style="min-width:130px;max-width:200px"><span class="cell-reason-preview">${esc(r.adminNote||'-')}</span></td>`;
         }
         return `<td onclick="event.stopPropagation()" style="min-width:130px;max-width:200px">
-          <input class="edit-input admin-note-input" style="width:100%" value="${esc(r.adminNote||'')}" placeholder="관리자 노트"
+          <input class="edit-input admin-note-input" style="width:100%" value="${esc(r.adminNote||'')}" placeholder="관리자 노트 | Admin Note"
             oninput="entries['${esc(r.key)}'].adminNote=this.value"
             onblur="saveAdminNote('${esc(r.key)}',this.value)">
         </td>`;
