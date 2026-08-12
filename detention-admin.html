@@ -733,7 +733,13 @@
     .entry-filter-btn{padding:6px 10px;line-height:1.2}
     .small-btn{line-height:1.2;min-height:28px}
     @media(max-width:760px){.content{width:100%}}
-</style>
+
+    /* 2026-08 bilingual control fit pass */
+    .admin-center-actions, .settings-action-row, .teacher-account-actions, .filter-bar{flex-wrap:wrap;}
+    .admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{white-space:nowrap;min-width:max-content;}
+    @media(max-width:760px){.admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{min-width:0;white-space:normal;}}
+
+  </style>
 </head>
 <body>
   <div id="toast"></div>

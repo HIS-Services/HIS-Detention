@@ -42,7 +42,13 @@ tr:hover td{background:#edf3ff}
 .log{background:#f8f9fc;border:1px solid #d8dded;border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;color:#374151}
 .notice{padding:10px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;color:#6b4f10;font-size:13px;margin-bottom:10px}
 @media(max-width:768px){.content{width:100%}}
-</style>
+
+    /* 2026-08 bilingual control fit pass */
+    .admin-center-actions, .settings-action-row, .teacher-account-actions, .filter-bar{flex-wrap:wrap;}
+    .admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{white-space:nowrap;min-width:max-content;}
+    @media(max-width:760px){.admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{min-width:0;white-space:normal;}}
+
+  </style>
 </head>
 <body>
 <div class="topbar">

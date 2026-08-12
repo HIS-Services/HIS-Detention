@@ -492,3 +492,40 @@ tbody tr:hover td .edit-input{
   width:100%;
   min-width:0;
 }
+
+/* 2026-08 bilingual fit pass: keep controls readable without clipping */
+.btn,
+.tab-btn,
+button.small-btn,
+a.btn{
+  width:auto;
+  max-width:100%;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+.filter-bar,
+.card-title{
+  flex-wrap:wrap;
+}
+
+@media (min-width: 769px){
+  .btn,
+  .tab-btn,
+  button.small-btn,
+  a.btn{
+    min-width:max-content;
+  }
+}
+
+@media (max-width: 768px){
+  .btn,
+  .tab-btn,
+  button.small-btn,
+  a.btn{
+    min-width:0;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    text-align:center;
+  }
+}

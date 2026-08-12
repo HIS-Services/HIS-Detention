@@ -817,7 +817,62 @@
       .teacher-shell{align-items:flex-start}
       .teacher-actions{width:100%;justify-content:flex-start}
     }
-</style>
+
+    /* 2026-08 bilingual roster fit pass */
+    .student-overview-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+      align-items:start;
+    }
+    .student-overview-grid > div{min-width:0;}
+    .student-overview-grid table{width:100%;table-layout:fixed;}
+    .student-overview-grid th,
+    .student-overview-grid td{overflow:hidden;}
+    .student-overview-grid th{
+      line-height:1.2;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      vertical-align:middle;
+    }
+    .student-overview-grid .student-view-btn{
+      min-width:72px;
+      padding:4px 8px;
+      font-size:11px;
+      line-height:1.2;
+      white-space:nowrap;
+      max-width:none;
+    }
+    #tab-students .filter-bar{
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    #tab-students .filter-bar .btn{min-width:max-content;}
+    .teacher-actions .btn,
+    .teacher-actions a.btn{
+      min-width:max-content;
+      padding-left:10px !important;
+      padding-right:10px !important;
+    }
+    .teacher-nav-buttons .tab-btn{
+      min-width:max-content;
+      white-space:nowrap;
+    }
+    .lookup-search-btn{
+      min-width:118px;
+      padding:0 14px;
+      white-space:nowrap;
+    }
+    @media(max-width:1180px){
+      .student-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media(max-width:760px){
+      .student-overview-grid{grid-template-columns:1fr;}
+      .student-overview-grid .student-view-btn{min-width:68px;}
+    }
+
+  </style>
 </head>
 <body>
   <div id="toast"></div>
@@ -1400,7 +1455,7 @@
           <div id="student-roster-warning" class="notice" style="display:none;margin:0 0 10px 0;">
             학생 명단 DB가 비어 있어 기록 데이터 기준으로 학생을 표시하고 있습니다. | The student roster DB is empty, so students are shown from records.
           </div>
-          <div id="student-class-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+          <div id="student-class-grid" class="student-overview-grid"></div>
         </div>
 
         <!-- 상세 뷰 (보기 클릭 시) -->
@@ -3855,7 +3910,7 @@
       const sortedClasses = Object.keys(classMap).sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
 
       if(!sortedClasses.length){
-        grid.innerHTML='<div class="empty" style="padding:24px;grid-column:1/-1">학생이 없습니다.</div>';
+        grid.innerHTML='<div class="empty" style="padding:24px;grid-column:1/-1">학생이 없습니다. | No students found.</div>';
         return;
       }
 
@@ -3872,7 +3927,7 @@
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
             <td style="text-align:center;font-size:11px;color:var(--sb);white-space:nowrap">${overall}</td>
             <td style="text-align:center;padding:0 2px;white-space:nowrap">
-              <button class="btn-view" style="padding:1px 6px;font-size:11px;line-height:1.1;white-space:nowrap;min-width:34px" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
+              <button class="btn-view student-view-btn" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
             </td>
           </tr>`;
         }).join('');
@@ -3880,16 +3935,16 @@
         return `<div style="background:#fff;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
           <div style="background:linear-gradient(120deg,var(--nv),var(--nv2));color:#fff;font-weight:800;font-size:13px;padding:6px 10px;display:flex;justify-content:space-between">
             <span>${esc(cls)}</span>
-            <span style="font-size:11px;opacity:.75;font-weight:500">${list.length}명</span>
+            <span style="font-size:11px;opacity:.82;font-weight:500;white-space:nowrap">${list.length}명 | ${list.length} students</span>
           </div>
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:34%">이름</th>
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:34%">영문명</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">잔여</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">누적</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:12%"></th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:29%">이름 | Name</th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:31%">영문명 | English</th>
+                <th style="font-size:11px;padding:4px;text-align:center;width:10%">잔여 | Rem.</th>
+                <th style="font-size:11px;padding:4px;text-align:center;width:10%">누적 | Total</th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%">보기 | View</th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
