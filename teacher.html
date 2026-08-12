@@ -3970,11 +3970,11 @@
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:29%">이름 | Name</th>
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:31%">영문명 | English</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">잔여 | Rem.</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">누적 | Total</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%">보기 | View</th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:28%;white-space:nowrap">이름 | Name</th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:30%;white-space:nowrap">영문명 | English</th>
+                <th style="font-size:11px;padding:4px;text-align:center;width:13%;white-space:nowrap">잔여 | Rem.</th>
+                <th style="font-size:11px;padding:4px;text-align:center;width:13%;white-space:nowrap">누적 | Total</th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:16%;white-space:nowrap">보기 | View</th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
@@ -6235,7 +6235,9 @@
       const lockKey = 'student_teacher_mail_' + studentKey + '_' + level;
       const student={key:studentKey,...(students[studentKey]||{})};
       const re2=level==='ms'?getTeacherEmailsByRole('ms_restore'):getTeacherEmailsByRole('hs_restore');
-      const to=[student.selfEmail,student.homeroomTeacherEmail,...re2].filter(Boolean).join(',');
+      const directorEmails=getTeacherEmailsByRole('director');
+      const teamLeaderEmails=getTeacherEmailsByRole('team_leader');
+      const to=[...new Set([student.selfEmail,student.homeroomTeacherEmail,...re2,...directorEmails,...teamLeaderEmails].filter(Boolean))].join(',');
       if(!to) return toast('학생/교사 이메일이 없습니다.','err');
       if (_noticeInProgress[lockKey]) return toast('처리 중입니다. 잠시 후 다시 시도해 주세요.', 'warn');
       _noticeInProgress[lockKey] = true;

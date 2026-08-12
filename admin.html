@@ -427,6 +427,7 @@
                 <option value="basic">기본 교사 | Basic</option>
                 <option value="confirm">디텐션 확정 | Confirm</option>
                 <option value="notice_recovery">알림·회복교육 | Notice/Recovery</option>
+                <option value="student_life">학생생활 | Student Life</option>
                 <option value="committee">위원회 | Committee</option>
                 <option value="admin">Master·Admin</option>
               </select>
@@ -547,7 +548,7 @@
         <div class="card">
           <div class="card-title">교사 계정 CSV 업로드 | Teacher CSV Upload</div>
           <div class="notice">CSV 첫 줄 | Header: name,email,password,homeroom,roles</div>
-          <div class="small" style="margin-bottom:10px;">roles 예시 | Example: default|confirm|ms_notice|hs_notice|ms_restore|hs_restore|committee_view|committee_edit|master|admin</div>
+          <div class="small" style="margin-bottom:10px;">roles 예시 | Example: default|confirm|ms_notice|hs_notice|ms_restore|hs_restore|director|team_leader|committee_view|committee_edit|master|admin</div>
           <div class="filter-bar">
             <select id="teacher-csv-enc" class="edit-input">
               <option value="utf-8">UTF-8</option>
@@ -614,6 +615,8 @@
       { key: 'hs_notice', label: '고등 알림 | HS Notice', group: '알림' },
       { key: 'ms_restore', label: '중등 회복교육 | MS Restore', group: '회복교육' },
       { key: 'hs_restore', label: '고등 회복교육 | HS Restore', group: '회복교육' },
+      { key: 'director', label: 'Director', group: '학생생활 | Student Life' },
+      { key: 'team_leader', label: 'Team Leader', group: '학생생활 | Student Life' },
       { key: 'committee_view', label: '조회 | View', group: '위원회' },
       { key: 'committee_edit', label: '수정 | Edit', group: '위원회' },
       { key: 'master', label: 'Master', group: '관리 권한' },
@@ -1383,15 +1386,16 @@
     }
 
     function roleLabels(roles){
-      const map={default:'기본권한',confirm:'디텐션 확정',ms_notice:'중등 알림',hs_notice:'고등 알림',ms_restore:'중등 회복교육',hs_restore:'고등 회복교육',committee_view:'위원회 조회',committee_edit:'위원회 수정',master:'Master',admin:'Admin'};
+      const map={default:'기본권한',confirm:'디텐션 확정',ms_notice:'중등 알림',hs_notice:'고등 알림',ms_restore:'중등 회복교육',hs_restore:'고등 회복교육',director:'Director',team_leader:'Team Leader',committee_view:'위원회 조회',committee_edit:'위원회 수정',master:'Master',admin:'Admin'};
       return normalizeRoles(roles).map(r=>map[r]||r).join(', ') || '-';
     }
     function teacherMatchesRoleFilter(roles, filter) {
       const set = new Set(normalizeRoles(roles));
       if (!filter || filter === 'all') return true;
-      if (filter === 'basic') return set.has('default') && !['confirm','ms_notice','hs_notice','ms_restore','hs_restore','committee_view','committee_edit','master','admin'].some(role => set.has(role));
+      if (filter === 'basic') return set.has('default') && !['confirm','ms_notice','hs_notice','ms_restore','hs_restore','director','team_leader','committee_view','committee_edit','master','admin'].some(role => set.has(role));
       if (filter === 'confirm') return set.has('confirm');
       if (filter === 'notice_recovery') return ['ms_notice','hs_notice','ms_restore','hs_restore'].some(role => set.has(role));
+      if (filter === 'student_life') return set.has('director') || set.has('team_leader');
       if (filter === 'committee') return set.has('committee_view') || set.has('committee_edit');
       if (filter === 'admin') return set.has('master') || set.has('admin');
       return true;
@@ -1410,6 +1414,8 @@
       if (recovery[0] && recovery[1]) badges.push(['회복','']);
       else if (recovery[0]) badges.push(['MS 회복','']);
       else if (recovery[1]) badges.push(['HS 회복','']);
+      if (set.has('director')) badges.push(['Director','']);
+      if (set.has('team_leader')) badges.push(['Team Leader','']);
       if (set.has('committee_edit')) badges.push(['위원회 수정','']);
       else if (set.has('committee_view')) badges.push(['위원회 조회','']);
       if (!badges.length && set.has('default')) badges.push(['기본','primary']);
@@ -1504,6 +1510,10 @@
             <tr><th>고등 | HS</th><td>${matrixCheck('hs_notice','고등 알림')}</td><td>${matrixCheck('hs_restore','고등 회복교육')}</td></tr>
           </tbody></table>
         </div>
+        <div class="admin-form-section"><div class="admin-form-title">학생생활 | Student Life</div><div class="teacher-permission-grid">
+          ${roleCheck('director','Director')}
+          ${roleCheck('team_leader','Team Leader')}
+        </div><div class="teacher-permission-note">학생·교사 메일 수신자에 자동 포함됩니다. | Automatically included in Student/Teacher Email recipients.</div></div>
         <div class="admin-form-section"><div class="admin-form-title">위원회 | Committee</div><div class="teacher-permission-grid">
           ${roleCheck('committee_view','조회 | View')}
           ${roleCheck('committee_edit','수정 | Edit')}
