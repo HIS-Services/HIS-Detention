@@ -147,13 +147,14 @@
     .recent-entry-datetime{font-size:12px;color:var(--sb);line-height:1.4}
     .recent-empty{border:1px dashed var(--bd);border-radius:12px;padding:18px 12px;text-align:center;font-size:13px;color:var(--sb);background:#fff}
 
-    .status-confirmed,.status-pending,.status-rejected{
+    .status-confirmed,.status-pending,.status-rejected,.status-cancelled{
       padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
       display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1.2;min-width:96px
     }
     .status-confirmed{background:#e8f8ee;color:#15803D}
     .status-pending{background:#eef3ff;color:#1B2F7A}
     .status-rejected{background:#fde8e8;color:#DC2626}
+    .status-cancelled{background:#eef1f5;color:#596579}
 
     .tbl-wrap table{width:100%;border-collapse:separate;border-spacing:0}
     .tbl-wrap th,.tbl-wrap td{font-size:12px;padding:7px 8px;vertical-align:top;line-height:1.35}
@@ -1218,8 +1219,8 @@
       <div class="card">
         <div class="card-title">디텐션 확정 | Confirm Detention</div>
         <div class="notice">
-          <div>디텐션 확정 권한은 대기·확정·반려 기록을 조회하고 수정·처리할 수 있습니다.</div>
-          <div>Users with Detention Confirm permission can review, edit, confirm, or reject records.</div>
+          <div>디텐션 확정 권한은 대기·확정·반려·취소 기록을 조회하고 필요한 기록을 처리할 수 있습니다.</div>
+          <div>Users with Detention Confirm permission can review pending, confirmed, rejected, and cancelled records and process eligible records.</div>
         </div>
 
         <div class="filter-bar" style="margin-top:10px;">
@@ -1228,6 +1229,7 @@
             <option value="임시저장">대기 | Pending</option>
             <option value="확정">확정 | Confirmed</option>
             <option value="반려">반려 | Rejected</option>
+            <option value="취소">취소 | Cancelled</option>
           </select>
           <input id="confirm-search" class="edit-input flex1" placeholder="학생명/영문명/구분/위반행위 검색 | Search student/English/category/violation">
         </div>
@@ -1856,8 +1858,10 @@
     }
 
     function statusBadge(status){
-      if (status === '확정') return '<span class="status-confirmed">확정 | Confirmed</span>';
-      if (status === '반려') return '<span class="status-rejected">반려 | Rejected</span>';
+      const s = String(status || '임시저장');
+      if (s === '확정') return '<span class="status-confirmed">확정 | Confirmed</span>';
+      if (s === '반려') return '<span class="status-rejected">반려 | Rejected</span>';
+      if (s === '취소') return '<span class="status-cancelled">취소 | Cancelled</span>';
       return '<span class="status-pending">대기 | Pending</span>';
     }
 
@@ -1865,6 +1869,7 @@
       if (status === '임시저장') return 0;
       if (status === '반려') return 1;
       if (status === '확정') return 2;
+      if (status === '취소') return 3;
       return 9;
     }
 
@@ -3515,8 +3520,11 @@
         const canEditDate = canEditRecordDate(); // admin 전용, master 제외
         return arr.map(r => {
           const expanded     = expandedConfirmKeys.has(r.key);
-          const canReject    = canManage && String(r.status||'')==='확정';
-          const canCommittee = canManage && String(r.status||'')==='확정';
+          const recordStatus = String(r.status || '임시저장');
+          const canReject    = canManage && recordStatus === '확정';
+          const canCommittee = canManage && recordStatus === '확정';
+          const canUndoProcessing = canManage && (recordStatus === '확정' || recordStatus === '반려');
+          const isCancelled  = recordStatus === '취소';
           const isReferral   = r.isReferral===true||r.isReferral==='true';
 
           // admin 전용 날짜 편집 인풋 생성
@@ -3545,19 +3553,21 @@
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
                 <div class="detail-section">
-                  <div class="detail-title">처리 정보${canEditDate?' <span style="font-size:10px;color:var(--sb);font-weight:400">(admin: 날짜 편집 가능)</span>':''}</div>
+                  <div class="detail-title">처리 정보 | Processing Info${canEditDate?' <span style="font-size:10px;color:var(--sb);font-weight:400">(Admin: dates editable)</span>':''}</div>
                   <div class="detail-content" style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center;white-space:normal">
-                    <span style="color:var(--sb)">작성:</span>${entryDateInput(r.createdAt,   'createdAt',   '')}
-                    <span style="color:var(--sb)">확정:</span>${entryDateInput(r.confirmedAt,'confirmedAt','')}
-                    <span style="color:var(--sb)">반려:</span>${entryDateInput(r.rejectedAt, 'rejectedAt', '')}
-                    <span style="color:var(--sb)">노트:</span><span>${esc(r.adminNote||'-')}</span>
+                    <span style="color:var(--sb)">작성 | Created:</span>${entryDateInput(r.createdAt,   'createdAt',   '')}
+                    <span style="color:var(--sb)">확정 | Confirmed:</span>${entryDateInput(r.confirmedAt,'confirmedAt','')}
+                    <span style="color:var(--sb)">반려 | Rejected:</span>${entryDateInput(r.rejectedAt, 'rejectedAt', '')}
+                    <span style="color:var(--sb)">취소 | Cancelled:</span><span>${r.cancelledAt ? fmt(r.cancelledAt) : '-'}</span>
+                    <span style="color:var(--sb)">취소자 | Cancelled by:</span><span>${esc(r.cancelledBy || '-')}${r.cancelledByEmail ? ' ('+esc(r.cancelledByEmail)+')' : ''}</span>
+                    <span style="color:var(--sb)">노트 | Note:</span><span>${esc(r.adminNote||'-')}</span>
                   </div>
                 </div>
-                ${(canReject||canCommittee||canManage)?`
+                ${(canReject||canCommittee||canUndoProcessing)?`
                 <div class="detail-section"><div class="detail-title">처리 | Actions</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                     ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
-                    ${canManage   ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${String(r.status||'')==='확정'?'확정취소':'반려취소'}</button>`:''}
+                    ${canUndoProcessing ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${recordStatus==='확정'?'확정취소 | Undo Confirm':'반려취소 | Undo Reject'}</button>`:''}
                     ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동 | Manual Committee</button>`:''}
                   </div>
                 </div>`:''}
@@ -4702,7 +4712,7 @@
           title:r.violation||'-',
           left:`${String(r.totalPoints??0)}점`,
           right:recordStatusBilingual(r.status),
-          state:String(r.status||'')==='확정'?'confirmed':String(r.status||'')==='반려'?'rejected':'pending'
+          state:String(r.status||'')==='확정'?'confirmed':String(r.status||'')==='반려'?'rejected':String(r.status||'')==='취소'?'cancelled':'pending'
         });
       });
       noticeList.forEach(function(r, detailIndex){
