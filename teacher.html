@@ -1092,7 +1092,7 @@
 
         <aside class="entry-recent-card" aria-labelledby="recent-entry-title">
           <div class="entry-card-head">
-            <div id="recent-entry-title" class="entry-card-title" style="font-size:16px;">최근 입력 내역 <small>Recent Entries</small></div>
+            <div id="recent-entry-title" class="entry-card-title" style="font-size:16px;">최근 대기 입력 <small>Recent Pending Entries</small></div>
             <span id="recent-entry-scope" class="small" style="font-weight:700;color:#5b657a;"></span>
           </div>
           <div id="recent-entry-list" class="recent-entry-list"></div>
@@ -3305,20 +3305,32 @@
     function renderRecentEntries(){
       const box = document.getElementById('recent-entry-list');
       const scope = document.getElementById('recent-entry-scope');
+      const adminView = isAdminRole();
+
       if(scope){
-        scope.textContent = hasFullWorkRole()
-          ? '전체 교사 최신 10건 | All teachers'
-          : `${String((teacher && teacher.name) || '').trim()} 입력 최신 10건 | My entries`;
+        scope.textContent = adminView
+          ? '전체 교사 대기 최신 10건 | All teachers · Pending'
+          : `${String((teacher && teacher.name) || '').trim()} 대기 최신 10건 | My pending entries`;
       }
-      const normalizeTeacherName = value => String(value || '').trim().toLowerCase();
+
+      const currentTeacherEmail = normalizeTeacherEmail(teacher && teacher.email);
       const currentTeacherName = normalizeTeacherName(teacher && teacher.name);
+
       const list = Object.entries(entries || {}).map(([key, value]) => ({ key, ...(value || {}) }))
-        .filter(r => hasFullWorkRole() || normalizeTeacherName(r.teacherName) === currentTeacherName)
+        // This panel is specifically for entries that can still be cancelled.
+        .filter(r => String(r.status || '임시저장') === '임시저장')
+        // Admins can see/cancel any pending entry. Everyone else sees only their own.
+        .filter(r => {
+          if(adminView) return true;
+          const recordEmail = normalizeTeacherEmail(r.teacherEmail);
+          if(recordEmail && currentTeacherEmail) return recordEmail === currentTeacherEmail;
+          return normalizeTeacherName(r.teacherName) === currentTeacherName;
+        })
         .sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
         .slice(0, 10);
 
       if (!list.length){
-        box.innerHTML = `<div class="recent-empty">기록이 없습니다. | No records found.</div>`;
+        box.innerHTML = `<div class="recent-empty">대기 중인 입력이 없습니다. | No pending entries.</div>`;
         return;
       }
 
