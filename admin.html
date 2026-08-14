@@ -1197,6 +1197,7 @@
     }
 
     async function changeAdminPassword() {
+      if (!isCurrentAdmin()) return toast('Admin만 관리자 비밀번호를 변경할 수 있습니다.\nOnly an Admin can change the administrator password.', 'err');
       await ensureFirebaseAuth();
       const currentPw = document.getElementById('current-admin-pw').value;
       const newPw = document.getElementById('new-admin-pw').value;
@@ -1399,6 +1400,16 @@
 
         teachersRaw = t.val() || {};
         studentsRaw = s.val() || {};
+
+        // Security rules use roleFlags as the authoritative, fixed-position
+        // permission map. Backfill/repair them from the saved roles whenever
+        // an Admin opens the Admin Center.
+        try {
+          await syncAllTeacherRoleFlagsIfAdmin();
+        } catch (roleSyncError) {
+          console.error('Teacher roleFlags security sync failed:', roleSyncError);
+          toast('권한 보안 동기화 실패 | Role security sync failed', 'err');
+        }
 
         teacherRows = Object.entries(teachersRaw).map(([k, v]) => ({
           oldKey: k, name: v.name || '', email: v.email || '', password: v.password || '',
@@ -1793,6 +1804,73 @@
       };
     }
 
+    function buildRoleFlagsForRoles(rawRoles) {
+      let roles = normalizeRoles(rawRoles);
+
+      // Match the application's effective hierarchy.
+      if (roles.includes('admin')) roles = ['admin'];
+      else if (roles.includes('master')) roles = ['master'];
+      else {
+        roles = roles.filter(role => role !== 'default');
+        if (!roles.length) roles = ['default'];
+      }
+
+      const has = role => roles.includes(role);
+      const legacyCommittee = has('committee');
+
+      return {
+        default: roles.length === 1 && has('default'),
+        confirm: has('confirm'),
+        ms_notice: has('ms_notice'),
+        hs_notice: has('hs_notice'),
+        ms_restore: has('ms_restore'),
+        hs_restore: has('hs_restore'),
+        committee_view: has('committee_view') || has('committee_edit') || legacyCommittee,
+        committee_edit: has('committee_edit') || legacyCommittee,
+        director: has('director'),
+        team_leader: has('team_leader'),
+        admin: has('admin'),
+        master: has('master'),
+        auditManager: has('admin') || has('master')
+      };
+    }
+
+    function roleFlagsEqual(a, b) {
+      const keys = [
+        'default','confirm','ms_notice','hs_notice','ms_restore','hs_restore',
+        'committee_view','committee_edit','director','team_leader',
+        'admin','master','auditManager'
+      ];
+      return keys.every(key => !!(a && a[key]) === !!(b && b[key]));
+    }
+
+    async function syncAllTeacherRoleFlagsIfAdmin() {
+      if (!isCurrentAdmin()) return false;
+
+      const updates = {};
+      Object.entries(teachersRaw || {}).forEach(([key, teacherRecord]) => {
+        const desired = buildRoleFlagsForRoles((teacherRecord || {}).roles || (teacherRecord || {}).role || []);
+        const current = (teacherRecord || {}).roleFlags || {};
+        if (!roleFlagsEqual(current, desired)) {
+          updates[`teachers/${key}/roleFlags`] = desired;
+        }
+      });
+
+      if (!Object.keys(updates).length) return false;
+
+      await db.ref().update(updates);
+
+      // Keep the local copy in sync with what was written.
+      Object.entries(teachersRaw || {}).forEach(([key, teacherRecord]) => {
+        if (updates[`teachers/${key}/roleFlags`]) {
+          teacherRecord.roleFlags = updates[`teachers/${key}/roleFlags`];
+        }
+      });
+
+      console.info(`[Role Security] Synced ${Object.keys(updates).length} teacher roleFlags.`);
+      return true;
+    }
+
     async function saveTeachers() {
       if (!isCurrentMaster()) return toast('교사 계정 관리 권한이 없습니다.', 'err');
       if (!isCurrentAdmin()) {
@@ -1834,16 +1912,7 @@
               const cleaned = savedRoles.filter(role => role !== 'default');
               return cleaned.length ? cleaned : ['default'];
             })(),
-            roleFlags: (() => {
-              const savedRoles = normalizeRoles(r.roles);
-              const isAdmin = savedRoles.includes('admin');
-              const isMaster = !isAdmin && savedRoles.includes('master');
-              return {
-                admin: isAdmin,
-                master: isMaster,
-                auditManager: isAdmin || isMaster
-              };
-            })(),
+            roleFlags: buildRoleFlagsForRoles(r.roles),
             active: r.active !== false,
             loginProvider: String(r.loginProvider || 'google').trim() || 'google',
             updatedAt: new Date().toISOString()
