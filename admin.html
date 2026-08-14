@@ -11,15 +11,27 @@
     // 첫 화면을 그리기 전에 관리자 화면을 표시해 로그인 화면 재노출을 막습니다.
     function hasAdminCenterSessionEarly() {
       try {
-        if (sessionStorage.getItem('his_admin_session') === '1') return true;
         const teacher = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
         const raw = teacher.roles ?? teacher.role ?? [];
-        const roles = Array.isArray(raw)
+        const roles = (Array.isArray(raw)
           ? raw
           : (raw && typeof raw === 'object')
             ? Object.keys(raw).filter(key => raw[key])
-            : String(raw || '').split(/[|,\s]+/).filter(Boolean);
-        return roles.map(role => String(role).toLowerCase()).some(role => role === 'admin' || role === 'master');
+            : String(raw || '').split(/[|,\s]+/).filter(Boolean)
+        ).map(role => String(role).toLowerCase());
+
+        const hasGoogleIdentity =
+          teacher &&
+          teacher.authProvider === 'google' &&
+          String(teacher.email || teacher.authEmail || '').trim();
+
+        // A signed-in Google teacher always uses their actual saved roles.
+        if (hasGoogleIdentity) return roles.some(role => role === 'admin' || role === 'master');
+
+        // Legacy password admin remains only as a fallback when there is no Google teacher identity.
+        if (sessionStorage.getItem('his_admin_session') === '1') return true;
+
+        return roles.some(role => role === 'admin' || role === 'master');
       } catch (e) { return false; }
     }
     try {
@@ -709,12 +721,30 @@
       return normalized.filter(v => v !== 'committee');
     }
 
+    function currentTeacherSession() {
+      try { return JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {}; }
+      catch (e) { return {}; }
+    }
+    function hasGoogleTeacherIdentity(session = currentTeacherSession()) {
+      return !!(
+        session &&
+        session.authProvider === 'google' &&
+        String(session.email || session.authEmail || '').trim()
+      );
+    }
     function currentManagerRoles() {
+      const session = currentTeacherSession();
+
+      // If a real Google teacher is signed in, never let the old password-admin
+      // session upgrade or override that teacher's actual Admin/Master role.
+      if (hasGoogleTeacherIdentity(session)) {
+        return normalizeRoles(session.roles ?? session.role ?? []);
+      }
+
+      // Legacy password Admin is retained only as a fallback.
       if (sessionStorage.getItem('his_admin_session') === '1') return ['admin'];
-      try {
-        const teacher = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
-        return normalizeRoles(teacher.roles ?? teacher.role ?? []);
-      } catch (e) { return []; }
+
+      return normalizeRoles(session.roles ?? session.role ?? []);
     }
     function isCurrentAdmin() { return currentManagerRoles().includes('admin'); }
     function isCurrentMaster() { return isCurrentAdmin() || currentManagerRoles().includes('master'); }
@@ -892,17 +922,30 @@
     }
 
     function hasAdminCenterSession() {
+      const session = currentTeacherSession();
+      const roles = normalizeRoles(session.roles ?? session.role ?? []);
+
+      if (hasGoogleTeacherIdentity(session)) {
+        return roles.some(role => role === 'admin' || role === 'master');
+      }
+
       if (sessionStorage.getItem('his_admin_session') === '1') return true;
-      return getSessionRoleNames().some(role => role === 'admin' || role === 'master');
+      return roles.some(role => role === 'admin' || role === 'master');
     }
 
     function ensurePasswordAdminIdentity() {
       if (sessionStorage.getItem('his_admin_session') !== '1') return null;
-      try {
-        const current = JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {};
-        const roles = normalizeRoles(current.roles ?? current.role ?? []);
-        if (String(current.name || '').trim() && roles.some(role => role === 'admin' || role === 'master')) return current;
-      } catch (_) {}
+
+      const current = currentTeacherSession();
+      if (hasGoogleTeacherIdentity(current)) {
+        // Never convert a real Google Master into Admin just because a legacy
+        // password-admin flag exists in this browser session.
+        return current;
+      }
+
+      const roles = normalizeRoles(current.roles ?? current.role ?? []);
+      if (String(current.name || '').trim() && roles.includes('admin')) return current;
+
       const synthetic = { name: '관리자', email: 'admin', id: 'admin', roles: ['admin'], source: 'admin-password-session' };
       sessionStorage.setItem('his_teacher', JSON.stringify(synthetic));
       return synthetic;
@@ -1095,21 +1138,24 @@
     function updateAdminIdentity() {
       const el = document.getElementById('admin-center-identity');
       if (!el) return;
-      if (sessionStorage.getItem('his_admin_session') === '1') {
-        const current = ensurePasswordAdminIdentity() || {};
-        el.textContent = `${String(current.name || '관리자')} · Admin${current.email ? ' · ' + current.email : ''}`;
-        return;
-      }
-      try {
-        const current = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+
+      const current = currentTeacherSession();
+      if (hasGoogleTeacherIdentity(current)) {
         const roles = normalizeRoles(current.roles ?? current.role ?? []);
         const roleLabel = roles.includes('admin') ? 'Admin' : (roles.includes('master') ? 'Master' : 'Manager');
         const name = String(current.name || '관리자').trim();
-        const email = String(current.email || '').trim();
+        const email = String(current.email || current.authEmail || '').trim();
         el.textContent = `${name} · ${roleLabel}${email ? ' · ' + email : ''}`;
-      } catch (e) {
-        el.textContent = '관리자 · Admin';
+        return;
       }
+
+      if (sessionStorage.getItem('his_admin_session') === '1') {
+        const legacy = ensurePasswordAdminIdentity() || {};
+        el.textContent = `${String(legacy.name || '관리자')} · Admin${legacy.email ? ' · ' + legacy.email : ''}`;
+        return;
+      }
+
+      el.textContent = '관리자 · Admin';
     }
 
     async function checkAdmin() {
@@ -1120,8 +1166,18 @@
         document.getElementById('admin-pw').value = '';
         return toast('비밀번호가 올바르지 않습니다.\nInvalid password.', 'err');
       }
-      sessionStorage.setItem('his_admin_session', '1');
-      ensurePasswordAdminIdentity();
+      const existingGoogleSession = currentTeacherSession();
+      if (hasGoogleTeacherIdentity(existingGoogleSession)) {
+        const roles = normalizeRoles(existingGoogleSession.roles ?? existingGoogleSession.role ?? []);
+        if (!roles.some(role => role === 'admin' || role === 'master')) {
+          return toast('관리자 또는 Master 권한이 필요합니다.\nAdmin or Master permission is required.', 'err');
+        }
+        // Do not set the legacy Admin flag for a Google identity.
+        sessionStorage.removeItem('his_admin_session');
+      } else {
+        sessionStorage.setItem('his_admin_session', '1');
+        ensurePasswordAdminIdentity();
+      }
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('admin-screen').classList.remove('hidden');
       updateAdminIdentity();
@@ -1667,6 +1723,33 @@
       checkStudentDirty();
     }
 
+    function syncCurrentTeacherSessionFromSavedRows() {
+      const session = currentTeacherSession();
+      if (!hasGoogleTeacherIdentity(session)) return { changed:false, lostManagerAccess:false };
+
+      const sessionEmail = String(session.email || session.authEmail || '').trim().toLowerCase();
+      const saved = teacherRows.find(row =>
+        !row._delete &&
+        String(row.email || '').trim().toLowerCase() === sessionEmail
+      );
+      if (!saved) return { changed:false, lostManagerAccess:false };
+
+      const nextRoles = normalizeRoles(saved.roles);
+      const nextSession = {
+        ...session,
+        name: String(saved.name || session.name || '').trim(),
+        email: String(saved.email || session.email || '').trim().toLowerCase(),
+        roles: nextRoles,
+        homeroom: String(saved.homeroom || ''),
+        active: saved.active !== false
+      };
+      sessionStorage.setItem('his_teacher', JSON.stringify(nextSession));
+      return {
+        changed:true,
+        lostManagerAccess: !nextRoles.includes('admin') && !nextRoles.includes('master')
+      };
+    }
+
     async function saveTeachers() {
       if (!isCurrentMaster()) return toast('교사 계정 관리 권한이 없습니다.', 'err');
       if (!isCurrentAdmin()) {
@@ -1729,8 +1812,18 @@
         // 삭제는 개별 remove
         await Promise.all(removes.map(k => db.ref(`teachers/${k}`).remove()));
 
+        const sessionSync = syncCurrentTeacherSessionFromSavedRows();
+
         toast('교사 데이터가 저장되었습니다.\nTeacher data has been saved.', 'ok');
-        refreshAll();
+
+        if (sessionSync.lostManagerAccess) {
+          sessionStorage.removeItem('his_admin_session');
+          setTimeout(() => { location.href = 'teacher.html'; }, 250);
+          return;
+        }
+
+        await refreshAll();
+        updateAdminIdentity();
       } catch (e) {
         console.error(e);
         toast('교사 데이터 저장 실패\nFailed to save teacher data', 'err');
