@@ -1517,20 +1517,37 @@
       const set = new Set(normalizeRoles(row.roles));
 
       if (checked) {
+        // Admin/Master already include full operational permissions. If one is
+        // selected, functional checkboxes do not accumulate underneath it.
+        if (!['admin','master','default'].includes(role) && (set.has('admin') || set.has('master'))) {
+          toast('Admin/Master는 모든 기능 권한을 이미 포함합니다.\nAdmin/Master already includes all functional permissions.', 'warn');
+          renderTeachers();
+          renderTeacherDetail();
+          return;
+        }
+
         set.add(role);
 
-        // Default / Master / Admin are privilege levels, not additive flags.
-        // Choosing one must remove the other privilege-level roles so Firebase
-        // receives an unambiguous role set.
-        if (role === 'default') {
-          set.delete('admin');
-          set.delete('master');
+        // Default is a fallback-only role. Any real/special permission overrides it.
+        if (role !== 'default') {
+          set.delete('default');
+        }
+
+        // Admin and Master are override privilege levels, not additive roles.
+        // Store only the selected override role so old functional permissions
+        // cannot unexpectedly reappear later after a demotion.
+        if (role === 'admin') {
+          set.clear();
+          set.add('admin');
         } else if (role === 'master') {
-          set.delete('admin');
-          set.delete('default');
-        } else if (role === 'admin') {
-          set.delete('master');
-          set.delete('default');
+          set.clear();
+          set.add('master');
+        }
+
+        // Explicitly choosing Default resets every other permission.
+        if (role === 'default') {
+          set.clear();
+          set.add('default');
         }
       } else {
         set.delete(role);
@@ -1538,6 +1555,12 @@
 
       if (role === 'committee_edit' && checked) set.add('committee_view');
       if (role === 'committee_view' && !checked) set.delete('committee_edit');
+
+      // If the last special permission is removed, fall back to Default.
+      if (set.size === 0) set.add('default');
+
+      // Never persist Default alongside another role.
+      if (set.size > 1) set.delete('default');
 
       row.roles = [...set];
       checkTeacherDirty();
@@ -1804,12 +1827,23 @@
             email: String(r.email || '').trim().toLowerCase(),
             password: String(r.password || '').trim(),
             homeroom: String(r.homeroom || '').trim(),
-            roles: normalizeRoles(r.roles),
-            roleFlags: {
-              admin: normalizeRoles(r.roles).includes('admin'),
-              master: normalizeRoles(r.roles).includes('master'),
-              auditManager: normalizeRoles(r.roles).some(role => role === 'admin' || role === 'master')
-            },
+            roles: (() => {
+              const savedRoles = normalizeRoles(r.roles).filter(Boolean);
+              if (savedRoles.includes('admin')) return ['admin'];
+              if (savedRoles.includes('master')) return ['master'];
+              const cleaned = savedRoles.filter(role => role !== 'default');
+              return cleaned.length ? cleaned : ['default'];
+            })(),
+            roleFlags: (() => {
+              const savedRoles = normalizeRoles(r.roles);
+              const isAdmin = savedRoles.includes('admin');
+              const isMaster = !isAdmin && savedRoles.includes('master');
+              return {
+                admin: isAdmin,
+                master: isMaster,
+                auditManager: isAdmin || isMaster
+              };
+            })(),
             active: r.active !== false,
             loginProvider: String(r.loginProvider || 'google').trim() || 'google',
             updatedAt: new Date().toISOString()

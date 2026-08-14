@@ -1774,7 +1774,12 @@
 
     function getTeacherRoles(teacherData){
       const data = teacherData || {};
-      return Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
+      let roles = Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
+      // Firebase role hierarchy is authoritative.
+      if (roles.includes('admin')) return ['admin'];
+      if (roles.includes('master')) return ['master'];
+      const nonDefault = roles.filter(role => role !== 'default');
+      return nonDefault.length ? nonDefault : ['default'];
     }
 
     function syncCurrentTeacherRolesFromFirebase(){
@@ -1828,6 +1833,41 @@
 
       setupRoleVisibility();
       return previous !== JSON.stringify([...freshRoles].sort());
+    }
+
+    let _currentTeacherRoleRef = null;
+    function setupCurrentTeacherRoleRealtimeSync(){
+      if(!teacher || !teacher.email || !db) return;
+      const key = String(teacher.email || '').trim().toLowerCase().replace(/\./g, '_');
+      if(!key) return;
+
+      if(_currentTeacherRoleRef){
+        try{ _currentTeacherRoleRef.off('value'); }catch(_){}
+      }
+
+      _currentTeacherRoleRef = db.ref('teachers/' + key);
+      _currentTeacherRoleRef.on('value', snap => {
+        const fresh = snap.val();
+        if(!fresh) return;
+
+        teachers[key] = fresh;
+        const changed = syncCurrentTeacherRolesFromFirebase();
+
+        // If the account is disabled, stop the session immediately.
+        if(fresh.active === false){
+          toast('이 교사 계정은 비활성화되었습니다.\nThis teacher account has been disabled.', 'err');
+          setTimeout(() => logoutTeacher(), 300);
+          return;
+        }
+
+        if(changed){
+          // Re-render permission-sensitive sections against the new Firebase roles.
+          renderConfirmTable();
+          renderNotifyTables();
+          renderRecoveryTables();
+          renderDisciplineTab();
+        }
+      }, err => console.warn('Teacher role realtime sync failed:', err));
     }
 
     function isAdminRole(){ return teacherRoles.includes('admin'); }
@@ -1939,8 +1979,52 @@
     }
 
     function rolesLabel(roles){
-      const list = normalizeRoles(roles);
-      return list.length ? list.join(', ') : '권한 없음 | No Roles';
+      let list = normalizeRoles(roles);
+
+      // Privilege hierarchy for display:
+      // Admin overrides everything. Master overrides all non-Admin roles.
+      if (list.includes('admin')) return 'Admin';
+      if (list.includes('master')) return 'Master';
+
+      // Default is only meaningful when it is the teacher's sole permission.
+      const nonDefault = list.filter(role => role !== 'default');
+      list = nonDefault.length ? nonDefault : ['default'];
+
+      // committee_edit already includes committee_view, so avoid a redundant label.
+      if (list.includes('committee_edit')) {
+        list = list.filter(role => role !== 'committee_view');
+      }
+
+      const labels = {
+        default: 'Default',
+        confirm: 'Detention Confirm',
+        ms_notice: 'MS Notice',
+        hs_notice: 'HS Notice',
+        ms_restore: 'MS Recovery',
+        hs_restore: 'HS Recovery',
+        committee_view: 'Committee View',
+        committee_edit: 'Committee Edit',
+        director: 'Director',
+        team_leader: 'Team Leader'
+      };
+
+      const order = [
+        'confirm',
+        'ms_notice','hs_notice',
+        'ms_restore','hs_restore',
+        'committee_edit','committee_view',
+        'director','team_leader',
+        'default'
+      ];
+
+      return list
+        .slice()
+        .sort((a,b) => {
+          const ai = order.indexOf(a), bi = order.indexOf(b);
+          return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+        })
+        .map(role => labels[role] || role.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()))
+        .join(' · ');
     }
 
     function setStandardSaveStatus(text){
@@ -3289,6 +3373,7 @@
 
         teachers = teacherSnap.val() || {};
         syncCurrentTeacherRolesFromFirebase();
+        setupCurrentTeacherRoleRealtimeSync();
         students = studentSnap.val() || {};
         const rawEntries = entrySnap.val() || {};
         entries = {};
