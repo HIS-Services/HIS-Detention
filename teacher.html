@@ -1836,10 +1836,22 @@
       if(studentKey && lvl){ await recalculateStudentState(String(studentKey), lvl); }
     }
     function normalizeTeacherName(value){ return String(value || '').trim().toLowerCase(); }
+    function normalizeTeacherEmail(value){ return String(value || '').trim().toLowerCase(); }
     function canCancelDraftDetention(record){
       const status = String((record && record.status) || '임시저장');
-      const own = normalizeTeacherName(record && record.teacherName) === normalizeTeacherName(teacher && teacher.name);
-      return status === '임시저장' && (getPermissions().detention.editAny || own);
+      if(status !== '임시저장') return false;
+
+      // Entry cancellation is intentionally stricter than normal detention editing:
+      // only the original submitting teacher or an Admin may cancel the entry.
+      const recordEmail = normalizeTeacherEmail(record && record.teacherEmail);
+      const currentEmail = normalizeTeacherEmail(teacher && teacher.email);
+      const ownByEmail = !!recordEmail && !!currentEmail && recordEmail === currentEmail;
+
+      // Older records may not contain teacherEmail, so retain a name fallback.
+      const ownByName = !recordEmail &&
+        normalizeTeacherName(record && record.teacherName) === normalizeTeacherName(teacher && teacher.name);
+
+      return isAdminRole() || ownByEmail || ownByName;
     }
     /* ---------- 3) 점수 / 상태 표시 헬퍼 ---------- */
     function inferPointsAfterConfirmCancel(record){
@@ -3522,6 +3534,7 @@
           const expanded     = expandedConfirmKeys.has(r.key);
           const recordStatus = String(r.status || '임시저장');
           const canReject    = canManage && recordStatus === '확정';
+          const canConfirmRejected = canManage && recordStatus === '반려';
           const canCommittee = canManage && recordStatus === '확정';
           const canUndoProcessing = canManage && (recordStatus === '확정' || recordStatus === '반려');
           const isCancelled  = recordStatus === '취소';
@@ -3571,9 +3584,10 @@
                     <span style="color:var(--sb)">노트 | Note:</span><span>${esc(r.adminNote||'-')}</span>
                   </div>
                 </div>
-                ${(canReject||canCommittee||canUndoProcessing)?`
+                ${(canReject||canConfirmRejected||canCommittee||canUndoProcessing)?`
                 <div class="detail-section"><div class="detail-title">처리 | Actions</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+                    ${canConfirmRejected ?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
                     ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                     ${canUndoProcessing ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${recordStatus==='확정'?'확정취소 | Undo Confirm':'반려취소 | Undo Reject'}</button>`:''}
                     ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동 | Manual Committee</button>`:''}
