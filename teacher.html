@@ -1777,6 +1777,59 @@
       return Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
     }
 
+    function syncCurrentTeacherRolesFromFirebase(){
+      if(!teacher || !teacher.email || !teachers) return false;
+      const email = String(teacher.email || '').trim().toLowerCase();
+      if(!email) return false;
+
+      const match = Object.values(teachers || {}).find(t =>
+        String((t && t.email) || '').trim().toLowerCase() === email
+      );
+      if(!match) return false;
+
+      const freshRoles = getTeacherRoles(match);
+      const previous = JSON.stringify([...teacherRoles].sort());
+      teacherRoles = freshRoles;
+      teacher = {
+        ...teacher,
+        name: String(match.name || teacher.name || '').trim(),
+        email,
+        homeroom: String(match.homeroom || ''),
+        roles: freshRoles,
+        active: match.active !== false
+      };
+
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {};
+        sessionStorage.setItem('his_teacher', JSON.stringify({
+          ...stored,
+          name: teacher.name,
+          email: teacher.email,
+          homeroom: teacher.homeroom,
+          roles: freshRoles,
+          active: teacher.active
+        }));
+      } catch (_) {}
+
+      permissions = null;
+      buildPermissions();
+
+      const adminCenterLink = document.getElementById('admin-center-link');
+      if(adminCenterLink) adminCenterLink.style.display = getPermissions().admin.center ? 'inline-flex' : 'none';
+
+      const info = document.getElementById('teacher-info');
+      if(info){
+        info.innerHTML = `
+          <span class="teacher-user-main"><strong>${esc(teacher.name || '사용자')}</strong><span>${esc(teacher.email || '')}</span></span>
+          <span class="teacher-role-chip">${esc(rolesLabel(freshRoles))}</span>
+          ${teacher.homeroom ? `<span class="teacher-room-chip">담당 ${esc(teacher.homeroom)}</span>` : ''}
+        `;
+      }
+
+      setupRoleVisibility();
+      return previous !== JSON.stringify([...freshRoles].sort());
+    }
+
     function isAdminRole(){ return teacherRoles.includes('admin'); }
     function isMasterRole(){ return teacherRoles.includes('master'); }
     function hasRole(roleName){ return teacherRoles.includes(String(roleName || '').trim().toLowerCase()); }
@@ -3235,6 +3288,7 @@
         const metaResult = standardResults[1];
 
         teachers = teacherSnap.val() || {};
+        syncCurrentTeacherRolesFromFirebase();
         students = studentSnap.val() || {};
         const rawEntries = entrySnap.val() || {};
         entries = {};

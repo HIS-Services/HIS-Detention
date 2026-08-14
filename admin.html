@@ -766,25 +766,22 @@
     }
 
     function toggleRole(idx, roleKey, checked) {
-      const current = normalizeRoles(teacherRows[idx].roles);
-      if (checked) {
-        if (!current.includes(roleKey)) current.push(roleKey);
-      } else {
-        teacherRows[idx].roles = current.filter(r => r !== roleKey);
-        checkTeacherDirty();
-        return;
-      }
-      teacherRows[idx].roles = current;
-      checkTeacherDirty();
+      // Keep every role-editing surface on the same permission/exclusivity logic.
+      updateTeacherRole(idx, roleKey, checked);
     }
 
     function rolesCellHtml(idx, row) {
-      return '<div class="role-box">' + ROLE_OPTIONS.map(role => `
-        <label>
-          <input type="checkbox" ${hasRole(row, role.key) ? 'checked' : ''} onchange="toggleRole(${idx}, '${role.key}', this.checked)">
+      return '<div class="role-box">' + ROLE_OPTIONS.map(role => {
+        const allowed = canEditRole(row, role.key);
+        return `
+        <label${allowed ? '' : ' title="이 권한은 현재 계정으로 변경할 수 없습니다. | You cannot change this role."'}>
+          <input type="checkbox"
+            ${hasRole(row, role.key) ? 'checked' : ''}
+            ${allowed ? '' : 'disabled'}
+            onchange="updateTeacherRole(${idx}, '${role.key}', this.checked)">
           ${role.label}
-        </label>
-      `).join('') + '</div>';
+        </label>`;
+      }).join('') + '</div>';
     }
 
     function getHomeroomTeacherEmail(className) {
@@ -1516,13 +1513,36 @@
         renderTeacherDetail();
         return;
       }
+
       const set = new Set(normalizeRoles(row.roles));
-      if (checked) set.add(role); else set.delete(role);
+
+      if (checked) {
+        set.add(role);
+
+        // Default / Master / Admin are privilege levels, not additive flags.
+        // Choosing one must remove the other privilege-level roles so Firebase
+        // receives an unambiguous role set.
+        if (role === 'default') {
+          set.delete('admin');
+          set.delete('master');
+        } else if (role === 'master') {
+          set.delete('admin');
+          set.delete('default');
+        } else if (role === 'admin') {
+          set.delete('master');
+          set.delete('default');
+        }
+      } else {
+        set.delete(role);
+      }
+
       if (role === 'committee_edit' && checked) set.add('committee_view');
       if (role === 'committee_view' && !checked) set.delete('committee_edit');
+
       row.roles = [...set];
       checkTeacherDirty();
       renderTeachers();
+      renderTeacherDetail();
     }
     function renderTeacherDetail(){
       const box=document.getElementById('teacher-detail'); const label=document.getElementById('teacher-selected-label');
