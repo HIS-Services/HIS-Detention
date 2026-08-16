@@ -1212,6 +1212,65 @@
       min-width:0 !important;
       box-sizing:border-box !important;
     }
+
+    /* Confirm tables: final spacing refinement */
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-processed-tbody) th{
+      text-align:center !important;
+      vertical-align:middle !important;
+    }
+
+    /* Slightly narrower Violation and Admin Note; more room for Status. */
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){
+      width:20% !important;
+    }
+
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7),
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){
+      width:12.5% !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+      overflow:visible !important;
+    }
+
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8),
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      width:11.5% !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+    }
+
+    /* Smaller Admin Note control in both width feel and height. */
+    table:has(#confirm-pending-tbody) td:nth-child(8) input,
+    table:has(#confirm-processed-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      height:30px !important;
+      min-height:30px !important;
+      padding:4px 6px !important;
+      font-size:12px !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Status badges must remain fully visible. */
+    table:has(#confirm-pending-tbody) .confirm-status-cell,
+    table:has(#confirm-processed-tbody) .confirm-status-cell{
+      overflow:visible !important;
+      white-space:nowrap !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-status-cell > span,
+    table:has(#confirm-processed-tbody) .confirm-status-cell > span{
+      display:inline-block !important;
+      max-width:none !important;
+      white-space:nowrap !important;
+    }
 </style>
 </head>
 <body>
