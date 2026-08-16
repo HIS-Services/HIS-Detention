@@ -23,8 +23,8 @@ body{
   font-family:'Noto Sans KR',sans-serif;
   background:var(--bg);
   color:var(--tx);
-  font-size:15px;
-  line-height:1.38;
+  font-size:14px;
+  line-height:1.4;
 }
 
 /* 폼 요소들에 body와 같은 폰트 적용 */
@@ -143,9 +143,7 @@ p{
 
 /* 버튼 공통 */
 .btn{
-  padding:8px 13px;
-  min-height:36px;
-  line-height:1.25;
+  padding:8px 14px;
   border-radius:8px;
   border:none;
   font-weight:700;
@@ -186,7 +184,7 @@ p{
   top:0;
   z-index:10;
   background:linear-gradient(120deg,var(--nv),var(--nv2));
-  padding:9px 18px;
+  padding:10px 14px;
   display:flex;
   justify-content:space-between;
   gap:10px;
@@ -208,16 +206,15 @@ p{
 
 /* 본문 컨텐츠 영역 */
 .content{
-  max-width:1580px;
-  width:calc(100% - 28px);
+  max-width:1120px;
   margin:0 auto;
-  padding:10px 12px;
+  padding:12px;
 }
 
 /* 카드 스타일 */
 .card{
-  padding:10px 12px;
-  margin-bottom:10px;
+  padding:12px 14px;
+  margin-bottom:12px;
 }
 
 /* 카드 제목 영역 */
@@ -226,7 +223,7 @@ p{
   justify-content:space-between;
   align-items:center;
   gap:8px;
-  margin-bottom:7px;
+  margin-bottom:10px;
   font-weight:800;
   font-size:15px;
   color:var(--nv);
@@ -237,17 +234,17 @@ p{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
-  margin-bottom:8px;
+  margin-bottom:12px;
 }
 
 /* 탭 버튼 기본 */
 .tab-btn{
-  padding:7px 12px;
-  border-radius:9px;
+  padding:8px 14px;
+  border-radius:10px;
   border:none;
   background:#d8dde8;
   font-weight:800;
-  font-size:13.5px;
+  font-size:13px;
   cursor:pointer;
 }
 
@@ -268,7 +265,7 @@ p{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
-  margin-bottom:8px;
+  margin-bottom:10px;
   align-items:center;
 }
 
@@ -296,17 +293,17 @@ table{
 
 /* 셀 공통 */
 th,td{
-  padding:6px 8px;
+  padding:7px 8px;
   border-bottom:1px solid #eef2ff;
   vertical-align:middle;
-  font-size:13.5px;
+  font-size:13px;
 }
 
 /* 헤더 셀 */
 th{
   background:#dce6f7;
   color:var(--nv);
-  font-size:11.5px;
+  font-size:11px;
   position:sticky;
   top:0;
   z-index:1;
@@ -345,12 +342,12 @@ th{
 
 /* 안내 박스 */
 .notice{
-  padding:8px 10px;
-  border-radius:9px;
+  padding:10px 12px;
+  border-radius:10px;
   background:#fffbeb;
   border:1px solid #fcd34d;
   color:#6b4f10;
-  margin-bottom:8px;
+  margin-bottom:10px;
   font-size:13px;
 }
 
@@ -382,7 +379,6 @@ select.edit-input{
 
 /* 모바일 대응 */
 @media (max-width: 768px){
-  .content{width:100%;}
   body{
     font-size:13px;
   }
@@ -492,51 +488,3 @@ tbody tr:hover td .edit-input{
   width:100%;
   min-width:0;
 }
-
-/* 2026-08 bilingual fit pass: keep controls readable without clipping */
-.btn,
-.tab-btn,
-button.small-btn,
-a.btn{
-  width:auto;
-  max-width:100%;
-  white-space:nowrap;
-  flex-shrink:0;
-}
-
-.filter-bar,
-.card-title{
-  flex-wrap:wrap;
-}
-
-@media (min-width: 769px){
-  .btn,
-  .tab-btn,
-  button.small-btn,
-  a.btn{
-    min-width:max-content;
-  }
-}
-
-@media (max-width: 768px){
-  .btn,
-  .tab-btn,
-  button.small-btn,
-  a.btn{
-    min-width:0;
-    white-space:normal;
-    overflow-wrap:anywhere;
-    text-align:center;
-  }
-}
-
-
-/* 2026-08 balanced bilingual density pass */
-@media (min-width: 900px){
-  .content{width:calc(100% - 20px);}
-  .card{box-shadow:0 1px 6px rgba(15,31,92,.05);}
-  .btn{font-size:13.5px;}
-  .edit-input{font-size:13.5px;}
-}
-.tbl-wrap{border-radius:8px;}
-.card + .card{margin-top:0;}

@@ -1775,9 +1775,13 @@
     function getTeacherRoles(teacherData){
       const data = teacherData || {};
       let roles = Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
-      // Firebase role hierarchy is authoritative.
-      if (roles.includes('admin')) return ['admin'];
-      if (roles.includes('master')) return ['master'];
+      const designations = roles.filter(role => role === 'director' || role === 'team_leader');
+
+      // Admin/Master override operational permissions, while Director/Team Leader
+      // remain because they identify notification recipients.
+      if (roles.includes('admin')) return ['admin', ...designations];
+      if (roles.includes('master')) return ['master', ...designations];
+
       const nonDefault = roles.filter(role => role !== 'default');
       return nonDefault.length ? nonDefault : ['default'];
     }
@@ -1981,10 +1985,13 @@
     function rolesLabel(roles){
       let list = normalizeRoles(roles);
 
-      // Privilege hierarchy for display:
-      // Admin overrides everything. Master overrides all non-Admin roles.
-      if (list.includes('admin')) return 'Admin';
-      if (list.includes('master')) return 'Master';
+      // Admin/Master override operational roles. Director/Team Leader remain
+      // visible because they are staff/email designations.
+      const designationLabels = [];
+      if (list.includes('director')) designationLabels.push('Director');
+      if (list.includes('team_leader')) designationLabels.push('Team Leader');
+      if (list.includes('admin')) return ['Admin', ...designationLabels].join(' · ');
+      if (list.includes('master')) return ['Master', ...designationLabels].join(' · ');
 
       // Default is only meaningful when it is the teacher's sole permission.
       const nonDefault = list.filter(role => role !== 'default');

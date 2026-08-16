@@ -1467,8 +1467,13 @@
     function teacherRoleBadgeHtml(roles) {
       const set = new Set(normalizeRoles(roles));
       const badges = [];
-      if (set.has('admin')) badges.push(['Admin','admin']);
-      else if (set.has('master')) badges.push(['Master','admin']);
+      const overrideRole = set.has('admin') ? 'Admin' : (set.has('master') ? 'Master' : '');
+      if (overrideRole) {
+        badges.push([overrideRole,'admin']);
+        if (set.has('director')) badges.push(['Director','']);
+        if (set.has('team_leader')) badges.push(['Team Leader','']);
+        return `<div class="teacher-role-badges">${badges.map(([label,type])=>`<span class="teacher-role-badge ${type}">${label}</span>`).join('')}</div>`;
+      }
       if (set.has('confirm')) badges.push(['확정','primary']);
       const notices = [set.has('ms_notice'), set.has('hs_notice')];
       if (notices[0] && notices[1]) badges.push(['알림','']);
@@ -1528,10 +1533,15 @@
       const set = new Set(normalizeRoles(row.roles));
 
       if (checked) {
-        // Admin/Master already include full operational permissions. If one is
-        // selected, functional checkboxes do not accumulate underneath it.
-        if (!['admin','master','default'].includes(role) && (set.has('admin') || set.has('master'))) {
-          toast('Admin/Master는 모든 기능 권한을 이미 포함합니다.\nAdmin/Master already includes all functional permissions.', 'warn');
+        const designationRoles = new Set(['director','team_leader']);
+
+        // Admin/Master include all operational permissions. Director and Team
+        // Leader are exceptions because they are staff/email designations.
+        if (
+          !['admin','master','default','director','team_leader'].includes(role) &&
+          (set.has('admin') || set.has('master'))
+        ) {
+          toast('Admin/Master는 모든 기능 권한을 이미 포함합니다. Director/Team Leader만 추가 지정할 수 있습니다.\nAdmin/Master already includes all operational permissions. Only Director/Team Leader may be added as designations.', 'warn');
           renderTeachers();
           renderTeacherDetail();
           return;
@@ -1539,23 +1549,18 @@
 
         set.add(role);
 
-        // Default is a fallback-only role. Any real/special permission overrides it.
         if (role !== 'default') {
           set.delete('default');
         }
 
-        // Admin and Master are override privilege levels, not additive roles.
-        // Store only the selected override role so old functional permissions
-        // cannot unexpectedly reappear later after a demotion.
-        if (role === 'admin') {
+        // Admin/Master override operational roles but preserve designation roles.
+        if (role === 'admin' || role === 'master') {
+          const preservedDesignations = [...set].filter(r => designationRoles.has(r));
           set.clear();
-          set.add('admin');
-        } else if (role === 'master') {
-          set.clear();
-          set.add('master');
+          set.add(role);
+          preservedDesignations.forEach(r => set.add(r));
         }
 
-        // Explicitly choosing Default resets every other permission.
         if (role === 'default') {
           set.clear();
           set.add('default');
@@ -1807,9 +1812,11 @@
     function buildRoleFlagsForRoles(rawRoles) {
       let roles = normalizeRoles(rawRoles);
 
-      // Match the application's effective hierarchy.
-      if (roles.includes('admin')) roles = ['admin'];
-      else if (roles.includes('master')) roles = ['master'];
+      // Admin/Master override operational roles. Director/Team Leader remain
+      // because they are staff/email designations rather than access grants.
+      const designations = roles.filter(role => role === 'director' || role === 'team_leader');
+      if (roles.includes('admin')) roles = ['admin', ...designations];
+      else if (roles.includes('master')) roles = ['master', ...designations];
       else {
         roles = roles.filter(role => role !== 'default');
         if (!roles.length) roles = ['default'];
@@ -1941,8 +1948,9 @@
 
           const normalizedRoles = (() => {
             const savedRoles = normalizeRoles(r.roles).filter(Boolean);
-            if (savedRoles.includes('admin')) return ['admin'];
-            if (savedRoles.includes('master')) return ['master'];
+            const designations = savedRoles.filter(role => role === 'director' || role === 'team_leader');
+            if (savedRoles.includes('admin')) return ['admin', ...designations];
+            if (savedRoles.includes('master')) return ['master', ...designations];
             const cleaned = savedRoles.filter(role => role !== 'default');
             return cleaned.length ? cleaned : ['default'];
           })();
