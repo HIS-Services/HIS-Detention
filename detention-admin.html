@@ -1127,40 +1127,1164 @@
     function checkEntryDirty(){ _setBtnState('btn-save-entries', entryRows.some(r => _rowChanged(r, _entryOrig))); checkStudentDataDirty(); }
     function checkNoticeDirty(){ _setBtnState('btn-save-notices', noticeRows.some(r => _rowChanged(r, _noticeOrig))); checkStudentDataDirty(); }
     function checkRecoveryDirty(){ _setBtnState('btn-save-recovery', recoveryRows.some(r => _rowChanged(r, _recoveryOrig))); checkStudentDataDirty(); }
-    function dateInputValue(value){
-      if(value == null || value === '') return '';
-      if(typeof value === 'number' && Number.isFinite(value)){
-        const d = new Date(value);
-        if(Number.isNaN(d.getTime())) return '';
-        const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
-        return `${y}-${m}-${day}`;
-      }
-      const raw=String(value).trim();
+
+    function dateInputValue(v){
+      if(v == null || v === '') return '';
+      const raw = String(v).trim();
       if(!raw) return '';
 
-      let match=raw.match(/^(\d{4})-(\d{2})-(\d{2})(?![\d])/);
-      const hasExplicitTimezone=/[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw);
+      const localMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      const hasTimezone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw);
 
-      // School/local calendar values are intentionally date-based.
-      if(match && !hasExplicitTimezone) return `${match[1]}-${match[2]}-${match[3]}`;
+      // School/local calendar values are intentionally stored without timezone.
+      if(localMatch && !hasTimezone){
+        return `${localMatch[1]}-${localMatch[2]}-${localMatch[3]}`;
+      }
 
-      // ISO/Firebase timestamps with Z or an offset become the browser-local calendar date.
-      const d=new Date(raw);
+      // ISO/Firebase timestamps are compared using the browser's local calendar date.
+      const d = new Date(raw);
       if(!Number.isNaN(d.getTime())){
-        const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
         return `${y}-${m}-${day}`;
       }
 
-      match=raw.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})/);
-      if(match) return `${match[1]}-${String(match[2]).padStart(2,'0')}-${String(match[3]).padStart(2,'0')}`;
+      return localMatch ? `${localMatch[1]}-${localMatch[2]}-${localMatch[3]}` : '';
+    }
+
+
+    function todayIsoStart(){
+      const d = new Date();
+      const local = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      return local + 'T00:00:00';
+    }
+    function currentAdminYear(){
+      const d = new Date();
+      return d.getMonth() < 2 ? d.getFullYear() - 1 : d.getFullYear();
+    }
+
+    function adminEditorIdentity(){
+      try{
+        const t = JSON.parse(sessionStorage.getItem('his_teacher') || '{}');
+        return {
+          id: String(t.email || t.id || t.key || 'admin'),
+          name: String(t.name || '관리자')
+        };
+      }catch(e){
+        return { id:'admin', name:'관리자' };
+      }
+    }
+
+    function setCommitteeNoteFromAdmin(row, value){
+      if(!row) return;
+      const next = String(value || '');
+      if(String(row.committeeNote || '') === next) return;
+      row.committeeNote = next;
+      const identity = adminEditorIdentity();
+      row.committeeNoteAuthorId = next.trim() ? identity.id : null;
+      row.committeeNoteAuthorName = next.trim() ? identity.name : null;
+      row.committeeNoteUpdatedAt = next.trim() ? new Date().toISOString() : null;
+    }
+    function makeAdminKey(prefix){
+      return String(prefix || 'row') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+    }
+    function listText(v){
+      if (Array.isArray(v)) return v.join(', ');
+      if (v === null || v === undefined) return '';
+      return String(v);
+    }
+    function parseKeyList(text){
+      const items = String(text || '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      return items.length ? items : null;
+    }
+    function addEntryRow(){
+      const now = todayIsoStart();
+      entryRows.unshift({
+        key: makeAdminKey('entry'),
+        studentName: '', englishName: '', className: '', studentKey: '',
+        category: '', violation: '', autoPoints: '', manualPoints: 0, totalPoints: 0,
+        status: '확정', teacherName: '', createdAt: now, confirmedAt: now,
+        createdBy: adminEditorIdentity().name, createdByEmail: adminEditorIdentity().id,
+        memo: '', adminNote: '', year: currentAdminYear(),
+        parentEmail: '', studentEmail: '', homeroomEmail: ''
+      });
+      selectedEntryKey = entryRows[0].key;
+      clearEntryFilters(false);
+      renderEntriesTable();
+      checkEntryDirty();
+      toast('디텐션 행이 추가되었습니다. 필요한 값을 입력한 뒤 저장하세요. | New detention row added.', 'ok');
+    }
+    function _cleanBulkText(v){
+      return String(v || '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    function _parseBool(v){ return String(v || '').trim().toUpperCase() === 'TRUE'; }
+    function _numOrUndefined(v){
+      const n = Number(String(v || '').trim());
+      return Number.isFinite(n) ? n : undefined;
+    }
+    function _isoDateFromBulk(v){
+      const s = String(v || '').trim();
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? (m[1] + 'T00:00:00') : undefined;
+    }
+    function _yearFromBulkDate(v){
+      const s = String(v || '').trim();
+      const m = s.match(/^(\d{4})/);
+      return m ? m[1] : String(currentAdminYear());
+    }
+    function parseBulkName(fullName){
+      const raw = _cleanBulkText(fullName);
+      if (!raw) return { studentName:'', englishName:'' };
+      const tokens = raw.split(/\s+/).filter(Boolean);
+      const hasHangul = /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(raw);
+      if (hasHangul) {
+        let split = tokens.findIndex(t => /^[A-Za-z][A-Za-z'\-]*$/.test(t));
+        if (split > 0) return { studentName:tokens.slice(0, split).join(' '), englishName:tokens.slice(split).join(' ') };
+        return { studentName:raw, englishName:'' };
+      }
+      if (tokens.length >= 4) {
+        let upperCount = 0;
+        while (upperCount < tokens.length && /^[A-Z][A-Z'\-]*$/.test(tokens[upperCount])) upperCount++;
+        if (upperCount >= 2 && upperCount < tokens.length) {
+          return { studentName:tokens.slice(0, upperCount).join(' '), englishName:tokens.slice(upperCount).join(' ') };
+        }
+      }
+      if (tokens.length % 2 === 0) {
+        const half = tokens.length / 2;
+        const a = tokens.slice(0, half).join(' ').toLowerCase();
+        const b = tokens.slice(half).join(' ').toLowerCase();
+        if (a && a === b) return { studentName:tokens.slice(0, half).join(' '), englishName:'' };
+      }
+      return { studentName:raw, englishName:'' };
+    }
+    function makeBulkStudentKey(studentName, className){
+      const c = _cleanBulkText(className).replace(/\s+/g, '');
+      const n = _cleanBulkText(studentName).replace(/\s+/g, '_');
+      return (c && n) ? (c + '_' + n) : '';
+    }
+    function parseBulkTsv(text){
+      const rows = [];
+      let row = [], field = '', inQuotes = false;
+      const src = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+        if (ch === '"') {
+          if (inQuotes && src[i+1] === '"') { field += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (ch === '\t' && !inQuotes) {
+          row.push(field); field = '';
+        } else if (ch === '\n' && !inQuotes) {
+          row.push(field); field = '';
+          if (row.some(v => String(v || '').trim() !== '')) rows.push(row);
+          row = [];
+        } else {
+          field += ch;
+        }
+      }
+      row.push(field);
+      if (row.some(v => String(v || '').trim() !== '')) rows.push(row);
+      return rows;
+    }
+    function convertBulkDetentionRow(cols, rowNo){
+      if (!cols || !cols.length) return null;
+      const id = _cleanBulkText(cols[0]);
+      const fullName = _cleanBulkText(cols[1]);
+      const className = _cleanBulkText(cols[2]);
+      if (!fullName || !className) return null;
+      const parsedName = parseBulkName(fullName);
+      const studentName = parsedName.studentName;
+      const englishName = parsedName.englishName;
+      const dateStr = _cleanBulkText(cols[3]);
+      const teacherName = _cleanBulkText(cols[4]);
+      const category = _cleanBulkText(cols[5]);
+      const violation = _cleanBulkText(cols[6]);
+      const autoPoints = _cleanBulkText(cols[7]);
+      const manualPoints = _numOrUndefined(cols[12]);
+      const totalPoints = _numOrUndefined(cols[13]) ?? _numOrUndefined(cols[12]) ?? _numOrUndefined(cols[9]) ?? 0;
+      const legacyCumulativePoints = _numOrUndefined(cols[14]);
+      const memo = _cleanBulkText(cols[15]);
+      const isConfirmed = _parseBool(cols[16]);
+      const isCancelled = _parseBool(cols[20]);
+      const confirmDate = _cleanBulkText(cols[23]);
+      const warning = _cleanBulkText(cols[11]);
+      const studentKey = makeBulkStudentKey(studentName, className);
+      const key = id || makeAdminKey('entrybulk');
+      let status = '임시저장';
+      if (isCancelled) status = '반려';
+      else if (isConfirmed) status = '확정';
+      return {
+        key,
+        _deleted:false,
+        studentKey,
+        studentName,
+        englishName,
+        className,
+        category,
+        violation,
+        totalPoints:Number(totalPoints || 0),
+        autoPoints:autoPoints || undefined,
+        manualPoints:manualPoints,
+        memo:memo || undefined,
+        adminNote:_cleanBulkText(cols[21]) || undefined,
+        teacherName,
+        status,
+        createdAt:_isoDateFromBulk(dateStr) || new Date().toISOString(),
+        confirmedAt:status === '확정' ? (_isoDateFromBulk(confirmDate) || _isoDateFromBulk(dateStr)) : undefined,
+        studentEmail:_cleanBulkText(cols[17]) || undefined,
+        parentEmail:_cleanBulkText(cols[18]) || undefined,
+        homeroomEmail:_cleanBulkText(cols[19]) || undefined,
+        year:_yearFromBulkDate(dateStr),
+        isReferral:false,
+        referralReason:warning || undefined,
+        legacySearchText:_cleanBulkText(cols[8]) || undefined,
+        legacyAutoPointText:_cleanBulkText(cols[10]) || undefined,
+        legacyCumulativePoints:legacyCumulativePoints,
+        legacyStudentDateTeacherKey:_cleanBulkText(cols[22]) || undefined,
+        bulkImportedAt:new Date().toISOString(),
+        bulkImportedBy:'detention-admin',
+        bulkSourceRow:rowNo
+      };
+    }
+    function getBulkEntriesFromTextarea(){
+      const el = document.getElementById('entry-bulk-text');
+      const rows = parseBulkTsv(el ? el.value : '');
+      const converted = [];
+      const errors = [];
+      rows.forEach((cols, i) => {
+        if (i === 0 && /^(id|ID)$/i.test(_cleanBulkText(cols[0])) && /이름|name/i.test(_cleanBulkText(cols[1]))) return;
+        if (cols.length < 7) { errors.push(`${i+1}행: 열 수 부족 (${cols.length})`); return; }
+        const rec = convertBulkDetentionRow(cols, i+1);
+        if (!rec) errors.push(`${i+1}행: 이름 또는 학반 누락`);
+        else converted.push(rec);
+      });
+      return { rows, converted, errors };
+    }
+    function previewBulkEntries(){
+      const result = getBulkEntriesFromTextarea();
+      bulkEntryPreviewRows = result.converted;
+      const existingKeys = new Set(entryRows.map(r => String(r.key || '')));
+      const updateCount = bulkEntryPreviewRows.filter(r => existingKeys.has(String(r.key))).length;
+      const newCount = bulkEntryPreviewRows.length - updateCount;
+      const confirmed = bulkEntryPreviewRows.filter(r => r.status === '확정').length;
+      const rejected = bulkEntryPreviewRows.filter(r => r.status === '반려').length;
+      const pending = bulkEntryPreviewRows.filter(r => r.status === '임시저장').length;
+      const summary = document.getElementById('entry-bulk-summary');
+      const preview = document.getElementById('entry-bulk-preview');
+      if (summary) summary.innerHTML = `파싱 ${result.rows.length}행 → 변환 ${bulkEntryPreviewRows.length}건 · 신규 ${newCount}건 · 갱신 ${updateCount}건 · 확정 ${confirmed}건 · 반려 ${rejected}건 · 대기 ${pending}건` + (result.errors.length ? `<br><span style="color:#b91c1c">오류/제외: ${esc(result.errors.join(' / '))}</span>` : '');
+      if (preview) {
+        preview.style.display = bulkEntryPreviewRows.length ? 'block' : 'none';
+        preview.innerHTML = bulkEntryPreviewRows.length ? '<table><thead><tr><th>#</th><th>DB Key</th><th>학생</th><th>영문명</th><th>학반</th><th>상태</th><th>점수</th><th>교사</th><th>날짜</th><th>위반</th></tr></thead><tbody>' +
+          bulkEntryPreviewRows.slice(0, 50).map((r, i) => `<tr><td>${i+1}</td><td>${esc(r.key)}</td><td>${esc(r.studentName)}</td><td>${esc(r.englishName||'')}</td><td>${esc(r.className)}</td><td>${esc(r.status)}</td><td>${esc(String(r.totalPoints))}</td><td>${esc(r.teacherName||'')}</td><td>${esc(dateInputValue(r.createdAt))}</td><td>${esc(r.violation||'')}</td></tr>`).join('') +
+          '</tbody></table>' + (bulkEntryPreviewRows.length > 50 ? `<div class="bulk-help">상위 50건만 표시합니다. 총 ${bulkEntryPreviewRows.length}건</div>` : '') : '';
+      }
+      toast(`일괄 입력 미리보기 완료: ${bulkEntryPreviewRows.length}건`, 'ok');
+      return result;
+    }
+    async function applyBulkEntries(saveNow){
+      if (!bulkEntryPreviewRows.length) previewBulkEntries();
+      if (!bulkEntryPreviewRows.length) return toast('반영할 데이터가 없습니다. | No bulk rows to import.', 'err');
+      const existingIndex = new Map();
+      entryRows.forEach((r, idx) => existingIndex.set(String(r.key || ''), idx));
+      let added = 0, updated = 0;
+      bulkEntryPreviewRows.forEach(row => {
+        const key = String(row.key || '');
+        if (existingIndex.has(key)) {
+          const idx = existingIndex.get(key);
+          entryRows[idx] = Object.assign({}, entryRows[idx], row, { _deleted:false });
+          updated++;
+        } else {
+          entryRows.unshift(row);
+          added++;
+        }
+      });
+      renderEntriesTable();
+      checkEntryDirty();
+      toast(`일괄 입력 반영 완료: 신규 ${added}건, 갱신 ${updated}건` + (saveNow ? ' · 저장 중...' : ''), 'ok');
+      if (saveNow) await saveEntries();
+    }
+    function clearBulkEntries(){
+      const el = document.getElementById('entry-bulk-text');
+      if (el) el.value = '';
+      bulkEntryPreviewRows = [];
+      const summary = document.getElementById('entry-bulk-summary');
+      if (summary) summary.textContent = '아직 미리보기 전입니다. | Not previewed yet.';
+      const preview = document.getElementById('entry-bulk-preview');
+      if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+    }
+
+    function addNoticeRow(){
+      noticeRows.unshift({
+        key: makeAdminKey('notice'),
+        studentKey: '', level: 'hs', year: currentAdminYear(),
+        createdAt: todayIsoStart(), createdBy: adminEditorIdentity().name, createdByEmail: adminEditorIdentity().id,
+        parentMailAt: null, studentTeacherMailAt: null, completedAt: null,
+        completedBy: '', completedByEmail: '', cycleViolationsSnapshot: ''
+      });
+      selectedNoticeKey = noticeRows[0].key;
+      clearNoticeFilters(false);
+      renderNoticesTable();
+      checkNoticeDirty();
+      toast('알림 행이 추가되었습니다. | New notice row added.', 'ok');
+    }
+    function addRecoveryRow(){
+      const now = todayIsoStart();
+      recoveryRows.unshift({
+        key: makeAdminKey('recovery'),
+        studentName: '', englishName: '', className: '', studentKey: '',
+        level: 'hs', year: currentAdminYear(), recoveryPoints: 3,
+        createdAt: now, createdBy: adminEditorIdentity().name, createdByEmail: adminEditorIdentity().id,
+        completedAt: now, staffName: '', staffEmail: '',
+        reasonsSnapshot: '', currentTotalBefore: '', currentTotalAfter: ''
+      });
+      selectedRecoveryKey = recoveryRows[0].key;
+      clearRecoveryFilters(false);
+      renderRecoveryTable();
+      checkRecoveryDirty();
+      toast('회복교육 행이 추가되었습니다. | New restorative education row added.', 'ok');
+    }
+    function addCommitteeRow(){
+      const now = todayIsoStart();
+      const key = makeAdminKey('committee');
+      committeeRows.unshift({
+        key,
+        type: 'committee', studentKey: '', studentName: '', className: '',
+        linkedEntryKeys: null,
+        reason: '현재 미해소 12점 이상', reasonSnapshot: '', committeeNote: '',
+        currentPointsAtReferral: 12, committeeThreshold: 12,
+        committeeNoteAuthorId: '', committeeNoteAuthorName: '', committeeNoteUpdatedAt: null,
+        year: currentAdminYear(), createdAt: now, createdBy: adminEditorIdentity().name, createdByEmail: adminEditorIdentity().id,
+        completedAt: null, completedBy: '', completedByEmail: ''
+      });
+      selectedCommitteeKey = key;
+      clearCommitteeFilters(false);
+      renderCommitteeTable();
+      checkCommitteeDirty();
+      toast('위원회 행이 추가되었습니다. 오른쪽 편집 패널에서 내용을 입력하세요. | New committee row added.', 'ok');
+    }
+
+
+    async function recalculateCycleStatesAfterAdminEdit(reason){
+      if (typeof recalculateAllStudentCycleStates !== 'function') {
+        console.warn('recalculateAllStudentCycleStates is not available.');
+        return null;
+      }
+      toast('studentCycleState 재계산 중... | Recalculating state...', 'ok');
+      const result = await recalculateAllStudentCycleStates({ updatedBy: reason || 'detention-admin' });
+      return result;
+    }
+
+    async function saveRowsToFirebase({ rows, path, origMap, reason, labelKo, labelEn }){
+      if(!requireDetentionAdminPermission('canEditGeneral','DB 기록 수정은 Master 또는 Admin만 가능합니다.')) throw new Error('permission_denied');
+      const updates = {};
+      const audits = [];
+      let updateCount = 0;
+      let deleteCount = 0;
+
+      (rows || []).forEach(row => {
+        if (!row || !row.key || !_rowChanged(row, origMap)) return;
+        const prepared=prepareAdminRecordChange(path,row,reason);
+        updates[path + '/' + row.key] = prepared.payload;
+        audits.push(prepared.audit);
+        if (row._deleted) deleteCount++; else updateCount++;
+      });
+
+      const total = updateCount + deleteCount;
+      if (!total) {
+        toast('저장할 변경사항이 없습니다. | No changes to save.', 'ok');
+        return { saved:false, updateCount:0, deleteCount:0 };
+      }
+
+      toast('DB 저장 중... | Saving DB changes...', 'ok');
+      await db.ref('/').update(updates);
+      const auditResult=await writeAdminAuditLogs(audits);
+
+      let recalcResult = null;
+      try {
+        recalcResult = await recalculateCycleStatesAfterAdminEdit(reason);
+        toast(`${labelKo} 저장 완료: 수정 ${updateCount}건, 삭제 ${deleteCount}건, 상태 재계산 ${((recalcResult && recalcResult.count) || 0)}명${auditResult.ok?'':', 감사 로그 권한 확인 필요'} | ${labelEn} saved.`, auditResult.ok?'ok':'err');
+      } catch (recalcErr) {
+        console.error('Saved, but recalculation failed:', recalcErr);
+        toast(`${labelKo} DB 저장은 완료됐지만 상태 재계산에 실패했습니다. 일괄 입력·관리 도구의 상태 재계산 버튼을 눌러주세요.`, 'err');
+      }
+
+      await loadAllData();
+      return { saved:true, updateCount, deleteCount, recalcResult, auditResult };
+    }
+
+    function academicYearFromAdminRow(row){
+      const raw=String((row&& (row.createdAt||row.confirmedAt||row.completedAt||row.parentMailAt||row.studentTeacherMailAt))||'');
+      const m=raw.match(/^(\d{4})-(\d{2})/);
+      if(!m) return currentAdminYear();
+      const year=Number(m[1]),month=Number(m[2]);
+      return month<=2 ? year-1 : year;
+    }
+    function buildDataQualityPlan(){
+      const groups=[['detentionEntries',entryRows],['detentionNotices',noticeRows],['recoveryEntries',recoveryRows],['committeeRecords',committeeRows]];
+      const updates={};const counts={};
+      groups.forEach(function(pair){
+        const path=pair[0],rows=pair[1];counts[path]=0;
+        rows.forEach(function(row){
+          if(!row||!row.key||row._deleted||String(row.year??'').trim())return;
+          updates[path+'/'+row.key+'/year']=academicYearFromAdminRow(row);counts[path]++;
+        });
+      });
+      return {updates,counts,total:Object.keys(updates).length,standardsMetaPending:true};
+    }
+    function configureDataQualityApplyButton(mode){
+      const button=document.getElementById('data-quality-backfill-apply');
+      if(!button)return;
+      if(mode==='year-only'){
+        button.textContent='학년도 일괄 적용';
+        button.onclick=applyAcademicYearBackfill;
+      }else{
+        button.textContent='예정 내역 적용';
+        button.onclick=applyDataQualityBackfill;
+      }
+    }
+    function previewAcademicYearBackfill(){
+      if(!requireDetentionAdminPermission('canForceCorrect','학년도 일괄 채우기는 Admin만 가능합니다.'))return;
+      pendingDataQualityPlan=buildDataQualityPlan();
+      pendingDataQualityPlan.mode='year-only';
+      pendingDataQualityPlan.standardsMetaPending=false;
+      const c=pendingDataQualityPlan.counts;
+      const panel=document.getElementById('data-quality-backfill-panel');
+      const summary=document.getElementById('data-quality-backfill-summary');
+      if(panel)panel.style.display='block';
+      if(summary)summary.innerHTML='학년도가 비어 있는 기록만 날짜 기준으로 채웁니다. 기존 학년도 값은 덮어쓰지 않습니다.<br>디텐션 '+c.detentionEntries+'건 · 알림 '+c.detentionNotices+'건 · 회복교육 '+c.recoveryEntries+'건 · 위원회 '+c.committeeRecords+'건<br><b>HIS 학년도는 3월 시작 기준이며, 1~2월 기록은 직전 학년도로 계산합니다.</b>';
+      configureDataQualityApplyButton('year-only');
+    }
+    async function applyAcademicYearBackfill(){
+      if(!requireDetentionAdminPermission('canForceCorrect','학년도 일괄 채우기는 Admin만 가능합니다.'))return;
+      const plan=(pendingDataQualityPlan&&pendingDataQualityPlan.mode==='year-only')?pendingDataQualityPlan:buildDataQualityPlan();
+      if(!plan.total){toast('학년도를 채울 기록이 없습니다. | No missing school years.','ok');return;}
+      if(!confirm('학년도가 비어 있는 '+plan.total+'건을 날짜 기준으로 채우시겠습니까?\n기존 학년도 값은 변경하지 않습니다.'))return;
+      const updates=Object.assign({},plan.updates);const actor=adminAuditActor(),now=new Date().toISOString();
+      Object.keys(plan.updates||{}).filter(function(path){return path.endsWith('/year');}).forEach(function(yearPath){
+        const base=yearPath.slice(0,-5);
+        updates[base+'/updatedAt']=now;
+        updates[base+'/updatedBy']=actor.name;
+        updates[base+'/updatedByEmail']=actor.email;
+        updates[base+'/updatedSource']='detention-admin-year-backfill';
+      });
+      try{
+        await db.ref('/').update(updates);
+        const auditResult=await writeAdminAuditLogs([{timestamp:now,action:'backfill',collection:'multiple',recordKey:'school-year-only',source:'detention-admin-year-backfill',actorName:actor.name,actorEmail:actor.email,changedFields:['year'],before:null,after:{counts:plan.counts,total:plan.total}}]);
+        toast(auditResult.ok?'학년도 일괄 채우기 완료: '+plan.total+'건 | School years filled.':'학년도는 채웠지만 감사 로그 저장 권한을 확인하세요. | Years saved; audit-log permission needs review.',auditResult.ok?'ok':'err');
+        closeDataQualityBackfill();await loadAllData();
+      }catch(err){console.error(err);toast('학년도 일괄 채우기 실패: '+(err&&err.message?err.message:err),'err');}
+    }
+
+    function operationalDataQualitySummary(){
+      const missingCommitteeLinks=(committeeRows||[]).filter(function(row){return row&&!row._deleted&&!committeeLinkedKeys(row).length;});
+      const noticeProblems=(noticeRows||[]).filter(function(row){return row&&!row._deleted&&actionableAdminIssues(noticeIssues(row)).length;});
+      const recoveryProblems=(recoveryRows||[]).filter(function(row){return row&&!row._deleted&&actionableAdminIssues(recoveryIssues(row)).length;});
+      const recoveryDuplicateCandidates=[];
+      const seen={};
+      (recoveryRows||[]).forEach(function(row){
+        if(!row||row._deleted)return;
+        const key=[dbAdminRowStudentKey(row),String(row.noticeKey||row.linkedNoticeKey||row.noticeId||''),String(row.currentTotalBefore??''),String(row.currentTotalAfter??''),String(row.recoveryPoints??row.points??'')].join('|');
+        if(!dbAdminRowStudentKey(row)||!String(row.noticeKey||row.linkedNoticeKey||row.noticeId||'').trim())return;
+        if(seen[key]){recoveryDuplicateCandidates.push(row);if(!recoveryDuplicateCandidates.includes(seen[key]))recoveryDuplicateCandidates.push(seen[key]);}
+        else seen[key]=row;
+      });
+      return {missingCommitteeLinks,noticeProblems,recoveryProblems,recoveryDuplicateCandidates:Array.from(new Set(recoveryDuplicateCandidates))};
+    }
+    function openOperationalIssuePanel(kind){
+      if(kind==='committee'){openPanel('committees');const filter=document.getElementById('committee-issue-filter');if(filter)filter.value='missing';renderCommitteeTable();return;}
+      if(kind==='notice'){openPanel('notices');const filter=document.getElementById('notice-issue-filter');if(filter)filter.value='problem';renderNoticesTable();return;}
+      if(kind==='recovery'){openPanel('recovery');const filter=document.getElementById('recovery-issue-filter');if(filter)filter.value='problem';renderRecoveryTable();}
+    }
+
+    async function previewDataQualityBackfill(){
+      if(!requireDetentionAdminPermission('canForceCorrect','학년도·메타데이터 보완은 Admin만 가능합니다.'))return;
+      configureDataQualityApplyButton('combined');
+      pendingDataQualityPlan=buildDataQualityPlan();
+      pendingDataQualityPlan.mode='combined';
+      try{
+        const results=await Promise.all([db.ref('detentionStandards_meta').once('value'),db.ref('detentionStandards').once('value')]);
+        pendingDataQualityPlan.standardsMetaPending=!results[0].exists();
+        const standardsValue=results[1].val();
+        pendingDataQualityPlan.standardsItemCount=standardsValue&&typeof standardsValue==='object'?Object.keys(standardsValue).filter(function(k){return !isNaN(Number(k));}).length:0;
+      }catch(err){pendingDataQualityPlan.standardsMetaPending=false;pendingDataQualityPlan.standardsItemCount=0;console.warn('[standards meta preview failed]',err);}
+      const p=pendingDataQualityPlan,c=p.counts;
+      const panel=document.getElementById('data-quality-backfill-panel');
+      const summary=document.getElementById('data-quality-backfill-summary');
+      if(panel)panel.style.display='block';
+      if(summary){
+        const ops=operationalDataQualitySummary();
+        summary.innerHTML='날짜에서 학년도를 확정적으로 계산할 수 있는 누락 기록만 채웁니다.<br>디텐션 '+c.detentionEntries+'건 · 알림 '+c.detentionNotices+'건 · 회복교육 '+c.recoveryEntries+'건 · 위원회 '+c.committeeRecords+'건<br>기준표 메타데이터 초기화: '+(p.standardsMetaPending?'예정':'불필요')+'<hr style="border:0;border-top:1px solid #e2e8f0;margin:8px 0;"><b>운영 점검</b><br>위원회 연결 Key 누락 '+ops.missingCommitteeLinks.length+'건 · 알림 실제 문제 '+ops.noticeProblems.length+'건 · 회복교육 실제 문제 '+ops.recoveryProblems.length+'건 · 회복교육 중복 후보 '+ops.recoveryDuplicateCandidates.length+'건<br><span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;"><button type="button" class="btn btn-secondary small-btn" onclick="openOperationalIssuePanel(\'committee\')">위원회 문제 열기 | Open Committee Issues</button><button type="button" class="btn btn-secondary small-btn" onclick="openOperationalIssuePanel(\'notice\')">알림 문제 열기 | Open Notice Issues</button><button type="button" class="btn btn-secondary small-btn" onclick="openOperationalIssuePanel(\'recovery\')">회복교육 문제 열기 | Open Recovery Issues</button></span><b>과거 작성자·반려자는 추정하여 채우지 않습니다.</b>';
+      }
+    }
+    function closeDataQualityBackfill(){const panel=document.getElementById('data-quality-backfill-panel');if(panel)panel.style.display='none';pendingDataQualityPlan=null;configureDataQualityApplyButton('combined');}
+    async function applyDataQualityBackfill(){
+      if(!requireDetentionAdminPermission('canForceCorrect','학년도·메타데이터 보완은 Admin만 가능합니다.'))return;
+      const plan=pendingDataQualityPlan||buildDataQualityPlan();
+      if(!confirm('학년도 누락 '+plan.total+'건과 기준표 메타데이터 보완을 적용하시겠습니까?\n과거 처리자 정보는 변경하지 않습니다.'))return;
+      const updates=Object.assign({},plan.updates);const actor=adminAuditActor(),now=new Date().toISOString();
+      Object.keys(plan.updates||{}).filter(function(path){return path.endsWith('/year');}).forEach(function(yearPath){
+        const base=yearPath.slice(0,-5);
+        updates[base+'/updatedAt']=now;
+        updates[base+'/updatedBy']=actor.name;
+        updates[base+'/updatedByEmail']=actor.email;
+        updates[base+'/updatedSource']='detention-admin-year-backfill';
+      });
+      if(plan.standardsMetaPending){
+        updates['detentionStandards_meta']={initializedAt:now,initializedBy:actor.name,initializedByEmail:actor.email,updatedAt:now,updatedBy:actor.name,updatedByEmail:actor.email,version:0,itemCount:Number(plan.standardsItemCount||0),source:'metadata-initialization',event:'metadata_initialized_without_standard_change'};
+      }
+      try{
+        if(Object.keys(updates).length)await db.ref('/').update(updates);
+        const auditResult=await writeAdminAuditLogs([{timestamp:now,action:'backfill',collection:'multiple',recordKey:'year-and-standards-meta',source:'detention-admin-data-quality',actorName:actor.name,actorEmail:actor.email,changedFields:['year','detentionStandards_meta'],before:null,after:{counts:plan.counts,standardsMetaInitialized:!!plan.standardsMetaPending}}]);
+        toast(auditResult.ok?'학년도·메타데이터 보완 완료 | Data quality backfill completed.':'학년도·메타데이터는 보완됐지만 감사 로그 저장 권한을 확인하세요. | Backfill saved; audit-log permission needs review.',auditResult.ok?'ok':'err');
+        closeDataQualityBackfill();await loadAllData();
+      }catch(err){console.error(err);toast('학년도·메타데이터 보완 실패: '+(err&&err.message?err.message:err),'err');}
+    }
+
+    async function manualRecalculateCycleStates(){if(!requireDetentionAdminPermission('canRecalculate','상태 재계산 권한이 없습니다.'))return;
+      try{
+        const result = await recalculateCycleStatesAfterAdminEdit('detention-admin-manual');
+        toast('상태 재계산 완료: ' + ((result && result.count) || 0) + '명 | State recalculated.', 'ok');
+        await loadAllData();
+        applyDetentionAdminUiPermissions();
+      }catch(err){
+        console.error(err);
+        toast('상태 재계산 실패 | Failed to recalculate state.', 'err');
+      }
+    }
+
+    // 관리자 비밀번호 세션과 Admin/Master 교사 세션을 동일한 관리자센터 권한으로 처리합니다.
+    function getAdminCenterSessionTeacher(){
+      try{
+        const teacher=JSON.parse(sessionStorage.getItem('his_teacher')||'{}')||{};
+        if(String(teacher.name||'').trim())return teacher;
+      }catch(e){}
+      if(sessionStorage.getItem('his_admin_session')==='1'){
+        const synthetic={name:'관리자',email:'admin',id:'admin',roles:['admin'],source:'admin-password-session'};
+        try{sessionStorage.setItem('his_teacher',JSON.stringify(synthetic));}catch(e){}
+        return synthetic;
+      }
+      return {};
+    }
+    function getAdminCenterSessionRoles() {
+      const teacher=getAdminCenterSessionTeacher();
+      const raw=teacher.roles ?? teacher.role ?? [];
+      let roles=[];
+      if(Array.isArray(raw)) roles=raw;
+      else if(raw&&typeof raw==='object') roles=Object.keys(raw).filter(k=>raw[k]);
+      else roles=String(raw||'').split(/[|,\s]+/).filter(Boolean);
+      return Array.from(new Set(roles.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)));
+    }
+    function getDetentionAdminPermissions(){
+      const passwordAdmin=sessionStorage.getItem('his_admin_session')==='1';
+      const roles=getAdminCenterSessionRoles();
+      const isAdmin=passwordAdmin||roles.includes('admin');
+      const isMaster=!isAdmin&&roles.includes('master');
+      return {
+        isAdmin,isMaster,
+        canAccess:isAdmin||isMaster,
+        canEditGeneral:isAdmin||isMaster,
+        canForceCorrect:isAdmin,
+        canDelete:isAdmin,
+        canReset:isAdmin,
+        canExport:isAdmin||isMaster,
+        canRecalculate:isAdmin||isMaster
+      };
+    }
+    function hasAdminCenterSession(){return getDetentionAdminPermissions().canAccess;}
+    function isProtectedAdminField(kind,field){
+      const protectedFields={
+        entry:['studentKey','year','autoPoints','manualPoints','totalPoints','teacherName','createdAt','confirmedAt','adminNote','parentEmail','studentEmail','homeroomEmail','rejectedAt','rejectedBy','rejectedByEmail'],
+        notice:['studentKey','level','year','createdAt','completedAt','completedBy','completedByEmail'],
+        recovery:['studentKey','level','year','createdAt','completedAt','recoveryPoints','points','currentTotalBefore','currentTotalAfter','staffName','staffEmail'],
+        committee:['key','studentKey','currentPointsAtReferral','committeeThreshold','createdAt','completedAt','completedByEmail','createdByEmail','committeeNoteAuthorId','committeeNoteAuthorName','committeeNoteUpdatedAt']
+      };
+      return (protectedFields[kind]||[]).includes(field);
+    }
+    function canEditAdminField(kind,field){
+      const p=getDetentionAdminPermissions();
+      if(!p.canEditGeneral)return false;
+      if(p.isAdmin)return true;
+      return !isProtectedAdminField(kind,field);
+    }
+    function requireDetentionAdminPermission(permission,message){
+      const p=getDetentionAdminPermissions();
+      if(p[permission])return true;
+      toast(message||'이 작업은 Admin 권한이 필요합니다.','err');
+      return false;
+    }
+    function applyDetentionAdminUiPermissions(){
+      const p=getDetentionAdminPermissions();
+      const teacher=getAdminCenterSessionTeacher();
+      const user=document.getElementById('admin-center-user');
+      const userLabel=(teacher.name|| (p.isAdmin?'관리자':'Master'))+' · '+(p.isAdmin?'Admin':'Master')+(teacher.email?' · '+teacher.email:'');
+      // MutationObserver가 같은 문구를 반복해서 다시 쓰며 무한 갱신되는 것을 방지합니다.
+      if(user&&user.textContent!==userLabel) user.textContent=userLabel;
+      const reset=document.getElementById('btn-admin-reset-db');
+      if(reset){reset.disabled=!p.canReset;reset.style.display=p.canReset?'inline-flex':'none';}
+      document.querySelectorAll('[onclick*="toggleSelectedAdminDeleted"],[onclick*="toggleCommitteeDeleted"],[onclick*="markEntryDeleted"],[onclick*="markNoticeDeleted"],[onclick*="markRecoveryDeleted"]').forEach(btn=>{
+        btn.disabled=!p.canDelete;
+        btn.classList.toggle('is-disabled',!p.canDelete);
+        if(!p.canDelete)btn.title='실제 삭제 표시는 Admin만 가능합니다.';
+      });
+      document.querySelectorAll('[data-admin-force-correction]').forEach(el=>{el.disabled=!p.canForceCorrect;});
+      document.querySelectorAll('.admin-editor-body').forEach(body=>{
+        let note=body.querySelector('.permission-readonly-note');
+        if(p.isMaster&&!note){note=document.createElement('div');note.className='permission-readonly-note';note.textContent='Master 권한: 일반 업무 필드는 수정할 수 있습니다. 학생 Key·작성자·점수·처리일·이메일 보정과 삭제는 Admin만 가능합니다.';body.prepend(note);}
+      });
+    }
+
+    function hasAdminCenterSession() {
+      return getDetentionAdminPermissions().canAccess;
+    }
+
+    function checkAdminSession() {
+      if (!hasAdminCenterSession()) {
+        sessionStorage.setItem('his_admin_return_to', location.pathname.split('/').pop() + location.hash);
+        location.href = 'admin.html';
+        return false;
+      }
+      return true;
+    }
+
+    function logoutAdmin() {
+      sessionStorage.removeItem('his_admin_session');
+      sessionStorage.removeItem('his_teacher');
+      location.href = 'admin.html';
+    }
+
+    function badgeHtml(status){
+      if (status === '확정') return '<span class="status-chip confirmed">확정</span>';
+      if (status === '반려') return '<span class="status-chip rejected">반려</span>';
+      return '<span class="status-chip pending">대기</span>';
+    }
+
+    function openPanel(name){
+      document.querySelectorAll('.subtab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.panel === name);
+      });
+      document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'panel-' + name);
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.subtab-btn');
+      if (!btn) return;
+      openPanel(btn.dataset.panel);
+    });
+
+    // ── 컬럼 리사이즈 ──
+    let _resizeState = null;
+    function startResize(e, handle){
+      e.preventDefault(); e.stopPropagation();
+      const th = handle.closest('th');
+      const startX = e.clientX, startW = th.offsetWidth;
+      handle.classList.add('resizing');
+      _resizeState = { th, startX, startW, handle };
+      document.addEventListener('mousemove', _onResizeMove);
+      document.addEventListener('mouseup',   _onResizeUp);
+    }
+    function _onResizeMove(e){
+      if(!_resizeState) return;
+      const w = Math.max(40, _resizeState.startW + e.clientX - _resizeState.startX);
+      _resizeState.th.style.width    = w + 'px';
+      _resizeState.th.style.minWidth = w + 'px';
+    }
+    function _onResizeUp(){
+      if(!_resizeState) return;
+      _resizeState.handle.classList.remove('resizing');
+      _resizeState = null;
+      document.removeEventListener('mousemove', _onResizeMove);
+      document.removeEventListener('mouseup',   _onResizeUp);
+    }
+
+    document.getElementById('entry-search')?.addEventListener('input', renderEntriesTable);
+    document.getElementById('notice-search')?.addEventListener('input', renderNoticesTable);
+    document.getElementById('recovery-search')?.addEventListener('input', renderRecoveryTable);
+    document.getElementById('student-data-search')?.addEventListener('keydown', function(e){
+      if (e.key === 'Enter') runStudentDataSearch();
+    });
+    let studentSearchDebounceTimer = null;
+    document.getElementById('student-data-search')?.addEventListener('input', function(){
+      const input=this;
+      clearTimeout(studentSearchDebounceTimer);
+      studentSearchDebounceTimer=setTimeout(function(){
+        const hasQuery=!!String(input.value||'').trim();
+        if(!hasQuery) clearStudentDataSearch(false);
+        else renderStudentIndex();
+      },180);
+    });
+
+
+    function cleanAdminRowsForExport(rows){
+      return (rows || []).map(function(row){
+        return _payload(row);
+      });
+    }
+
+    function keyedAdminRows(rows){
+      const out = {};
+      (rows || []).forEach(function(row){
+        if (!row || !row.key) return;
+        out[row.key] = _payload(row);
+      });
+      return out;
+    }
+
+    function downloadJsonFile(filename, data){
+      const text = JSON.stringify(data, null, 2);
+      const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function safeFilePart(text){
+      return String(text || '')
+        .trim()
+        .replace(/[^0-9A-Za-z가-힣_\-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 80) || 'data';
+    }
+
+    function makeAdminExportData(){
+      return {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        source: 'detention-admin',
+        paths: {
+          detentionEntries: keyedAdminRows(entryRows),
+          detentionNotices: keyedAdminRows(noticeRows),
+          recoveryEntries: keyedAdminRows(recoveryRows),
+          committeeRecords: keyedAdminRows(committeeRows),
+          studentCycleState: keyedAdminRows(cycleRows),
+          students: keyedAdminRows(studentRows)
+        },
+        counts: {
+          detentionEntries: (entryRows || []).length,
+          detentionNotices: (noticeRows || []).length,
+          recoveryEntries: (recoveryRows || []).length,
+          committeeRecords: (committeeRows || []).length,
+          studentCycleState: (cycleRows || []).length,
+          students: (studentRows || []).length
+        }
+      };
+    }
+
+    function exportAdminJson(){if(!requireDetentionAdminPermission('canExport','내보내기 권한이 없습니다.'))return;
+      try{
+        const data = makeAdminExportData();
+        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        downloadJsonFile('his-detention-db-' + stamp + '.json', data);
+        toast('JSON 내보내기 완료 | JSON exported.', 'ok');
+      }catch(err){
+        console.error(err);
+        toast('JSON 내보내기 실패: ' + (err && err.message ? err.message : err), 'err');
+      }
+    }
+
+    function exportStudentDataJson(){
+      try{
+        const input = document.getElementById('student-data-search');
+        const query = String(studentDataLastQuery || (input && input.value) || '').trim();
+        if(!query){
+          toast('먼저 학생을 검색해 주세요. | Search a student first.', 'err');
+          return;
+        }
+        const matched = getStudentDataMatches(query);
+        const data = {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          source: 'detention-admin-student-data',
+          query: query,
+          matchedStudentKeys: matched.keys,
+          paths: {
+            detentionEntries: keyedAdminRows(matched.entries),
+            detentionNotices: keyedAdminRows(matched.notices),
+            recoveryEntries: keyedAdminRows(matched.recovery),
+            committeeRecords: keyedAdminRows(matched.committee),
+            studentCycleState: keyedAdminRows(matched.states),
+            students: keyedAdminRows(matched.students)
+          },
+          counts: {
+            detentionEntries: matched.entries.length,
+            detentionNotices: matched.notices.length,
+            recoveryEntries: matched.recovery.length,
+            committeeRecords: matched.committee.length,
+            studentCycleState: matched.states.length,
+            students: matched.students.length
+          }
+        };
+        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        downloadJsonFile('his-detention-student-' + safeFilePart(query) + '-' + stamp + '.json', data);
+        toast('검색 결과 JSON 내보내기 완료 | Search result JSON exported.', 'ok');
+      }catch(err){
+        console.error(err);
+        toast('검색 결과 JSON 내보내기 실패: ' + (err && err.message ? err.message : err), 'err');
+      }
+    }
+
+    async function loadAllData(){
+      try{
+        const [entriesSnap, noticesSnap, recoverySnap, committeeAdminSnap, cycleSnap, studentsSnap, teachersSnap] = await Promise.all([
+          db.ref('detentionEntries').once('value'),
+          db.ref('detentionNotices').once('value'),
+          db.ref('recoveryEntries').once('value'),
+          db.ref('committeeRecords').once('value'),
+          db.ref('studentCycleState').once('value'),
+          db.ref('students').once('value'),
+          db.ref('teachers').once('value').catch(err => { console.warn('[teachers load failed]', err); return null; })
+        ]);
+
+        adminTeacherRows = Object.entries((teachersSnap && teachersSnap.val()) || {}).map(([key, value]) => ({
+          key,
+          name: String((value && value.name) || ''),
+          email: String((value && value.email) || ''),
+          roles: normalizeAdminTeacherRoles((value && (value.roles || value.role)) || [])
+        })).filter(t => t.name || t.email).sort((a,b) => String(a.name||a.email).localeCompare(String(b.name||b.email), 'ko'));
+
+        studentRows = Object.entries((studentsSnap && studentsSnap.val()) || {}).map(([key, value]) => ({
+          key, ...(value || {})
+        })).sort((a,b) => String(a.className||'').localeCompare(String(b.className||''), 'ko', { numeric:true }) || String(a.name||'').localeCompare(String(b.name||''), 'ko'));
+
+        entryRows = Object.entries(entriesSnap.val() || {}).map(([key, value]) => ({
+          key, _deleted: false, ...value
+        })).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+
+        noticeRows = Object.entries(noticesSnap.val() || {}).map(([key, value]) => ({
+          key, _deleted: false, ...value
+        })).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+
+        recoveryRows = Object.entries(recoverySnap.val() || {}).map(([key, value]) => ({
+          key, _deleted: false, ...value
+        })).sort((a,b) => String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+
+        committeeRows = Object.entries((committeeAdminSnap && committeeAdminSnap.val()) || {}).map(([key, value]) => ({
+          key, _deleted: false, ...value
+        })).sort((a,b) => String(b.completedAt||b.createdAt||'').localeCompare(String(a.completedAt||a.createdAt||'')));
+
+        cycleRows = Object.entries((cycleSnap && cycleSnap.val()) || {}).map(([key, value]) => ({
+          key, ...(value || {})
+        })).sort((a,b) => String(a.key || '').localeCompare(String(b.key || '')));
+
+        _entryOrig=_origMap(entryRows);
+        _noticeOrig=_origMap(noticeRows);
+        _recoveryOrig=_origMap(recoveryRows);
+        _committeeOrig=_origMap(committeeRows);
+        _entryOrigPayload=_payloadMap(entryRows);
+        _noticeOrigPayload=_payloadMap(noticeRows);
+        _recoveryOrigPayload=_payloadMap(recoveryRows);
+        _committeeOrigPayload=_payloadMap(committeeRows);
+        // 구버전 entryKey만 linkedEntryKeys에 병합하며 수동 위원회 종류 필드는 그대로 보존합니다.
+        committeeRows.forEach(normalizeCommitteeAdminRow);
+        _entrySnap=_sig(entryRows);
+        _noticeSnap=_sig(noticeRows);
+        _recoverySnap=_sig(recoveryRows);
+        _committeeSnap=_sig(committeeRows);
+        _setBtnState('btn-save-entries',false);
+        _setBtnState('btn-save-notices',false);
+        _setBtnState('btn-save-recovery',false);
+        _setBtnState('btn-save-committee',committeeRows.some(r => _rowChanged(r, _committeeOrig)));
+
+        renderEntriesTable();
+        renderNoticesTable();
+        renderNoticeBulkAssignees();
+        renderRecoveryTable();
+        renderCommitteeTable();
+        renderStudentIndex();
+        renderStudentDataSearch(true);
+        toast('데이터를 불러왔습니다. | Data loaded.', 'ok');
+      }catch(err){
+        console.error(err);
+        const message = err && err.message ? err.message : String(err || 'unknown error');
+        const committeeBody = document.getElementById('committee-tbody');
+        if(committeeBody){
+          committeeBody.innerHTML='<tr><td colspan="9" class="empty" style="color:#b91c1c;font-weight:700;">데이터를 불러오지 못했습니다.<br><span style="font-weight:400;font-size:11px;">'+esc(message)+'</span></td></tr>';
+        }
+        const selectionLabel = document.getElementById('committee-selection-label');
+        if(selectionLabel) selectionLabel.textContent='불러오기 실패';
+        toast('데이터를 불러오지 못했습니다: ' + message, 'err');
+      }
+    }
+
+    function dbAdminRowStudentKey(row){
+      row = row || {};
+      if (row.studentKey) return String(row.studentKey);
+      if (row.studentName || row.className) return studentKey(row.studentName || '', row.className || '');
       return '';
     }
 
-    function adminDateOrderBad(a,b){
-      const x=dateInputValue(a);
-      const y=dateInputValue(b);
-      return !!(x && y && x > y);
+    function dbAdminStateStudentKey(row){
+      row = row || {};
+      if (row.studentKey) return String(row.studentKey);
+      return String(row.key || '').replace(/_(ms|hs)$/i, '');
     }
+
+    function dbAdminRowSearchText(row){
+      row = row || {};
+      return Object.keys(row).map(function(k){
+        if (k === '_deleted') return '';
+        const v = row[k];
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'object') return JSON.stringify(v);
+        return String(v);
+      }).join(' ').toLowerCase();
+    }
+
+    // 학생 데이터 검색 전용: 신원 필드만 매칭 (adminNote/violation 등 자유 텍스트 제외)
+    function dbAdminIdentityMatches(row, q){
+      if (!q) return false;
+      row = row || {};
+      const fields = ['key', 'studentKey', 'studentName', 'englishName', 'className', 'name', 'koreanName'];
+      const text = fields.map(function(k){
+        const v = row[k];
+        return (v === null || v === undefined) ? '' : String(v);
+      }).join(' ').toLowerCase();
+      return text.includes(q);
+    }
+
+    function dbAdminMatches(row, q){
+      if (!q) return false;
+      return dbAdminRowSearchText(row).includes(q);
+    }
+
+    function normalizeAdminStudentKey(value){ return String(value||'').trim().replace(/\s+/g,'_').toLowerCase(); }
+    function adminStudentProfile(studentKeyValue, fallback){
+      const nk=normalizeAdminStudentKey(studentKeyValue); fallback=fallback||{};
+      const exact=studentRows.find(function(s){return normalizeAdminStudentKey(s.key||s.studentKey)===nk;});
+      if(exact) return {studentKey:String(exact.key||exact.studentKey||studentKeyValue||''),name:String(exact.name||exact.studentName||fallback.studentName||''),englishName:String(exact.englishName||fallback.englishName||''),className:String(exact.className||fallback.className||'')};
+      const all=[].concat(entryRows,noticeRows,recoveryRows,committeeRows);
+      const hit=all.find(function(r){return normalizeAdminStudentKey(dbAdminRowStudentKey(r))===nk;});
+      return {studentKey:String((hit&&dbAdminRowStudentKey(hit))||studentKeyValue||''),name:String((hit&&(hit.studentName||hit.name))||fallback.studentName||''),englishName:String((hit&&hit.englishName)||fallback.englishName||''),className:String((hit&&hit.className)||fallback.className||'')};
+    }
+    let studentIndexPreparedCache = null;
+    function invalidateStudentIndexCache(){studentIndexPreparedCache=null;}
+    function studentIndexPreparedRows(){
+      const refs=[studentRows,entryRows,noticeRows,recoveryRows,committeeRows,cycleRows];
+      if(studentIndexPreparedCache&&studentIndexPreparedCache.refs.every(function(r,i){return r===refs[i];}))return studentIndexPreparedCache;
+      const all=studentAggregateRows();
+      const enriched=all.map(function(x){return {row:x,issues:studentReviewIssueStats(x)};});
+      studentIndexPreparedCache={refs:refs,all:all,enriched:enriched};
+      return studentIndexPreparedCache;
+    }
+    function studentAggregateRows(){
+      const map={};
+      function ensure(key,row){const nk=normalizeAdminStudentKey(key);if(!nk)return null;if(!map[nk]){const p=adminStudentProfile(key,row);map[nk]={norm:nk,studentKey:p.studentKey||key,name:p.name,englishName:p.englishName,className:p.className,entries:[],notices:[],recovery:[],committee:[],states:[]};}return map[nk];}
+      studentRows.forEach(function(s){ensure(s.key||s.studentKey,s);});
+      entryRows.forEach(function(r){const x=ensure(dbAdminRowStudentKey(r),r);if(x)x.entries.push(r);});
+      noticeRows.forEach(function(r){const x=ensure(dbAdminRowStudentKey(r),r);if(x)x.notices.push(r);});
+      recoveryRows.forEach(function(r){const x=ensure(dbAdminRowStudentKey(r),r);if(x)x.recovery.push(r);});
+      committeeRows.forEach(function(r){const x=ensure(dbAdminRowStudentKey(r),r);if(x)x.committee.push(r);});
+      cycleRows.forEach(function(r){const x=ensure(dbAdminStateStudentKey(r),r);if(x)x.states.push(r);});
+      return Object.values(map).map(function(x){
+        x.overall=x.entries.filter(function(r){return !r._deleted&&String(r.status||'')==='확정';}).reduce(function(s,r){return s+Number(r.totalPoints||0);},0);
+        x.recovered=x.recovery.filter(function(r){return !r._deleted;}).reduce(function(s,r){return s+Number(r.recoveryPoints||r.points||0);},0);
+        x.current=Math.max(0,x.overall-x.recovered);
+        x.total=x.entries.length+x.notices.length+x.recovery.length+x.committee.length;
+        return x;
+      }).sort(function(a,b){return String(a.className||'').localeCompare(String(b.className||''),'ko',{numeric:true})||String(a.name||a.studentKey).localeCompare(String(b.name||b.studentKey),'ko');});
+    }
+    function setStudentDataFilter(filter){
+      const input=document.getElementById('student-data-filter');
+      if(input)input.value=filter||'all';
+      renderStudentIndex();
+    }
+    function studentReviewIssues(kind,row,entryDup){
+      if(kind==='entry')return entryIssues(row,entryDup||buildEntryDuplicateMap());
+      if(kind==='notice')return noticeIssues(row);
+      if(kind==='recovery')return recoveryIssues(row);
+      return getCommitteeIssues(row);
+    }
+    function studentReviewIssuePill(issues){
+      const actionable=actionableAdminIssues(issues);
+      if(!actionable.length){
+        const auditCount=(issues||[]).length;
+        return auditCount?'<span class="admin-issue-pill ok" title="과거 처리자 이력 누락 '+auditCount+'건은 문제/확인 집계에서 제외됩니다.">정상 · 이력 '+auditCount+'</span>':'<span class="admin-issue-pill ok">정상</span>';
+      }
+      const bad=actionable.some(function(x){return x.level==='bad'||x.level==='danger';});
+      return '<span class="admin-issue-pill '+(bad?'bad':'warn')+'">'+(bad?'오류 ':'확인 ')+actionable.length+'</span>';
+    }
+    function studentReviewIssueStats(x){
+      const dup=buildEntryDuplicateMap();
+      const groups=[['entry',x.entries],['notice',x.notices],['recovery',x.recovery],['committee',x.committee]];
+      const stats={total:0,bad:0,byKind:{entry:0,notice:0,recovery:0,committee:0},badByKind:{entry:0,notice:0,recovery:0,committee:0}};
+      groups.forEach(function(g){g[1].forEach(function(row){const issues=studentReviewIssues(g[0],row,dup);const actionable=actionableAdminIssues(issues);if(!actionable.length)return;stats.total+=actionable.length;stats.byKind[g[0]]+=actionable.length;if(actionable.some(function(i){return i.level==='bad'||i.level==='danger';})){stats.bad++;stats.badByKind[g[0]]++;}});});
+      const profileProblem=!String(x.studentKey||'').trim()||!String(x.name||'').trim()||!String(x.className||'').trim();
+      if(profileProblem){stats.total++;stats.bad++;}
+      return stats;
+    }
+    function studentReviewProblemOverview(x){
+      const stats=studentReviewIssueStats(x);
+      if(!stats.total)return '<div class="student-review-problems"><span class="student-review-problem-title">데이터 점검</span><span class="student-review-problem-chip ok">현재 발견된 문제 없음</span></div>';
+      const kinds=[['entry','디텐션'],['notice','알림'],['recovery','회복교육'],['committee','위원회']];
+      return '<div class="student-review-problems"><span class="student-review-problem-title">문제/확인 '+stats.total+'건</span>'+kinds.filter(function(k){return stats.byKind[k[0]]>0;}).map(function(k){return '<button type="button" class="student-review-problem-chip '+(stats.badByKind[k[0]]?'bad':'')+'" onclick="setStudentReviewKind(\''+k[0]+'\')">'+k[1]+' '+stats.byKind[k[0]]+'</button>';}).join('')+'</div>';
+    }
+    function renderStudentIndex(){
+      const tbody=document.getElementById('student-index-tbody'); if(!tbody)return;
+      const q=String((document.getElementById('student-data-search')||{}).value||'').trim().toLowerCase();
+      const filter=String((document.getElementById('student-data-filter')||{}).value||'all');
+      const prepared=studentIndexPreparedRows();
+      const all=prepared.all;
+      const enriched=prepared.enriched;
+      const filtered=enriched.filter(function(item){const x=item.row;
+        const text=[x.name,x.englishName,x.className,x.studentKey].join(' ').toLowerCase(); if(q&&!text.includes(q))return false;
+        if(filter==='records'&&!x.total)return false; if(filter==='committee'&&!x.committee.length)return false;
+        if(filter==='problem'&&!item.issues.total)return false; return true;
+      });
+      const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=String(v);};
+      set('student-count-total',all.length);set('student-count-records',all.filter(x=>x.total).length);set('student-count-committee',all.filter(x=>x.committee.length).length);set('student-count-problem',enriched.filter(x=>x.issues.total).length);set('student-count-visible',filtered.length);
+      syncAdminFilterButtons('data-student-data-filter',filter);
+      if(!filtered.length){tbody.innerHTML='<tr><td colspan="4" class="empty">검색 결과가 없습니다.</td></tr>';return;}
+      tbody.innerHTML=filtered.map(function(item,i){const x=item.row,st=item.issues;const issueClass=st.bad?'bad':st.total?'warn':'';const issueText=st.total?(st.bad?'오류 ':'확인 ')+st.total:'정상';return '<tr class="admin-list-row '+(normalizeAdminStudentKey(selectedStudentKey)===x.norm?'admin-selected':'')+'" data-student-key="'+esc(x.studentKey)+'"><td class="row-num">'+(i+1)+'</td><td><span class="student-main">'+esc(x.name||x.studentKey)+'</span><span class="student-sub">'+esc(x.englishName||'')+(x.englishName?' · ':'')+esc(x.studentKey)+'</span></td><td>'+esc(x.className||'-')+'</td><td><span class="student-index-issue '+issueClass+'">'+issueText+'</span></td></tr>';}).join('');
+      tbody.querySelectorAll('tr[data-student-key]').forEach(function(tr){tr.addEventListener('click',function(){selectStudentForAdmin(tr.dataset.studentKey);});});
+    }
+    function selectStudentForAdmin(key){selectedStudentKey=String(key||'');studentDataLastQuery=selectedStudentKey;studentReviewSelected=[];studentReviewKind='entry';studentReviewFocusKey='';renderStudentIndex();renderStudentDataSearch(true);}
+    function runStudentDataSearch(){renderStudentIndex();const q=String((document.getElementById('student-data-search')||{}).value||'').trim().toLowerCase();if(!q)return;const hit=studentAggregateRows().find(function(x){return [x.name,x.englishName,x.className,x.studentKey].join(' ').toLowerCase().includes(q);});if(hit)selectStudentForAdmin(hit.studentKey);}
+    function clearStudentDataSearch(clearInput){if(clearInput!==false){const i=document.getElementById('student-data-search');if(i)i.value='';const f=document.getElementById('student-data-filter');if(f)f.value='all';}selectedStudentKey='';studentDataLastQuery='';studentReviewSelected=[];studentReviewKind='entry';studentReviewFocusKey='';renderStudentIndex();const r=document.getElementById('student-data-result');if(r)r.innerHTML='<div class="admin-editor-empty">왼쪽에서 조회할 학생을 선택하세요.</div>';const l=document.getElementById('student-selection-label');if(l)l.textContent='';checkStudentDataDirty();}
+    function adminRecordDate(row){return dateInputValue(row.completedAt||row.confirmedAt||row.createdAt||row.parentMailAt||'')||'-';}
+    function activateAdminPanel(panel){document.querySelectorAll('.subtab-btn').forEach(function(b){b.classList.toggle('active',b.dataset.panel===panel);});document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('active',p.id==='panel-'+panel);});}
+    function openAdminRecord(kind,key){const map={entry:'entries',notice:'notices',recovery:'recovery',committee:'committee'};if(kind==='entry')selectedEntryKey=key;if(kind==='notice')selectedNoticeKey=key;if(kind==='recovery')selectedRecoveryKey=key;if(kind==='committee')selectedCommitteeKey=key;activateAdminPanel(map[kind]);if(kind==='entry')renderEntriesTable();if(kind==='notice')renderNoticesTable();if(kind==='recovery')renderRecoveryTable();if(kind==='committee')renderCommitteeTable();}
+    function studentReviewRows(x,kind){return kind==='entry'?x.entries:kind==='notice'?x.notices:kind==='recovery'?x.recovery:x.committee;}
+    function studentReviewRecordId(kind,key){return kind+':'+String(key||'');}
+    function studentReviewFind(kind,key){const rows=kind==='entry'?entryRows:kind==='notice'?noticeRows:kind==='recovery'?recoveryRows:committeeRows;return rows.find(function(r){return String(r.key)===String(key);})||null;}
+    let studentTimelineScrollTop=0;
+    function setStudentReviewKind(kind){studentReviewKind=kind||'entry';studentReviewFocusKey='';renderStudentDataSearch(true);requestAnimationFrame(function(){const el=document.querySelector('#student-data-result .student-review-table-wrap');if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});});}
+    function openStudentReviewTimeline(kind,key){const timeline=document.querySelector('#student-data-result .student-timeline');if(timeline)studentTimelineScrollTop=timeline.scrollTop;studentReviewKind=kind||'entry';studentReviewFocusKey=String(key||'');renderStudentDataSearch(true);requestAnimationFrame(function(){const restored=document.querySelector('#student-data-result .student-timeline');if(restored)restored.scrollTop=studentTimelineScrollTop;const row=document.querySelector('#student-data-result tr[data-review-key="'+CSS.escape(studentReviewFocusKey)+'"]');if(row)row.scrollIntoView({block:'center',behavior:'smooth'});});}
+    function toggleStudentReviewRecord(kind,key){const id=studentReviewRecordId(kind,key);const idx=studentReviewSelected.findIndex(function(v){return studentReviewRecordId(v.kind,v.key)===id;});if(idx>=0)studentReviewSelected.splice(idx,1);else{if(studentReviewSelected.length>=2)studentReviewSelected.shift();studentReviewSelected.push({kind:kind,key:key});}renderStudentDataSearch(true);}
+    function clearStudentReviewSelection(){studentReviewSelected=[];renderStudentDataSearch(true);}
+    function setStudentCompareField(kind,key,field,value,mode){const row=studentReviewFind(kind,key);if(!row)return;if(mode==='number')row[field]=value===''?'':Number(value);else if(mode==='date')row[field]=value?value+'T00:00:00.000Z':'';else row[field]=value;invalidateStudentIndexCache();if(kind==='entry')checkEntryDirty();else if(kind==='notice')checkNoticeDirty();else if(kind==='recovery')checkRecoveryDirty();else checkCommitteeDirty();checkStudentDataDirty();}
+    function studentReviewKindLabel(kind){return kind==='entry'?'디텐션':kind==='notice'?'알림':kind==='recovery'?'회복교육':'위원회';}
+    function studentReviewStatus(kind,row){if(kind==='entry')return entryStatusLabel(row);if(kind==='notice')return row.completedAt?'완료':'진행 중';if(kind==='recovery')return row.completedAt?'완료':'기록';return row.completedAt?'완료':'진행 중';}
+    function studentReviewScore(kind,row){if(kind==='entry')return '+'+Number(row.totalPoints||0);if(kind==='recovery')return '-'+Number(row.recoveryPoints||row.points||0);return '0';}
+    function studentReviewDesc(kind,row){if(kind==='entry')return row.violation||row.category||'-';if(kind==='notice')return row.cycleViolationsSnapshot||row.reasonSnapshot||row.level||'-';if(kind==='recovery')return row.reasonsSnapshot||row.staffName||'-';return row.committeeNote||row.note||row.reason||'-';}
+    function studentReviewTimelineIssue(kind,row,entryDup){
+      const actionable=actionableAdminIssues(studentReviewIssues(kind,row,entryDup));
+      if(!actionable.length)return {count:0,bad:false,label:'',summary:''};
+      const bad=actionable.some(function(issue){return issue.level==='bad'||issue.level==='danger';});
+      const labels=[];
+      actionable.forEach(function(issue){
+        const text=String(issue&&issue.text||'').trim();
+        if(text&&!labels.includes(text))labels.push(text);
+      });
+      return {count:actionable.length,bad:bad,label:bad?'오류':'확인',summary:labels.slice(0,2).join(' · ')};
+    }
+    function studentReviewTimeline(x){
+      const all=[];
+      x.entries.forEach(function(r){all.push({kind:'entry',row:r});});
+      x.notices.forEach(function(r){all.push({kind:'notice',row:r});});
+      x.recovery.forEach(function(r){all.push({kind:'recovery',row:r});});
+      x.committee.forEach(function(r){all.push({kind:'committee',row:r});});
+      all.sort(function(a,b){return String(adminRecordDate(a.row)).localeCompare(String(adminRecordDate(b.row)));});
+      if(!all.length)return '<div class="student-data-empty" style="margin:12px;">관련 기록이 없습니다.</div>';
+      const entryDup=buildEntryDuplicateMap();
+      const rowCount=all.length>14?3:(all.length>6?2:1);
+      const perRow=Math.ceil(all.length/rowCount);
+      const rows=[];
+      for(let start=0;start<all.length;start+=perRow){
+        const chunk=all.slice(start,start+perRow);
+        const cards=chunk.map(function(v,index){
+          const active=studentReviewKind===v.kind&&String(studentReviewFocusKey)===String(v.row.key);
+          const issue=studentReviewTimelineIssue(v.kind,v.row,entryDup);
+          const issueClass=issue.count?(issue.bad?' issue-bad':' issue-warn'):'';
+          const badge=issue.count?'<span class="student-timeline-issue-badge '+(issue.bad?'bad':'warn')+'">'+issue.label+' '+issue.count+'</span>':'';
+          const issueText=issue.summary?'<div class="student-timeline-issue-text" title="'+esc(issue.summary)+'">'+esc(issue.summary)+'</div>':'';
+          const card='<div class="student-timeline-item '+v.kind+issueClass+(active?' active':'')+'" tabindex="0" role="button" onclick="openStudentReviewTimeline(\''+v.kind+'\',\''+esc(v.row.key)+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openStudentReviewTimeline(\''+v.kind+'\',\''+esc(v.row.key)+'\');}">'+badge+'<div class="student-timeline-date">'+esc(adminRecordDate(v.row))+'</div><div class="student-timeline-title">'+studentReviewKindLabel(v.kind)+' · '+esc(studentReviewStatus(v.kind,v.row))+'</div><div class="student-timeline-desc">'+esc(studentReviewDesc(v.kind,v.row))+'</div><div class="student-timeline-score">'+esc(studentReviewScore(v.kind,v.row))+'점</div>'+issueText+'</div>';
+          return card+(index<chunk.length-1?'<div class="student-timeline-arrow" aria-hidden="true">→</div>':'');
+        }).join('');
+        rows.push('<div class="student-timeline-row">'+cards+'</div>');
+        if(start+perRow<all.length)rows.push('<div class="student-timeline-row-link"><span>다음 과정 ↓</span></div>');
+      }
+      return '<div class="student-timeline">'+rows.join('')+'</div>';
+    }
+    function studentReviewTable(x){
+      const dup=buildEntryDuplicateMap();
+      const kinds=[['entry','디텐션',x.entries],['notice','알림',x.notices],['recovery','회복교육',x.recovery],['committee','위원회',x.committee]];
+      const rows=studentReviewRows(x,studentReviewKind).slice().sort(function(a,b){return String(adminRecordDate(b)).localeCompare(String(adminRecordDate(a)));});
+      const tabs='<div class="student-review-tabs">'+kinds.map(function(k){const issueCount=k[2].reduce(function(sum,row){return sum+actionableAdminIssues(studentReviewIssues(k[0],row,dup)).length;},0);return '<button type="button" class="student-review-tab '+(studentReviewKind===k[0]?'active':'')+'" onclick="setStudentReviewKind(\''+k[0]+'\')">'+k[1]+' <b>'+k[2].length+'</b>'+(issueCount?' <span style="color:#be123c;">· 점검 '+issueCount+'</span>':'')+'</button>';}).join('')+'</div>';
+      const body=rows.length?rows.map(function(r){const selected=studentReviewSelected.some(function(v){return v.kind===studentReviewKind&&String(v.key)===String(r.key);});const focused=String(studentReviewFocusKey)===String(r.key);const issues=studentReviewIssues(studentReviewKind,r,dup);return '<tr data-review-key="'+esc(r.key)+'" class="'+(selected?'selected ':'')+(focused?'focused':'')+'" onclick="toggleStudentReviewRecord(\''+studentReviewKind+'\',\''+esc(r.key)+'\')"><td><input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation();toggleStudentReviewRecord(\''+studentReviewKind+'\',\''+esc(r.key)+'\')"></td><td>'+esc(adminRecordDate(r))+'</td><td><span class="student-record-kind '+studentReviewKind+'">'+studentReviewKindLabel(studentReviewKind)+'</span></td><td title="'+esc(studentReviewDesc(studentReviewKind,r))+'">'+esc(studentReviewDesc(studentReviewKind,r))+'</td><td><b>'+esc(studentReviewScore(studentReviewKind,r))+'</b></td><td>'+esc(studentReviewStatus(studentReviewKind,r))+'</td><td>'+studentReviewIssuePill(issues)+'</td></tr>';}).join(''):'<tr><td colspan="7" style="padding:18px;text-align:center;color:#94a3b8;">기록 없음</td></tr>';
+      return tabs+'<div class="student-review-grid"><div><div class="student-review-table-wrap"><table class="student-review-table"><thead><tr><th style="width:28px"></th><th style="width:82px">날짜</th><th style="width:70px">유형</th><th>내용</th><th style="width:50px">점수</th><th style="width:72px">상태</th><th style="width:82px">문제/확인</th></tr></thead><tbody>'+body+'</tbody></table></div><div style="display:flex;justify-content:space-between;gap:8px;padding:8px 2px 0;font-size:10px;color:#64748b;"><span>선택 '+studentReviewSelected.length+'건 · 최대 2건 비교</span><button class="btn btn-secondary small-btn" onclick="clearStudentReviewSelection()">선택 해제 | Clear Selection</button></div></div>'+studentReviewComparePanel()+'</div>';
+    }
+    function studentCompareField(kind,row,field,label,type,options,mode){const disabled=!canEditAdminField(kind,field);const val=row[field]??'';let control='';if(type==='textarea')control='<textarea '+(disabled?'disabled':'')+' oninput="setStudentCompareField(\''+kind+'\',\''+esc(row.key)+'\',\''+field+'\',this.value,\''+(mode||'')+'\')">'+esc(val)+'</textarea>';else if(type==='select')control='<select '+(disabled?'disabled':'')+' onchange="setStudentCompareField(\''+kind+'\',\''+esc(row.key)+'\',\''+field+'\',this.value,\''+(mode||'')+'\')">'+options.map(function(o){return '<option value="'+esc(o[0])+'" '+(String(val)===String(o[0])?'selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select>';else{const shown=type==='date'?dateInputValue(val):val;control='<input type="'+(type||'text')+'" value="'+esc(shown)+'" '+(disabled?'disabled':'')+' oninput="setStudentCompareField(\''+kind+'\',\''+esc(row.key)+'\',\''+field+'\',this.value,\''+(type==='date'?'date':mode||'')+'\')">';}return '<div class="student-compare-field"><label>'+label+'</label>'+control+'</div>';}
+    function studentReviewCompareCard(sel,index){const row=studentReviewFind(sel.kind,sel.key);if(!row)return '';let fields='';if(sel.kind==='entry'){fields+=studentCompareField('entry',row,'createdAt','날짜','date');fields+=studentCompareField('entry',row,'status','상태','select',[['임시저장','대기'],['확정','확정'],['반려','반려']]);fields+=studentCompareField('entry',row,'totalPoints','점수','number',null,'number');fields+=studentCompareField('entry',row,'violation','위반행위','textarea');fields+=studentCompareField('entry',row,'memo','메모','textarea');fields+=studentCompareField('entry',row,'year','학년도','number',null,'number');}else if(sel.kind==='notice'){fields+=studentCompareField('notice',row,'createdAt','생성일','date');fields+=studentCompareField('notice',row,'completedAt','완료일','date');fields+=studentCompareField('notice',row,'completedBy','완료자');fields+=studentCompareField('notice',row,'cycleViolationsSnapshot','사유','textarea');fields+=studentCompareField('notice',row,'year','학년도','number',null,'number');}else if(sel.kind==='recovery'){fields+=studentCompareField('recovery',row,'completedAt','완료일','date');fields+=studentCompareField('recovery',row,'recoveryPoints','회복점수','number',null,'number');fields+=studentCompareField('recovery',row,'currentTotalBefore','처리 전','number',null,'number');fields+=studentCompareField('recovery',row,'currentTotalAfter','처리 후','number',null,'number');fields+=studentCompareField('recovery',row,'staffName','담당자');fields+=studentCompareField('recovery',row,'reasonsSnapshot','사유','textarea');}else{fields+=studentCompareField('committee',row,'createdAt','생성일','date');fields+=studentCompareField('committee',row,'completedAt','완료일','date');fields+=studentCompareField('committee',row,'committeeCategory','위원회 종류');fields+=studentCompareField('committee',row,'committeeNote','메모','textarea');fields+=studentCompareField('committee',row,'year','학년도','number',null,'number');}return '<div class="student-compare-card"><div class="student-compare-card-head"><span>기록 '+(index===0?'A':'B')+'</span><span class="student-record-kind '+sel.kind+'">'+studentReviewKindLabel(sel.kind)+'</span></div><div class="student-compare-card-body">'+fields+'<div style="font-size:8px;color:#94a3b8;word-break:break-all;">ID: '+esc(row.key)+'</div></div></div>';}
+    function studentReviewComparePanel(){const cards=studentReviewSelected.map(studentReviewCompareCard).join('');return '<aside class="student-compare-panel"><div class="student-compare-head"><span>비교 수정 패널</span><span>'+studentReviewSelected.length+'/2 선택</span></div>'+(cards?'<div class="student-compare-cards">'+cards+'</div>':'<div class="student-compare-empty">왼쪽 기록 목록에서 최대 2건을 선택하세요.<br>학생의 전체 과정은 그대로 보면서 비교·수정할 수 있습니다.</div>')+'<div class="student-bulk-edit"><b style="font-size:10px;">일괄 수정 · 선택 기록에 적용</b><div class="student-bulk-edit-grid"><div class="student-compare-field"><label>학년도</label><input id="student-bulk-year" type="number" placeholder="예: 2026"></div><div class="student-compare-field"><label>이메일 보정</label><select id="student-bulk-email"><option value="">변경 없음</option><option value="roster">학생 명단 기준</option></select></div><div class="student-compare-field"><label>삭제 표시</label><select id="student-bulk-delete"><option value="">변경 없음</option><option value="yes">삭제 표시</option><option value="no">삭제 취소</option></select></div></div><div class="student-bulk-actions"><button class="btn btn-secondary small-btn" onclick="applyStudentReviewBulkEdit()">선택 기록에 적용 | Apply to Selected Records</button><button class="btn btn-primary small-btn" onclick="saveStudentDataChanges()">변경사항 저장 | Save Changes</button></div></div></aside>';}
+    function applyStudentReviewBulkEdit(){if(!studentReviewSelected.length)return toast('먼저 기록을 선택하세요.','err');const year=String((document.getElementById('student-bulk-year')||{}).value||'').trim();const email=String((document.getElementById('student-bulk-email')||{}).value||'');const del=String((document.getElementById('student-bulk-delete')||{}).value||'');const student=studentRows.find(function(s){return normalizeAdminStudentKey(s.key||s.studentKey)===normalizeAdminStudentKey(selectedStudentKey);});invalidateStudentIndexCache();studentReviewSelected.forEach(function(sel){const row=studentReviewFind(sel.kind,sel.key);if(!row)return;if(year)row.year=Number(year);if(del)row._deleted=del==='yes';if(email==='roster'&&sel.kind==='entry'&&student){row.parentEmail=String(student.parentEmail||'');row.studentEmail=String(student.selfEmail||'');row.homeroomEmail=String(student.homeroomTeacherEmail||'');}});checkEntryDirty();checkNoticeDirty();checkRecoveryDirty();checkCommitteeDirty();renderStudentDataSearch(true);toast('선택 기록에 일괄 수정 내용을 반영했습니다. 저장 버튼을 눌러 DB에 적용하세요.','ok');}
+    function renderStudentDataSearch(){
+      const pane=document.getElementById('student-data-result');if(!pane)return;if(!selectedStudentKey){pane.innerHTML='<div class="admin-editor-empty">왼쪽에서 조회할 학생을 선택하세요.</div>';return;}
+      const x=studentAggregateRows().find(function(v){return normalizeAdminStudentKey(v.studentKey)===normalizeAdminStudentKey(selectedStudentKey);});if(!x){pane.innerHTML='<div class="admin-editor-empty">학생 데이터를 찾을 수 없습니다.</div>';return;}
+      studentReviewSelected=studentReviewSelected.filter(function(v){return !!studentReviewFind(v.kind,v.key)&&normalizeAdminStudentKey(dbAdminRowStudentKey(studentReviewFind(v.kind,v.key)))===normalizeAdminStudentKey(selectedStudentKey);});
+      const lab=document.getElementById('student-selection-label');if(lab)lab.textContent=(x.name||x.studentKey)+' 선택됨';
+      const recent=[].concat(x.entries.map(r=>({kind:'entry',row:r})),x.notices.map(r=>({kind:'notice',row:r})),x.recovery.map(r=>({kind:'recovery',row:r})),x.committee.map(r=>({kind:'committee',row:r}))).sort(function(a,b){return String(adminRecordDate(b.row)).localeCompare(String(adminRecordDate(a.row)));})[0];
+      pane.innerHTML='<div class="student-review-shell"><div class="student-review-head"><div><div class="student-review-name">'+esc(x.name||x.studentKey)+' <span style="font-size:12px;font-weight:700;color:#64748b;">'+esc(x.englishName||'')+' · '+esc(x.className||'학반 없음')+'</span></div><div class="student-review-sub">'+esc(x.studentKey)+' · 기록 '+x.total+'건</div></div><button class="btn btn-primary small-btn" onclick="saveStudentDataChanges()">변경사항 저장 | Save Changes</button></div><div class="student-review-metrics"><div class="student-review-metric"><div class="label">현재점수</div><div class="value">'+x.current+'점</div></div><div class="student-review-metric"><div class="label">누적점수</div><div class="value">'+x.overall+'점</div></div><div class="student-review-metric"><div class="label">회복교육</div><div class="value">'+x.recovery.length+'회</div></div><div class="student-review-metric"><div class="label">위원회</div><div class="value">'+x.committee.length+'회</div></div><div class="student-review-metric"><div class="label">최근 상태</div><div class="value" style="font-size:13px;padding-top:4px;">'+esc(recent?studentReviewKindLabel(recent.kind)+' · '+studentReviewStatus(recent.kind,recent.row):'기록 없음')+'</div></div></div>'+studentReviewProblemOverview(x)+'<section class="student-review-card"><div class="student-review-card-head"><span>벌점 · 회복 과정</span><span class="student-review-help">과정 카드를 누르면 아래 해당 목록으로 이동합니다.</span></div>'+studentReviewTimeline(x)+'</section><section class="student-review-card"><div class="student-review-card-head"><span>기록 목록 및 비교 수정</span><span class="student-review-help">행을 눌러도 다른 편집 화면으로 이동하지 않습니다.</span></div>'+studentReviewTable(x)+'</section></div>';
+      requestAnimationFrame(function(){const timeline=document.querySelector('#student-data-result .student-timeline');if(timeline)timeline.scrollTop=studentTimelineScrollTop;});
+    }
+
+    async function saveStudentDataChanges(){
+      const updates = {};
+      const audits=[];
+      let changed = 0;
+      function collect(rows, path, orig){
+        (rows || []).forEach(function(row){
+          if (!row || !row.key || !_rowChanged(row, orig)) return;
+          const prepared=prepareAdminRecordChange(path,row,'detention-admin-student-data');
+          updates[path + '/' + row.key] = prepared.payload;
+          audits.push(prepared.audit);
+          changed++;
+        });
+      }
+      collect(entryRows, 'detentionEntries', _entryOrig);
+      collect(noticeRows, 'detentionNotices', _noticeOrig);
+      collect(recoveryRows, 'recoveryEntries', _recoveryOrig);
+      collect(committeeRows, 'committeeRecords', _committeeOrig);
+      if (!changed) {
+        toast('저장할 변경사항이 없습니다. | No changes to save.', 'ok');
+        return;
+      }
+      try{
+        toast('학생 관련 DB 변경사항 저장 중... | Saving student data changes...', 'ok');
+        await db.ref('/').update(updates);
+        const auditResult=await writeAdminAuditLogs(audits);
+        try{
+          await recalculateCycleStatesAfterAdminEdit('detention-admin-student-data');
+        }catch(recalcErr){
+          console.error('Saved, but recalculation failed:', recalcErr);
+          toast('DB 저장은 완료됐지만 상태 재계산에 실패했습니다. 일괄 입력·관리 도구의 상태 재계산 버튼을 눌러주세요.', 'err');
+        }
+        await loadAllData();
+        renderStudentDataSearch(true);
+        toast('학생 관련 DB 변경사항 저장 완료'+(auditResult.ok?'':' · 감사 로그 권한 확인 필요')+' | Student data changes saved.', auditResult.ok?'ok':'err');
+      }catch(err){
+        console.error(err);
+        toast('학생 관련 DB 저장 실패: ' + (err && err.message ? err.message : err), 'err');
+      }
+    }
+
+
+
+    function adminProfileForRow(row){const key=dbAdminRowStudentKey(row);const p=adminStudentProfile(key,row);return {studentKey:key||p.studentKey,name:String(row.studentName||p.name||key||'학생 없음'),englishName:String(row.englishName||p.englishName||''),className:String(row.className||p.className||'')};}
+
+    function adminLocationLabel(row){
+      row=row||{};
+      const code=String(row.location||'').trim();
+      const labels={
+        classroom:'교실 | Classroom',
+        hallway:'복도 | Hallway',
+        outdoor:'운동장/야외 | Playground/Outdoor',
+        cafeteria:'급식실 | Cafeteria',
+        library:'도서관 | Library',
+        other:'기타 | Other'
+      };
+      let label=labels[code]||'';
+      if(code==='classroom'&&String(row.locationClass||'').trim()) label+=' — '+String(row.locationClass).trim();
+      else if(code==='other'&&String(row.locationOther||'').trim()) label+=' — '+String(row.locationOther).trim();
+      return label||'-';
+    }
+    function adminDateOrderBad(a,b){const x=dateInputValue(a),y=dateInputValue(b);return !!(x&&y&&x>y);}
     function entryDuplicateSignature(row){
       row=row||{};
       return [
