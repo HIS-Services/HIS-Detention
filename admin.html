@@ -1966,22 +1966,52 @@
           r.oldKey = key;
         });
 
-        // 개별 update (다른 키 건드리지 않음)
-        if (Object.keys(updates).length) {
-          await db.ref().update(updates);
-        }
-        // 삭제는 개별 remove
-        await Promise.all(removes.map(k => db.ref(`teachers/${k}`).remove()));
+        // Save only rows whose Firebase payload actually changed.
+        // With strict rules, a multi-location update is atomic, so one protected
+        // or legacy row can otherwise cause the entire teacher save to fail.
+        const changedWrites = Object.entries(updates).filter(([path, nextData]) => {
+          const key = String(path).replace(/^teachers\//, '');
+          const current = teachersRaw[key] || null;
+          return JSON.stringify(current) !== JSON.stringify(nextData);
+        });
 
-        // Re-read the teacher directory and verify complete functional roleFlags
-        // after every teacher save when the current Firebase user is Admin.
+        for (const [path, nextData] of changedWrites) {
+          const key = String(path).replace(/^teachers\//, '');
+          const ref = db.ref(`teachers/${key}`);
+
+          await ref.set(nextData);
+
+          // Verify both roles and roleFlags actually reached Firebase.
+          const verifySnap = await ref.once('value');
+          const saved = verifySnap.val() || {};
+          const expectedRoles = normalizeRoles(nextData.roles);
+          const actualRoles = normalizeRoles(saved.roles);
+          const expectedFlags = buildRoleFlagsForRoles(expectedRoles);
+          const actualFlags = saved.roleFlags || {};
+
+          const sameRoles =
+            JSON.stringify([...expectedRoles].sort()) ===
+            JSON.stringify([...actualRoles].sort());
+
+          if (!sameRoles || !roleFlagsEqual(actualFlags, expectedFlags)) {
+            throw new Error(`Teacher role save verification failed for ${key}`);
+          }
+
+          teachersRaw[key] = saved;
+        }
+
+        // Delete only explicitly removed rows.
+        for (const key of removes) {
+          await db.ref(`teachers/${key}`).remove();
+          delete teachersRaw[key];
+        }
+
+        // Repair any legacy/incomplete roleFlags after changed rows are committed.
         try {
-          const freshTeachers = await db.ref('teachers').once('value');
-          teachersRaw = freshTeachers.val() || {};
           await syncAllTeacherRoleFlagsIfAdmin();
         } catch (roleSyncError) {
           console.error('Post-save roleFlags sync failed:', roleSyncError);
-          toast('교사 정보는 저장되었지만 권한 보안 동기화에 실패했습니다. | Teacher saved, but role security sync failed.', 'err');
+          toast('교사 정보는 저장되었지만 일부 권한 보안 동기화에 실패했습니다. | Teacher saved, but some role security sync failed.', 'err');
         }
 
         const sessionSync = syncCurrentTeacherSessionFromSavedRows();
