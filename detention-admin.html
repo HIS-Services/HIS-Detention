@@ -1936,11 +1936,11 @@
 
         entryRows = Object.entries(entriesSnap.val() || {}).map(([key, value]) => ({
           key, _deleted: false, ...value
-        })).sort(newestFirst));
+        })).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
 
         noticeRows = Object.entries(noticesSnap.val() || {}).map(([key, value]) => ({
           key, _deleted: false, ...value
-        })).sort(newestFirst));
+        })).sort((a,b) => String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
 
         recoveryRows = Object.entries(recoverySnap.val() || {}).map(([key, value]) => ({
           key, _deleted: false, ...value

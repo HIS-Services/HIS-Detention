@@ -904,10 +904,11 @@
     .admin-note-input{font-size:12.5px}
 
   
-    .confirm-action-btn{
-      padding:5px 8px !important;
-      min-height:28px !important;
-      font-size:12px !important;
+    /* Compact Confirm/Reject controls without changing table/data behavior */
+    .confirm-action-compact{
+      padding:4px 7px !important;
+      min-height:26px !important;
+      font-size:11px !important;
       line-height:1.1 !important;
       white-space:nowrap;
     }
@@ -2557,7 +2558,7 @@
     }
 
     function setConfirmProcessedPage(page){
-      const processedCount = Object.values(entries || {}).filter(r => String((r && r.status) || '임시저장') !== '임시저장').length.sort(newestFirst);
+      const processedCount = Object.values(entries || {}).filter(r => String((r && r.status) || '임시저장') !== '임시저장').length;
       confirmProcessedPage = clampPage(page, processedCount, PAGE_SIZE);
       renderConfirmEntries();
     }
@@ -2797,7 +2798,7 @@
       const sel = document.getElementById('standard-category-filter');
       if(!sel) return;
       const previous = sel.value;
-      const categories = [...new Set(detentionStandards.map(row => String(row.category || '').trim()).filter(Boolean))].sort(newestFirst);
+      const categories = [...new Set(detentionStandards.map(row => String(row.category || '').trim()).filter(Boolean))];
       sel.innerHTML = '<option value="">전체 구분 | All Categories</option>' + categories.map(category => {
         const name = standardBilingual(category);
         const label = name.en ? `${name.ko} | ${name.en}` : name.ko;
@@ -2998,15 +2999,15 @@
     }
     function splitCategoryLabel(category){return splitBilingualText(category);}
     function shortCategoryName(category){return splitCategoryLabel(category).ko;}
-    function setupSelectors(){const sel=document.getElementById('category-select');const cats=[...new Set(detentionStandards.map(x=>x.category).filter(Boolean))];const prev=sel.value;sel.innerHTML=cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');if(prev&&cats.includes(prev))sel.value=prev;renderCategoryCards();renderViolationOptions().sort(newestFirst);}
+    function setupSelectors(){const sel=document.getElementById('category-select');const cats=[...new Set(detentionStandards.map(x=>x.category).filter(Boolean))];const prev=sel.value;sel.innerHTML=cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');if(prev&&cats.includes(prev))sel.value=prev;renderCategoryCards();renderViolationOptions();}
     function renderCategoryCards(){const sel=document.getElementById('category-select'),wrap=document.getElementById('category-card-list');if(!sel||!wrap)return;const selected=sel.value;wrap.innerHTML=Array.from(sel.options).map(opt=>{const v=opt.value,parts=splitCategoryLabel(v);return `<button type="button" class="violation-category-card ${v===selected?'active':''}" data-category="${esc(v)}" onclick="selectCategoryCard(this.dataset.category)" title="${esc(v)}"><span class="violation-category-icon">${categoryIcon(v)}</span><span class="violation-category-name"><span class="violation-category-name-ko">${esc(parts.ko)}</span>${parts.en?`<span class="violation-category-name-en">${esc(parts.en)}</span>`:''}</span></button>`;}).join('');}
     function selectCategoryCard(category){const sel=document.getElementById('category-select');if(!sel)return;sel.value=category;renderCategoryCards();renderViolationOptions();}
-    function renderViolationOptions(){const category=document.getElementById('category-select').value,sel=document.getElementById('violation-select'),prev=sel.value,list=detentionStandards.filter(x=>x.category===category);sel.innerHTML=list.map(x=>`<option value="${esc(x.violation)}">${esc(x.violation)}</option>`).join('');if(prev&&list.some(x=>x.violation===prev))sel.value=prev;renderViolationCards();syncAutoPoints().sort(newestFirst);}
-    function renderViolationCards(){const category=document.getElementById('category-select').value,sel=document.getElementById('violation-select'),wrap=document.getElementById('violation-card-list'),count=document.getElementById('violation-choice-count');if(!wrap||!sel)return;const list=detentionStandards.filter(x=>x.category===category),selected=sel.value;if(count)count.textContent=`${list.length}개 | ${list.length} items`;wrap.innerHTML=list.map((x,i)=>{const active=x.violation===selected,parts=splitBilingualText(x.violation),ko=parts.ko||parts.en||x.violation,en=parts.ko?parts.en:'';return `<button type="button" role="option" aria-selected="${active?'true':'false'}" class="violation-item-card ${active?'active':''}" data-violation-index="${i}" onclick="selectViolationCard(Number(this.dataset.violationIndex))" title="${esc(x.violation)}"><span class="violation-item-title"><span class="violation-item-title-ko">${esc(ko)}</span>${en?`<span class="violation-item-title-en">${esc(en)}</span>`:''}</span><span class="violation-item-points">${esc(String(x.autoPoints||'-'))}점</span></button>`;}).join('');updateSelectedViolationDetail().sort(newestFirst);}
-    function selectViolationCard(index){const category=document.getElementById('category-select').value,list=detentionStandards.filter(x=>x.category===category),item=list[index];if(!item)return;document.getElementById('violation-select').value=item.violation;renderViolationCards();syncAutoPoints().sort(newestFirst);}
+    function renderViolationOptions(){const category=document.getElementById('category-select').value,sel=document.getElementById('violation-select'),prev=sel.value,list=detentionStandards.filter(x=>x.category===category);sel.innerHTML=list.map(x=>`<option value="${esc(x.violation)}">${esc(x.violation)}</option>`).join('');if(prev&&list.some(x=>x.violation===prev))sel.value=prev;renderViolationCards();syncAutoPoints();}
+    function renderViolationCards(){const category=document.getElementById('category-select').value,sel=document.getElementById('violation-select'),wrap=document.getElementById('violation-card-list'),count=document.getElementById('violation-choice-count');if(!wrap||!sel)return;const list=detentionStandards.filter(x=>x.category===category),selected=sel.value;if(count)count.textContent=`${list.length}개 | ${list.length} items`;wrap.innerHTML=list.map((x,i)=>{const active=x.violation===selected,parts=splitBilingualText(x.violation),ko=parts.ko||parts.en||x.violation,en=parts.ko?parts.en:'';return `<button type="button" role="option" aria-selected="${active?'true':'false'}" class="violation-item-card ${active?'active':''}" data-violation-index="${i}" onclick="selectViolationCard(Number(this.dataset.violationIndex))" title="${esc(x.violation)}"><span class="violation-item-title"><span class="violation-item-title-ko">${esc(ko)}</span>${en?`<span class="violation-item-title-en">${esc(en)}</span>`:''}</span><span class="violation-item-points">${esc(String(x.autoPoints||'-'))}점</span></button>`;}).join('');updateSelectedViolationDetail();}
+    function selectViolationCard(index){const category=document.getElementById('category-select').value,list=detentionStandards.filter(x=>x.category===category),item=list[index];if(!item)return;document.getElementById('violation-select').value=item.violation;renderViolationCards();syncAutoPoints();}
     function updateSelectedViolationDetail(){const box=document.getElementById('selected-violation-detail'),toggle=document.getElementById('selected-violation-toggle'),std=getSelectedStandard();if(!box)return;if(!std){box.classList.remove('visible','expanded');box.textContent='';if(toggle){toggle.hidden=true;toggle.setAttribute('aria-expanded','false');}return;}const violationParts=splitBilingualText(std.violation),detailLines=['선택됨 | Selected'];if(violationParts.ko)detailLines.push('한국어: '+violationParts.ko);if(violationParts.en)detailLines.push('English: '+violationParts.en);if(!violationParts.ko&&!violationParts.en)detailLines.push(String(std.violation||''));if(std.note){const noteParts=splitBilingualText(std.note);detailLines.push('', '안내 | Note');if(noteParts.ko)detailLines.push('한국어: '+noteParts.ko);if(noteParts.en)detailLines.push('English: '+noteParts.en);if(!noteParts.ko&&!noteParts.en)detailLines.push(String(std.note||''));}const detail=detailLines.join('\n');box.textContent=detail;box.title=detail;box.classList.add('visible');box.classList.remove('expanded');if(toggle){toggle.hidden=detail.length<95;toggle.textContent='전체 내용 | Full text';toggle.setAttribute('aria-expanded','false');}}
     function toggleSelectedViolationDetail(){const box=document.getElementById('selected-violation-detail'),toggle=document.getElementById('selected-violation-toggle');if(!box||!toggle)return;const expanded=box.classList.toggle('expanded');toggle.textContent=expanded?'접기 | Collapse':'전체 내용 | Full text';toggle.setAttribute('aria-expanded',expanded?'true':'false');}
-    function getAutoChoicePoint(std){const raw=String((std&&std.autoPoints)||'').trim(),parts=raw.split(',').map(v=>Number(v.trim())).filter(Number.isFinite);if(parts.length<2)return parts[0]||0;const count=countSameDetention(selectedStudentKey||syncStudentSelectionWithoutUpdate(),std.category||'',std.violation||'');return count===0?parts[0]:parts[1].sort(newestFirst);}
+    function getAutoChoicePoint(std){const raw=String((std&&std.autoPoints)||'').trim(),parts=raw.split(',').map(v=>Number(v.trim())).filter(Number.isFinite);if(parts.length<2)return parts[0]||0;const count=countSameDetention(selectedStudentKey||syncStudentSelectionWithoutUpdate(),std.category||'',std.violation||'');return count===0?parts[0]:parts[1];}
     function syncAutoPoints(){const std=getSelectedStandard(),raw=std?String(std.autoPoints||'').trim():'',count=std&&raw.includes(',')&&!raw.includes('-')?countSameDetention(selectedStudentKey||syncStudentSelectionWithoutUpdate(),std.category||'',std.violation||''):0;let display=raw||'-';if(std&&raw.includes(',')&&!raw.includes('-'))display=`${getAutoChoicePoint(std)}점 (${count+1}회차)`;else if(/^\d+$/.test(raw)||raw.includes('-'))display=`${raw}점`;document.getElementById('auto-points').textContent=display;updateSelectedViolationDetail();updateManualPointsMode();}
 
     function renderStudentOptions(){
@@ -3310,7 +3311,7 @@
     }
 
     function setAllExpanded(expanded){
-      const list = Object.entries(entries || {}).map(([key, value]) => ({ key, ...value })).filter(r => String(r.status || '') === '확정').sort(newestFirst);
+      const list = Object.entries(entries || {}).map(([key, value]) => ({ key, ...value })).filter(r => String(r.status || '') === '확정');
       expandedAllKeys = expanded ? new Set(list.map(r => r.key)) : new Set();
       renderAllEntries();
     }
@@ -3506,7 +3507,7 @@
           if(recordEmail && currentTeacherEmail) return recordEmail === currentTeacherEmail;
           return normalizeTeacherName(r.teacherName) === currentTeacherName;
         })
-        .sort(newestFirst)
+        .sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
         .slice(0, 10);
 
       if (!list.length){
@@ -3703,8 +3704,8 @@
               ${noteTd(r)}
               <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:150px">
                 <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
-                  ${canConfirm?`<button class="btn btn-primary btn-xs" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
-                  ${canReject ?`<button class="btn btn-danger btn-xs"  onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
+                  ${canConfirm?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
+                  ${canReject ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                   ${!canManage?'-':''}
                 </div>
               </td>
@@ -3783,8 +3784,8 @@
                 ${(canReject||canConfirmRejected||canCommittee||canUndoProcessing)?`
                 <div class="detail-section"><div class="detail-title">처리 | Actions</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-                    ${canConfirmRejected ?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
-                    ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
+                    ${canConfirmRejected ?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="event.stopPropagation();confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
+                    ${canReject   ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                     ${canUndoProcessing ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${recordStatus==='확정'?'확정취소 | Undo Confirm':'반려취소 | Undo Reject'}</button>`:''}
                     ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동 | Manual Committee</button>`:''}
                   </div>
@@ -3915,7 +3916,7 @@
     function getStudentCatalog(){
       const map = {};
       const allRosterEntries = Object.entries(students || {});
-      const rosterEntries = allRosterEntries.filter(function([, value]){ return !isStudentHiddenFromList(value); }).sort(newestFirst);
+      const rosterEntries = allRosterEntries.filter(function([, value]){ return !isStudentHiddenFromList(value); });
       const hasRoster = rosterEntries.length > 0;
       const rosterAlias = [];
       const hiddenRosterAlias = [];
@@ -4543,7 +4544,7 @@
       const flow = String(type || '') === 'referral' ? 'referral' : 'edu';
       const sk = String(studentKey || '').trim();
       const ek = String(entryKey || '').trim();
-      const completed = getCurrentYearCommitteeRecords().filter(record=>!!record.completedAt && (!sk || getCommitteeRecordStudentKey(record) === sk)).sort(newestFirst);
+      const completed = getCurrentYearCommitteeRecords().filter(record=>!!record.completedAt && (!sk || getCommitteeRecordStudentKey(record) === sk));
       if(!completed.length) return false;
 
       if(ek){
@@ -4608,7 +4609,7 @@
           const pointReason = (currentPoints >= 12 ? '잔여 '+currentPoints+'점 (12점 이상)' : '') +
             (currentPoints >= 12 && overallPoints > 30 ? ' / ' : '') +
             (overallPoints > 30 ? '누적 '+overallPoints+'점 (30점 초과)' : '');
-          const linkedReason = linkedKeys.map(key=>String((((entries || {})[key] || {}).violation) || '').split('\n')[0]).filter(Boolean).join(' / ').sort(newestFirst);
+          const linkedReason = linkedKeys.map(key=>String((((entries || {})[key] || {}).violation) || '').split('\n')[0]).filter(Boolean).join(' / ');
           addCase({
             type:flow,
             entryKey,
@@ -5505,7 +5506,7 @@
             '<td colspan="8"><div class="detail-box"><div class="detail-section">'+
             '<div class="detail-title">위반 행위 | Violations</div>'+
             '<div class="detail-content">'+esc(reasonText)+'</div>'+
-            '</div>'+(()=>{ const memos=getConfirmedEntriesForStudent(profile.key).filter(e=>e.memo||e.adminNote).map((e,i)=>'['+(i+1)+'] '+(e.memo?'메모: '+e.memo:'')+(e.memo&&e.adminNote?' / ':'')+(e.adminNote?'관리자: '+e.adminNote:'')).join('\n'); return memos?'<div class="detail-section"><div class="detail-title">메모 | Notes</div><div class="detail-content">'+esc(memos)+'</div></div>':''.sort(newestFirst); })()+
+            '</div>'+(()=>{ const memos=getConfirmedEntriesForStudent(profile.key).filter(e=>e.memo||e.adminNote).map((e,i)=>'['+(i+1)+'] '+(e.memo?'메모: '+e.memo:'')+(e.memo&&e.adminNote?' / ':'')+(e.adminNote?'관리자: '+e.adminNote:'')).join('\n'); return memos?'<div class="detail-section"><div class="detail-title">메모 | Notes</div><div class="detail-content">'+esc(memos)+'</div></div>':''; })()+
             (canManageRecoveryLevel(level)?'<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelRecoveryCompletion(\''+r.key+'\')">완료취소 | Undo Completion</button></div>':'')+
             '</div></td></tr>'
           );
@@ -5780,7 +5781,7 @@
           await loadData();
           return;
         }
-        const linkedEntryKeys = entryKey ? [entryKey] : getCurrentCycleEntries(studentKey).map(r=>r.key).filter(Boolean).sort(newestFirst);
+        const linkedEntryKeys = entryKey ? [entryKey] : getCurrentCycleEntries(studentKey).map(r=>r.key).filter(Boolean);
         const reasonSnapshot = studentKey ? buildNoticeReasonText(studentKey) : (entryKey && entries[entryKey] ? String(entries[entryKey].violation || '') : '');
         const pendingRecord = (pendingEntry && pendingEntry[1]) || {};
         const meta = readCommitteeEditorMeta(editorToken, type, pendingRecord);
@@ -6020,27 +6021,6 @@
         if(location !== 'classroom') classInput.value = '';
       }
       if(otherInput && location !== 'other') otherInput.value = '';
-    }
-
-    function recordTimeValue(record){
-      const r = record || {};
-      const candidates = [r.createdAt,r.createdDate,r.entryDate,r.date,r.confirmedAt,r.rejectedAt,r.cancelledAt,r.completedAt,r.updatedAt];
-      for(const value of candidates){
-        if(value == null || value === '') continue;
-        if(typeof value === 'number' && Number.isFinite(value)) return value;
-        const raw=String(value).trim();
-        let m=raw.match(/^(\d{4})[-.\/]\s*(\d{1,2})[-.\/]\s*(\d{1,2})/);
-        if(m) return new Date(+m[1],+m[2]-1,+m[3]).getTime();
-        m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-        if(m) return new Date(+m[3],+m[1]-1,+m[2]).getTime();
-        const parsed=Date.parse(raw);
-        if(Number.isFinite(parsed)) return parsed;
-      }
-      return 0;
-    }
-    function newestFirst(a,b){
-      const diff=recordTimeValue(b)-recordTimeValue(a);
-      return diff || String(b._key||b.key||'').localeCompare(String(a._key||a.key||''));
     }
 
     function locationLabel(record){
@@ -6305,7 +6285,7 @@
       const _residual = getResidualFromLastRecovery(student.key);
       const _curTotal = getStudentCurrentTotal(student.key);
       const _residualNote = _residual > 0 ? ' (이전 잔여 ' + _residual + '점 + 신규 ' + (_curTotal - _residual) + '점)' : '';
-      const memoLines = getCurrentCycleEntries(student.key).map(r => String(r.memo || '').trim()).filter(Boolean).sort(newestFirst);
+      const memoLines = getCurrentCycleEntries(student.key).map(r => String(r.memo || '').trim()).filter(Boolean);
       const memoBlock = memoLines.length ? '\n    ▶ 메 모 (Memo)            :\n' + memoLines.map(m => '      ' + m).join('\n') : '';
       return [
         student.name + ' 학생 학부모님 안녕하세요.',
@@ -6336,7 +6316,7 @@
       const _residual2 = getResidualFromLastRecovery(student.key);
       const _curTotal2 = getStudentCurrentTotal(student.key);
       const _residualNote2 = _residual2 > 0 ? ' (이전 잔여 ' + _residual2 + '점 + 신규 ' + (_curTotal2 - _residual2) + '점)' : '';
-      const memoLines = getCurrentCycleEntries(student.key).map(r => String(r.memo || '').trim()).filter(Boolean).sort(newestFirst);
+      const memoLines = getCurrentCycleEntries(student.key).map(r => String(r.memo || '').trim()).filter(Boolean);
       const memoBlock = memoLines.length ? '\n    ▶ 메 모 (Memo)            :\n' + memoLines.map(m => '      ' + m).join('\n') : '';
       return [
         '    ▶ 이 름 (Name)            : ' + student.name,
