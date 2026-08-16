@@ -622,31 +622,44 @@
     }
 
     async function syncGoogleAuthLink(teacherKeyValue, teacher, roles, user) {
-      if (!user || !user.uid || !teacherKeyValue) return { teacherUpdated: false, indexUpdated: false };
+      if (!user || !user.uid || !teacherKeyValue) {
+        throw new Error('Google authentication information is incomplete.');
+      }
 
       const authEmail = String(user.email || '').trim().toLowerCase();
       const linkedAt = new Date().toISOString();
-      let teacherUpdated = false;
-      let indexUpdated = false;
 
       const normalizedRoles = normalizeRoles(roles || []);
       const isAdmin = normalizedRoles.includes('admin');
       const isMaster = normalizedRoles.includes('master');
       const isAuditManager = isAdmin || isMaster;
 
+      const teacherRef = db.ref(`teachers/${teacherKeyValue}`);
       try {
-        await db.ref(`teachers/${teacherKeyValue}`).update({
-          loginProvider: 'google',
-          authUid: user.uid,
-          authEmail,
-          authEmailVerified: !!user.emailVerified,
-          lastGoogleLoginAt: linkedAt
-        });
-        teacherUpdated = true;
+        await Promise.all([
+          teacherRef.child('loginProvider').set('google'),
+          teacherRef.child('authUid').set(user.uid),
+          teacherRef.child('authEmail').set(authEmail),
+          teacherRef.child('authEmailVerified').set(!!user.emailVerified),
+          teacherRef.child('lastGoogleLoginAt').set(linkedAt)
+        ]);
+
+        const verifySnap = await teacherRef.once('value');
+        const verified = verifySnap.val() || {};
+        if (
+          String(verified.authUid || '') !== String(user.uid) ||
+          String(verified.authEmail || '').trim().toLowerCase() !== authEmail ||
+          verified.authEmailVerified !== true ||
+          !String(verified.lastGoogleLoginAt || '').trim()
+        ) {
+          throw new Error('Google login history could not be verified in Firebase.');
+        }
       } catch (teacherLinkError) {
         console.error('Teacher Google auth link update failed:', teacherLinkError);
+        throw teacherLinkError;
       }
 
+      let indexUpdated = false;
       try {
         await db.ref(`teacherAuthIndex/${user.uid}`).set({
           teacherKey: teacherKeyValue,
@@ -660,10 +673,10 @@
         });
         indexUpdated = true;
       } catch (indexLinkError) {
-        console.warn('teacherAuthIndex is not writable yet. Apply the transition rules before the next verification step.', indexLinkError);
+        console.warn('teacherAuthIndex update failed; teacher login history was still saved.', indexLinkError);
       }
 
-      return { teacherUpdated, indexUpdated };
+      return { teacherUpdated: true, indexUpdated };
     }
 
     async function loginWithGoogle() {
