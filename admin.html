@@ -1844,31 +1844,69 @@
       return keys.every(key => !!(a && a[key]) === !!(b && b[key]));
     }
 
+    async function currentFirebaseTeacherRecord() {
+      const user = firebaseAuth && firebaseAuth.currentUser;
+      if (!user || !user.email) return null;
+      const email = String(user.email || '').trim().toLowerCase();
+      const key = email.replace(/\./g, '_');
+      try {
+        const snap = await db.ref(`teachers/${key}`).once('value');
+        const record = snap.val() || null;
+        return record ? { key, email, record } : null;
+      } catch (e) {
+        console.error('Current Firebase teacher lookup failed:', e);
+        return null;
+      }
+    }
+
     async function syncAllTeacherRoleFlagsIfAdmin() {
-      if (!isCurrentAdmin()) return false;
+      // Determine Admin authority from Firebase itself, not from possibly stale
+      // sessionStorage. This makes the synchronization reliable after role changes.
+      const current = await currentFirebaseTeacherRecord();
+      if (!current || current.record.active === false) return false;
 
-      const updates = {};
-      Object.entries(teachersRaw || {}).forEach(([key, teacherRecord]) => {
-        const desired = buildRoleFlagsForRoles((teacherRecord || {}).roles || (teacherRecord || {}).role || []);
-        const current = (teacherRecord || {}).roleFlags || {};
-        if (!roleFlagsEqual(current, desired)) {
-          updates[`teachers/${key}/roleFlags`] = desired;
+      const currentFlags = current.record.roleFlags || {};
+      const currentRoles = normalizeRoles(current.record.roles || current.record.role || []);
+      const firebaseSaysAdmin =
+        currentFlags.admin === true ||
+        currentRoles.includes('admin');
+
+      if (!firebaseSaysAdmin) return false;
+
+      const changedKeys = [];
+
+      // Write each teacher's roleFlags directly at that teacher record. Per-record
+      // writes make Firebase permission failures easy to identify and avoid one
+      // failed multipath update preventing every teacher from being synchronized.
+      for (const [key, teacherRecord] of Object.entries(teachersRaw || {})) {
+        const desired = buildRoleFlagsForRoles(
+          (teacherRecord || {}).roles || (teacherRecord || {}).role || []
+        );
+        const currentRoleFlags = (teacherRecord || {}).roleFlags || {};
+
+        if (roleFlagsEqual(currentRoleFlags, desired)) continue;
+
+        await db.ref(`teachers/${key}/roleFlags`).set(desired);
+
+        // Verify Firebase actually contains the full map before moving on.
+        const verifySnap = await db.ref(`teachers/${key}/roleFlags`).once('value');
+        const verified = verifySnap.val() || {};
+        if (!roleFlagsEqual(verified, desired)) {
+          throw new Error(`roleFlags verification failed for ${key}`);
         }
-      });
 
-      if (!Object.keys(updates).length) return false;
+        teacherRecord.roleFlags = desired;
+        changedKeys.push(key);
+      }
 
-      await db.ref().update(updates);
+      if (changedKeys.length) {
+        console.info(`[Role Security] Verified roleFlags sync for ${changedKeys.length} teacher(s).`, changedKeys);
+        toast(`교사 권한 보안 동기화 완료 (${changedKeys.length}) | Role security sync complete`, 'ok');
+      } else {
+        console.info('[Role Security] All teacher roleFlags are already synchronized.');
+      }
 
-      // Keep the local copy in sync with what was written.
-      Object.entries(teachersRaw || {}).forEach(([key, teacherRecord]) => {
-        if (updates[`teachers/${key}/roleFlags`]) {
-          teacherRecord.roleFlags = updates[`teachers/${key}/roleFlags`];
-        }
-      });
-
-      console.info(`[Role Security] Synced ${Object.keys(updates).length} teacher roleFlags.`);
-      return true;
+      return changedKeys.length > 0;
     }
 
     async function saveTeachers() {
@@ -1934,6 +1972,17 @@
         }
         // 삭제는 개별 remove
         await Promise.all(removes.map(k => db.ref(`teachers/${k}`).remove()));
+
+        // Re-read the teacher directory and verify complete functional roleFlags
+        // after every teacher save when the current Firebase user is Admin.
+        try {
+          const freshTeachers = await db.ref('teachers').once('value');
+          teachersRaw = freshTeachers.val() || {};
+          await syncAllTeacherRoleFlagsIfAdmin();
+        } catch (roleSyncError) {
+          console.error('Post-save roleFlags sync failed:', roleSyncError);
+          toast('교사 정보는 저장되었지만 권한 보안 동기화에 실패했습니다. | Teacher saved, but role security sync failed.', 'err');
+        }
 
         const sessionSync = syncCurrentTeacherSessionFromSavedRows();
 
