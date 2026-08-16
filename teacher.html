@@ -1062,6 +1062,32 @@
             </div>
           </div>
 
+          <div class="entry-section">
+            <div class="entry-section-title">장소 <span class="entry-title-en">Location</span><span class="entry-section-help">필수 | Required</span></div>
+            <div class="entry-basic-grid">
+              <div>
+                <label class="label" for="entry-location">장소 | Location</label>
+                <select id="entry-location" class="edit-input" onchange="updateEntryLocationFields()">
+                  <option value="">장소 선택 | Select location</option>
+                  <option value="classroom">교실 | Classroom</option>
+                  <option value="hallway">복도 | Hallway</option>
+                  <option value="outdoor">운동장/야외 | Playground / Outdoor</option>
+                  <option value="cafeteria">급식실 | Cafeteria</option>
+                  <option value="library">도서관 | Library</option>
+                  <option value="other">기타 | Other</option>
+                </select>
+              </div>
+              <div id="entry-location-class-wrap" style="display:none">
+                <label class="label" for="entry-location-class">수업 | Class <span style="color:var(--rd)">*</span></label>
+                <input id="entry-location-class" class="edit-input" maxlength="80" placeholder="수업명 입력 | Enter class">
+              </div>
+              <div id="entry-location-other-wrap" style="display:none">
+                <label class="label" for="entry-location-other">기타 | Other <span class="small">선택사항 | Optional</span></label>
+                <input id="entry-location-other" class="edit-input" maxlength="80" placeholder="장소 입력 | Enter location">
+              </div>
+            </div>
+          </div>
+
           <div class="entry-section entry-bottom-grid">
             <div>
               <div class="entry-section-title">메모 <span class="entry-title-en">Memo</span><span class="entry-section-help">선택사항 · 최대 300자 | Optional · Up to 300 characters</span></div>
@@ -3488,6 +3514,7 @@
               <div class="recent-entry-meta">
                 <span class="recent-chip">${esc(r.className || '-')}</span>
                 <span class="recent-chip">${esc(r.category || '')}</span>
+                ${r.location ? `<span class="recent-chip">${esc(locationLabel(r))}</span>` : ''}
                 ${r.isReferral ? '<span class="recent-chip" style="background:#fde8e8;color:#7f1d1d;font-weight:700;">위원회 회부</span>' : ''}
               </div>
               <div class="recent-entry-violation">${esc(r.violation || '')}</div>
@@ -3543,6 +3570,7 @@
         detailItem('점수 | Points',String(r.totalPoints??r.manualPoints??r.autoPoints??0)),
         detailItem('입력 교사 | Entered by',r.teacherName||'-'),
         detailItem('처리자 | Handled by',r.confirmedBy||r.rejectedBy||r.cancelledBy||'-'),
+        detailItem('장소 | Location',locationLabel(r)),
         detailItem('위반 항목 | Violation',r.violation||'-',true),
         detailItem('메모 | Memo',r.memo||'-',true),
         detailItem('관리자 노트 | Admin note',r.adminNote||'-',true)
@@ -3676,6 +3704,7 @@
             <tr class="detail-row ${expanded?'show':''}">
               <td colspan="9"><div class="detail-box">
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
+                <div class="detail-section"><div class="detail-title">장소 | Location</div><div class="detail-content">${esc(locationLabel(r))}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
                 <div class="detail-section"><div class="detail-title">처리 정보 | Processing Info</div><div class="detail-content">작성 | Created: ${fmt(r.createdAt)}\n확정 | Confirmed: ${fmt(r.confirmedAt)}\n반려 | Rejected: ${fmt(r.rejectedAt)}\n노트 | Note: ${esc(r.adminNote||'-')}</div></div>
                 ${canCancelDraftDetention(r)?`<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="event.stopPropagation();cancelDraftDetention('${esc(r.key)}')">입력취소 | Cancel Entry</button></div>`:''}
@@ -3722,6 +3751,7 @@
             <tr class="detail-row ${expanded?'show':''}">
               <td colspan="9"><div class="detail-box">
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
+                <div class="detail-section"><div class="detail-title">장소 | Location</div><div class="detail-content">${esc(locationLabel(r))}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
                 <div class="detail-section">
                   <div class="detail-title">처리 정보 | Processing Info${canEditDate?' <span style="font-size:10px;color:var(--sb);font-weight:400">(Admin: dates editable)</span>':''}</div>
@@ -4763,6 +4793,10 @@
               <div class="detail-section">
                 <div class="detail-title">위반행위 | Violation</div>
                 <div class="detail-content">${esc(r.violation || '-')}</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-title">장소 | Location</div>
+                <div class="detail-content">${esc(locationLabel(r))}</div>
               </div>
               <div class="detail-section">
                 <div class="detail-title">메모 | Memo</div>
@@ -5963,6 +5997,43 @@
       }catch(e){ console.error(e); toast('처리 취소 실패', 'err'); }
     }
 
+    function updateEntryLocationFields(){
+      const location = String((document.getElementById('entry-location') || {}).value || '');
+      const classWrap = document.getElementById('entry-location-class-wrap');
+      const otherWrap = document.getElementById('entry-location-other-wrap');
+      const classInput = document.getElementById('entry-location-class');
+      const otherInput = document.getElementById('entry-location-other');
+
+      if(classWrap) classWrap.style.display = location === 'classroom' ? '' : 'none';
+      if(otherWrap) otherWrap.style.display = location === 'other' ? '' : 'none';
+
+      if(classInput){
+        classInput.required = location === 'classroom';
+        if(location !== 'classroom') classInput.value = '';
+      }
+      if(otherInput && location !== 'other') otherInput.value = '';
+    }
+
+    function locationLabel(record){
+      const r = record || {};
+      const code = String(r.location || '');
+      const labels = {
+        classroom:'교실 | Classroom',
+        hallway:'복도 | Hallway',
+        outdoor:'운동장/야외 | Playground / Outdoor',
+        cafeteria:'급식실 | Cafeteria',
+        library:'도서관 | Library',
+        other:'기타 | Other'
+      };
+      let label = labels[code] || '';
+      if(code === 'classroom' && String(r.locationClass || '').trim()){
+        label += ` — ${String(r.locationClass).trim()}`;
+      } else if(code === 'other' && String(r.locationOther || '').trim()){
+        label += ` — ${String(r.locationOther).trim()}`;
+      }
+      return label || '-';
+    }
+
     /* ---------- 6) 저장 / 확정 / 반려 / 메일 / 완료 처리 ---------- */
     async function saveDetention(){
       if(!teacher || !teacher.email) return toast('로그인 사용자 정보를 확인할 수 없습니다.', 'err');
@@ -5974,6 +6045,9 @@
       const autoPointsRaw = String(_std ? (_std.autoPoints || '') : '').trim();
       const manualPoints = Number(document.getElementById('manual-points').value || 0);
       const memo = (document.getElementById('memo').value || '').trim();
+      const location = String((document.getElementById('entry-location') || {}).value || '').trim();
+      const locationClass = String((document.getElementById('entry-location-class') || {}).value || '').trim();
+      const locationOther = String((document.getElementById('entry-location-other') || {}).value || '').trim();
 
       // 교사/날짜 (admin·master만 변경 가능)
       const canEditTeacher = hasFullWorkRole();
@@ -5988,6 +6062,16 @@
       if (!studentKey || !students[studentKey]){
         alert('학생을 선택해 주세요.\nPlease select a student.');
         return toast('학생을 선택해 주세요.', 'err');
+      }
+      if (!location){
+        alert('장소를 선택해 주세요.\nPlease select a location.');
+        document.getElementById('entry-location').focus();
+        return toast('장소를 선택해 주세요. | Please select a location.', 'err');
+      }
+      if (location === 'classroom' && !locationClass){
+        alert('교실을 선택한 경우 수업을 입력해 주세요.\nPlease enter the class when Classroom is selected.');
+        document.getElementById('entry-location-class').focus();
+        return toast('수업을 입력해 주세요. | Please enter the class.', 'err');
       }
       // 범위형만 직접 입력이 필요합니다. 고정형·회차 선택형은 자동 산정합니다.
       const apRaw = autoPointsRaw.replace(/\s*—.*$/, '').trim();
@@ -6045,6 +6129,9 @@
         autoPoints: autoPointsRaw,
         manualPoints: finalManualPoints,
         totalPoints: finalManualPoints,
+        location,
+        locationClass: location === 'classroom' ? locationClass : '',
+        locationOther: location === 'other' ? locationOther : '',
         memo,
         teacherName: entryTeacher,
         teacherEmail: entryTeacherEmail,
@@ -6609,6 +6696,10 @@
       renderViolationOptions();
       document.getElementById('manual-points').value = 0;
       updateManualPointsMode();
+      document.getElementById('entry-location').value = '';
+      document.getElementById('entry-location-class').value = '';
+      document.getElementById('entry-location-other').value = '';
+      updateEntryLocationFields();
       document.getElementById('memo').value = '';
       // 교사/날짜 초기화
       document.getElementById('entry-teacher').value = teacher.name || '';
