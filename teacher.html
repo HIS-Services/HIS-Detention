@@ -912,6 +912,70 @@
       line-height:1.1 !important;
       white-space:nowrap;
     }
+
+    /* Confirm > Pending: aligned columns with Action controls given priority */
+    #confirm-pending-tbody{ }
+    table:has(#confirm-pending-tbody){
+      width:100%;
+      table-layout:fixed;
+    }
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-pending-tbody) td{
+      box-sizing:border-box;
+      vertical-align:middle;
+    }
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:12%;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:6%;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9%;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:22%;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:5%;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:8%;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:9%;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){width:13%;}
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:16%;}
+
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(6){
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell{
+      overflow:visible;
+      padding-left:3px;
+      padding-right:3px;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell > div{
+      display:flex !important;
+      flex-direction:row !important;
+      justify-content:center !important;
+      align-items:center !important;
+      flex-wrap:nowrap !important;
+      gap:4px !important;
+      width:100%;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-compact{
+      flex:0 0 auto;
+      width:auto !important;
+      min-width:0 !important;
+      padding:5px 6px !important;
+      font-size:12px !important;
+      line-height:1.1 !important;
+      white-space:nowrap !important;
+    }
 </style>
 </head>
 <body>
@@ -1110,7 +1174,7 @@
                   <label class="label" for="entry-teacher">교사 | Teacher</label>
                   <input id="entry-teacher" class="edit-input" list="entry-teacher-list" placeholder="교사 검색 | Search teacher" oninput="syncEntryTeacher()">
                   <datalist id="entry-teacher-list"></datalist>
-                  <div class="small" id="entry-teacher-hint" style="display:none">Admin/Master만 변경 가능 | Editable by Admin/Master</div>
+                  <div class="small" id="entry-teacher-hint" style="display:none"></div>
                 </div>
                 <div>
                   <label class="label" for="entry-date">날짜 | Date</label>
@@ -3703,7 +3767,7 @@
               <td class="nowrap">${esc(r.teacherName||'')}</td>
               <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
-              <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:190px">
+              <td class="nowrap tc confirm-action-cell" onclick="event.stopPropagation()">
                 <div style="display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:nowrap;white-space:nowrap">
                   ${canConfirm?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
                   ${canReject ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
