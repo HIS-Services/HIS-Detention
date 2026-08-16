@@ -1057,6 +1057,61 @@
       white-space:nowrap !important;
       box-sizing:border-box !important;
     }
+
+    /* Pending table column tuning */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:13% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:4.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:21.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:4% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:6.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:10% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){
+      width:13.5% !important;
+      padding-left:8px !important;
+    }
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:18% !important;}
+
+    /* Left-align descriptive columns */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){
+      text-align:left !important;
+    }
+
+    /* Keep the compact numeric/status/action columns centered */
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2),
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5),
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6),
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7),
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8),
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){
+      text-align:center !important;
+    }
+
+    /* Slight breathing room between Status and Admin Note */
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){
+      padding-right:8px !important;
+    }
 </style>
 </head>
 <body>
