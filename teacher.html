@@ -1073,7 +1073,7 @@
 
           <div class="entry-section">
             <div class="entry-section-title">장소 <span class="entry-title-en">Location</span></div>
-            <div class="entry-section-note">문제가 발생한 장소를 선택하세요. 교실을 선택한 경우 수업명을 입력하세요. | Select where the issue occurred. If Classroom is selected, enter the class.</div>
+            <div class="entry-section-note">장소를 선택하세요. 교실인 경우 수업을 입력하세요. | Select a location. If Classroom, enter the class.</div>
             <div class="entry-basic-grid">
               <div>
                 <label class="label" for="entry-location">장소 | Location</label>
@@ -3703,8 +3703,8 @@
               <td class="nowrap">${esc(r.teacherName||'')}</td>
               <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
-              <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:150px">
-                <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+              <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:190px">
+                <div style="display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:nowrap;white-space:nowrap">
                   ${canConfirm?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
                   ${canReject ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                   ${!canManage?'-':''}
