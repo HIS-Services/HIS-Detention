@@ -976,6 +976,87 @@
       line-height:1.1 !important;
       white-space:nowrap !important;
     }
+
+    /* Final Pending table fit/alignment pass */
+    table:has(#confirm-pending-tbody){
+      width:100% !important;
+      table-layout:fixed !important;
+    }
+
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-pending-tbody) td{
+      text-align:center !important;
+      vertical-align:middle !important;
+    }
+
+    /* Give the two action buttons enough room; trim descriptive columns instead. */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:12% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:6% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:20% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:8% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){width:13% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:18% !important;}
+
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(6){
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+    }
+
+    /* Admin note must stay inside its own column. */
+    table:has(#confirm-pending-tbody) td:nth-child(8){
+      overflow:hidden !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+    }
+    table:has(#confirm-pending-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Action buttons: compact enough to fit, but always fully visible. */
+    table:has(#confirm-pending-tbody) .confirm-action-cell{
+      overflow:hidden !important;
+      padding:4px !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell > div{
+      width:100% !important;
+      display:flex !important;
+      flex-direction:row !important;
+      justify-content:center !important;
+      align-items:center !important;
+      flex-wrap:nowrap !important;
+      gap:4px !important;
+      overflow:hidden !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-compact{
+      flex:0 0 auto !important;
+      width:auto !important;
+      min-width:0 !important;
+      max-width:none !important;
+      padding:4px 5px !important;
+      font-size:11px !important;
+      line-height:1.05 !important;
+      white-space:nowrap !important;
+      box-sizing:border-box !important;
+    }
 </style>
 </head>
 <body>
