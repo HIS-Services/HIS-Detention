@@ -1112,6 +1112,106 @@
     table:has(#confirm-pending-tbody) td:nth-child(7){
       padding-right:8px !important;
     }
+
+    /* Status cell: show only the badge; suppress any stray separator/text nodes. */
+    table:has(#confirm-pending-tbody) .confirm-status-cell,
+    table:has(#confirm-processed-tbody) .confirm-status-cell{
+      font-size:0 !important;
+      text-align:center !important;
+      overflow:hidden !important;
+      white-space:nowrap !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-status-cell > span,
+    table:has(#confirm-processed-tbody) .confirm-status-cell > span{
+      font-size:12px !important;
+    }
+
+    /* Processed Records uses the same grid as Pending so columns align vertically. */
+    table:has(#confirm-processed-tbody){
+      width:100% !important;
+      table-layout:fixed !important;
+    }
+    table:has(#confirm-processed-tbody) th,
+    table:has(#confirm-processed-tbody) td{
+      box-sizing:border-box !important;
+      vertical-align:middle !important;
+      text-align:center !important;
+    }
+
+    table:has(#confirm-processed-tbody) th:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(1){width:13% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(2),
+    table:has(#confirm-processed-tbody) td:nth-child(2){width:4.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){width:21.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(5),
+    table:has(#confirm-processed-tbody) td:nth-child(5){width:4% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(6),
+    table:has(#confirm-processed-tbody) td:nth-child(6){width:6.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){width:10% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      width:13.5% !important;
+      padding-left:8px !important;
+    }
+    table:has(#confirm-processed-tbody) th:nth-child(9),
+    table:has(#confirm-processed-tbody) td:nth-child(9){width:18% !important;}
+
+    /* Descriptive columns align left, matching Pending. */
+    table:has(#confirm-processed-tbody) th:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(1),
+    table:has(#confirm-processed-tbody) th:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(3),
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){
+      text-align:left !important;
+    }
+
+    /* Compact columns stay centered. */
+    table:has(#confirm-processed-tbody) th:nth-child(2),
+    table:has(#confirm-processed-tbody) td:nth-child(2),
+    table:has(#confirm-processed-tbody) th:nth-child(5),
+    table:has(#confirm-processed-tbody) td:nth-child(5),
+    table:has(#confirm-processed-tbody) th:nth-child(6),
+    table:has(#confirm-processed-tbody) td:nth-child(6),
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7),
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8),
+    table:has(#confirm-processed-tbody) th:nth-child(9),
+    table:has(#confirm-processed-tbody) td:nth-child(9){
+      text-align:center !important;
+    }
+
+    /* Same Status → Admin Note breathing room as Pending. */
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){
+      padding-right:8px !important;
+    }
+
+    /* Less important text truncates rather than shifting the grid. */
+    table:has(#confirm-processed-tbody) td:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(6){
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+    }
+
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      overflow:hidden !important;
+      padding-right:4px !important;
+    }
+    table:has(#confirm-processed-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box !important;
+    }
 </style>
 </head>
 <body>
@@ -3901,7 +4001,7 @@
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
               <td class="nowrap tc">${esc(String(r.totalPoints||0))}</td>
               <td class="nowrap">${esc(r.teacherName||'')}</td>
-              <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
+              <td class="nowrap tc confirm-status-cell">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
               <td class="nowrap tc confirm-action-cell" onclick="event.stopPropagation()">
                 <div style="display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:nowrap;white-space:nowrap">
@@ -3952,7 +4052,7 @@
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
               <td class="nowrap tc">${esc(String(r.totalPoints||0))}${isReferral?'<br><span style="color:var(--rd);font-size:10px;font-weight:700;">위원회</span>':''}</td>
               <td class="nowrap">${esc(r.teacherName||'')}</td>
-              <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
+              <td class="nowrap tc confirm-status-cell">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
               <td class="nowrap tc" style="min-width:36px">
                 <span style="font-size:11px;color:var(--sb)">${expanded?'▲':'▼'}</span>
