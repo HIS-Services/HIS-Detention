@@ -1063,15 +1063,15 @@
           </div>
 
           <div class="entry-section">
-            <div class="entry-section-title">장소 <span class="entry-title-en">Location</span><span class="entry-section-help">필수 | Required</span></div>
+            <div class="entry-section-title">장소 <span class="entry-title-en">Location</span></div>
             <div class="entry-basic-grid">
               <div>
-                <label class="label" for="entry-location">장소 | Location</label>
+                <label class="label" for="entry-location">장소 | Location <span style="color:var(--rd)">*</span></label>
                 <select id="entry-location" class="edit-input" onchange="updateEntryLocationFields()">
                   <option value="">장소 선택 | Select location</option>
                   <option value="classroom">교실 | Classroom</option>
                   <option value="hallway">복도 | Hallway</option>
-                  <option value="outdoor">운동장/야외 | Playground / Outdoor</option>
+                  <option value="outdoor">운동장/야외 | Playground/Outdoor</option>
                   <option value="cafeteria">급식실 | Cafeteria</option>
                   <option value="library">도서관 | Library</option>
                   <option value="other">기타 | Other</option>
@@ -1082,7 +1082,7 @@
                 <input id="entry-location-class" class="edit-input" maxlength="80" placeholder="수업명 입력 | Enter class">
               </div>
               <div id="entry-location-other-wrap" style="display:none">
-                <label class="label" for="entry-location-other">기타 | Other <span class="small">선택사항 | Optional</span></label>
+                <label class="label" for="entry-location-other">기타 | Other</label>
                 <input id="entry-location-other" class="edit-input" maxlength="80" placeholder="장소 입력 | Enter location">
               </div>
             </div>
@@ -1097,13 +1097,13 @@
               <div class="entry-section-title">기본 정보 <span class="entry-title-en">Basic Information</span></div>
               <div class="entry-basic-grid">
                 <div>
-                  <label class="label" for="entry-teacher">교사 | Teacher</label>
+                  <label class="label" for="entry-teacher">교사 | Teacher <span style="color:var(--rd)">*</span></label>
                   <input id="entry-teacher" class="edit-input" list="entry-teacher-list" placeholder="교사 검색 | Search teacher" oninput="syncEntryTeacher()">
                   <datalist id="entry-teacher-list"></datalist>
                   <div class="small" id="entry-teacher-hint" style="display:none">Admin/Master만 변경 가능 | Editable by Admin/Master</div>
                 </div>
                 <div>
-                  <label class="label" for="entry-date">날짜 | Date</label>
+                  <label class="label" for="entry-date">날짜 | Date <span style="color:var(--rd)">*</span></label>
                   <input id="entry-date" type="date" class="edit-input">
                 </div>
               </div>
@@ -6020,7 +6020,7 @@
       const labels = {
         classroom:'교실 | Classroom',
         hallway:'복도 | Hallway',
-        outdoor:'운동장/야외 | Playground / Outdoor',
+        outdoor:'운동장/야외 | Playground/Outdoor',
         cafeteria:'급식실 | Cafeteria',
         library:'도서관 | Library',
         other:'기타 | Other'
