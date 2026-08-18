@@ -324,7 +324,19 @@
             const matched = await loadGoogleTeacherByEmail(email);
             if (matched && matched.teacher.active !== false) {
               const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
-              saveTeacherSession(matched.key, matched.teacher, roles, 'google', user);
+              // Self-heal login-history metadata for every valid Google session,
+              // including teachers returning with an already-authenticated session.
+              const linkResult = await syncGoogleAuthLink(matched.key, matched.teacher, roles, user);
+              const linkedTeacher = {
+                ...matched.teacher,
+                active: matched.teacher.active !== false,
+                loginProvider: 'google',
+                authUid: user.uid,
+                authEmail: email,
+                authEmailVerified: true
+              };
+              saveTeacherSession(matched.key, linkedTeacher, roles, 'google', user);
+              sessionStorage.setItem('his_google_auth_link', JSON.stringify(linkResult));
             }
           }
         }

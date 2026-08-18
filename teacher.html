@@ -2973,7 +2973,13 @@
         _rtListeners.push({ ref, fn });
       };
 
-      // 4개 핵심 컬렉션 실시간 감시
+      // 교사 명단도 실시간 감시: 역할/이메일 변경이 Notice 수신자에 즉시 반영됩니다.
+      watch('teachers', snap => {
+        teachers = snap.val() || {};
+        syncCurrentTeacherRolesFromFirebase();
+      });
+
+      // 핵심 기록 컬렉션 실시간 감시
       watch(DETENTION_DB_PATH, snap => {
         const raw = snap.val() || {};
         entries = {};
@@ -2997,6 +3003,64 @@
       });
     }
 
+    async function syncCurrentTeacherGoogleAuthMetadata(){
+      try{
+        const user = window.firebaseAuth && window.firebaseAuth.currentUser ? window.firebaseAuth.currentUser : null;
+        if(!user || !user.uid || !user.email || !user.emailVerified || !teacher || !teacher.email) return false;
+
+        const authEmail = String(user.email || '').trim().toLowerCase();
+        const teacherEmail = String(teacher.email || '').trim().toLowerCase();
+        if(!authEmail || authEmail !== teacherEmail || !authEmail.endsWith('@his.sc.kr')) return false;
+
+        const teacherKey = authEmail.replace(/\./g, '_');
+        const ref = db.ref('teachers/' + teacherKey);
+        const snap = await ref.once('value');
+        const current = snap.val() || {};
+        if(String(current.email || '').trim().toLowerCase() !== authEmail || current.active === false) return false;
+
+        const needsUpdate =
+          String(current.authUid || '') !== String(user.uid) ||
+          String(current.authEmail || '').trim().toLowerCase() !== authEmail ||
+          current.authEmailVerified !== true ||
+          String(current.loginProvider || '').toLowerCase() !== 'google' ||
+          !String(current.lastGoogleLoginAt || '').trim();
+
+        if(needsUpdate){
+          const now = new Date().toISOString();
+          await Promise.all([
+            ref.child('loginProvider').set('google'),
+            ref.child('authUid').set(user.uid),
+            ref.child('authEmail').set(authEmail),
+            ref.child('authEmailVerified').set(true),
+            ref.child('lastGoogleLoginAt').set(now)
+          ]);
+        }
+
+        // Keep the UID index healthy as well. Failure here should not block the page.
+        try{
+          const roles = getTeacherRoles(current);
+          const isAdmin = roles.includes('admin');
+          const isMaster = roles.includes('master');
+          await db.ref('teacherAuthIndex/' + user.uid).set({
+            teacherKey,
+            email: authEmail,
+            active: current.active !== false,
+            isAdmin,
+            isMaster,
+            isAuditManager: isAdmin || isMaster,
+            linkedAt: String(current.lastGoogleLoginAt || new Date().toISOString()),
+            updatedAt: new Date().toISOString()
+          });
+        }catch(indexError){
+          console.warn('teacherAuthIndex self-heal failed:', indexError);
+        }
+        return true;
+      }catch(e){
+        console.warn('Teacher Google auth metadata self-heal failed:', e);
+        return false;
+      }
+    }
+
     async function init(){
       teacher = requireTeacherSession();
       if (!teacher) return;
@@ -3006,6 +3070,7 @@
           throw new Error('Firebase 인증 초기화 함수가 없습니다. common.js를 확인하세요.');
         }
         await window.ensureFirebaseAuth();
+        await syncCurrentTeacherGoogleAuthMetadata();
       } catch (e) {
         console.error(e);
         toast('Firebase 인증에 실패했습니다. 익명 로그인을 확인하세요. | Firebase authentication failed.', 'err');
