@@ -2795,23 +2795,28 @@
         const recoveryPhases=['in_recovery','edu_in_recovery','edu_committee'];
         if(!recoveryPhases.includes(state.phase)) return null;
         const completedNoticeObj=findLatestCompletedNotice(s.key,level);
-        // 위원회 완료 경로로 in_recovery에 진입한 학생은 가정통지 기록이 없을 수 있음.
-        // 통지가 없으면 완료된 위원회 기록을 기준(noticedAt 대체)으로 사용하고, 둘 다 없을 때만 제외.
-        let committeeBaseline=null;
-        if(!completedNoticeObj){
-          const doneCommittees=Object.values(committeeEntries||{})
-            .filter(c=>String((c||{}).studentKey||'')===String(s.key)&&!!(c||{}).completedAt&&isCurrentYearRecord(c,getCurrentYear()))
-            .sort((a,b)=>String((b||{}).completedAt||'').localeCompare(String((a||{}).completedAt||'')));
-          committeeBaseline=doneCommittees.length?doneCommittees[0]:null;
-          if(!committeeBaseline) return null;
-        }
+        // 회복교육의 기준 이벤트는 가장 최근에 완료된 알림 또는 위원회입니다.
+        // 과거 알림이 남아 있더라도 더 최근 위원회가 완료되었다면 위원회를 기준으로 사용합니다.
+        const doneCommitteeEntries=Object.entries(committeeEntries||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(s.key)&&!!c.completedAt&&isCurrentYearRecord(c,getCurrentYear()))
+          .sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+        const committeeBaseline=doneCommitteeEntries.length?doneCommitteeEntries[0]:null;
+        const noticeAt=completedNoticeObj?String(completedNoticeObj.notice.completedAt||''):'';
+        const committeeAt=committeeBaseline?String(committeeBaseline.completedAt||''):'';
+        const useCommittee=!!committeeBaseline && (!completedNoticeObj || committeeAt > noticeAt);
+        if(!completedNoticeObj && !committeeBaseline) return null;
+
         const currentTotal=getStudentCurrentTotal(s.key),overallTotal=getStudentOverallTotal(s.key),reasons=buildCycleReasonTextWithPoints(s.key);
         // getStudentPoints: cycleState 캐시 우선, 없으면 직접 계산
         const _pts = getStudentPoints(s.key, level);
         const verifiedCurrent = _pts.current, verifiedOverall = _pts.overall;
         const recoveryList=Object.entries(recoveryEntries||{}).map(([key,value])=>({key,...value})).filter(r=>String(r.studentKey||'')===String(s.key)&&isRecordInLevel(r,level)&&!!r.completedAt).sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
-        const noticedAt = completedNoticeObj ? (completedNoticeObj.notice.completedAt || '') : String((committeeBaseline||{}).completedAt||'');
-        return{...s,state,currentTotal:verifiedCurrent,overallTotal:verifiedOverall,reasons,recoveryList,completedRecoveryCount:recoveryList.length,completedNotice:completedNoticeObj?completedNoticeObj.notice:{completedAt:noticedAt,viaCommittee:true},noticedAt};
+        const noticedAt = useCommittee ? committeeAt : noticeAt;
+        const recoveryBaseline = useCommittee
+          ? {type:'committee', key:committeeBaseline.key, completedAt:committeeAt}
+          : {type:'notice', key:completedNoticeObj.key, completedAt:noticeAt};
+        return{...s,state,currentTotal:verifiedCurrent,overallTotal:verifiedOverall,reasons,recoveryList,completedRecoveryCount:recoveryList.length,completedNotice:useCommittee?{completedAt:committeeAt,viaCommittee:true}:completedNoticeObj.notice,noticedAt,recoveryBaseline};
       }).filter(Boolean).sort((a,b)=>String(b.noticedAt||'').localeCompare(String(a.noticedAt||'')));
     }
 
@@ -5168,6 +5173,59 @@
       return record.createdAt || record.referredAt || record.completedAt || '';
     }
 
+    function getDistinctCommitteeCaseCount(records, studentKey){
+      const list = Array.isArray(records) ? records : [];
+      const sk = String(studentKey || '').trim();
+      const completed = list.filter(r => !!(r && r.completedAt));
+      const seen = new Set();
+
+      // Completed records are authoritative. For score-based committee cases,
+      // current workflow permits one completion per academic year, so legacy
+      // pending/completed duplicates must count as one case.
+      completed.forEach(r => {
+        const flow = getCommitteeRecordFlow(r);
+        if(flow === 'edu'){
+          seen.add('edu:' + String(getRecordYear(r, getCurrentYear())));
+          return;
+        }
+        const linked = getCommitteeRecordEntryKeys(r);
+        if(linked.length){
+          linked.forEach(k => seen.add('referral:' + k));
+        }else{
+          seen.add('referral-record:' + String(r.key || r.committeeKey || committeeRecordTime(r) || 'unknown'));
+        }
+      });
+
+      // Count pending records only when no completed record already covers them.
+      list.filter(r => !(r && r.completedAt)).forEach(r => {
+        const flow = getCommitteeRecordFlow(r);
+        if(flow === 'edu'){
+          const eduKey = 'edu:' + String(getRecordYear(r, getCurrentYear()));
+          if(!seen.has(eduKey)) seen.add(eduKey);
+          return;
+        }
+        const linked = getCommitteeRecordEntryKeys(r);
+        if(linked.length){
+          linked.forEach(k => {
+            const key = 'referral:' + k;
+            if(!seen.has(key)) seen.add(key);
+          });
+          return;
+        }
+        // Legacy referral without a linked entry: if a completed referral for
+        // this student exists, treat the pending row as the same case.
+        const hasCompletedReferral = completed.some(c =>
+          getCommitteeRecordFlow(c) === 'referral' &&
+          (!sk || getCommitteeRecordStudentKey(c) === sk)
+        );
+        if(!hasCompletedReferral){
+          seen.add('referral-pending:' + String(r.key || r.committeeKey || committeeRecordTime(r) || 'unknown'));
+        }
+      });
+
+      return seen.size;
+    }
+
     function renderStudentDetail(studentKey){
       const panel = document.getElementById('student-detail-panel');
       const s = getStudentProfile(studentKey);
@@ -5425,7 +5483,7 @@
 
         <!-- 집계 -->
         <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px">
-          ${[['디텐션 횟수 | Detention Count', 'var(--nv)', detList.filter(r=>r.status==='확정').length], ['누적디텐션점수 | Total Detention Points', 'var(--rd)', confirmedPts], ['회복교육횟수 | Restorative Education Count', '#2563eb', recList.length], ['회복점수 | Restorative Points', '#7c3aed', recoveredPts], ['잔여 디텐션점수 | Remaining Detention Points', 'var(--nv)', currentPts], ['위원회회부 | Committee Referral', '#b45309', committeeList.length]]
+          ${[['디텐션 횟수 | Detention Count', 'var(--nv)', detList.filter(r=>r.status==='확정').length], ['누적디텐션점수 | Total Detention Points', 'var(--rd)', confirmedPts], ['회복교육횟수 | Restorative Education Count', '#2563eb', recList.length], ['회복점수 | Restorative Points', '#7c3aed', recoveredPts], ['잔여 디텐션점수 | Remaining Detention Points', 'var(--nv)', currentPts], ['위원회회부 | Committee Referral', '#b45309', getDistinctCommitteeCaseCount(committeeList, studentKey)]]
             .map(([l,c,v])=>`<div style="background:#eef3ff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--sb)">${l}</div></div>`).join('')}
         </div>
 
@@ -7012,10 +7070,20 @@
       const student = students[studentKey];
       if (!student) return;
 
+      const rpInput = document.getElementById('rp-' + studentKey);
+      const rawInput = rpInput ? String(rpInput.value || '').trim() : '3';
+      const requestedPoints = Number(rawInput);
+      if(!Number.isFinite(requestedPoints) || requestedPoints < 1 || !Number.isInteger(requestedPoints)){
+        return toast('회복점수는 1 이상의 정수로 입력해 주세요.\nEnter recovery points as a whole number of 1 or more.', 'err');
+      }
+
       // 중복 클릭 방지
       const lockKey = 'recovery_' + studentKey;
       if (_noticeInProgress[lockKey]) return toast('처리 중입니다. 잠시 후 다시 시도해 주세요.', 'warn');
       _noticeInProgress[lockKey] = true;
+      const actionButton = rpInput && rpInput.closest('tr') ? rpInput.closest('tr').querySelector('button[onclick*="completeRecovery"]') : null;
+      const originalButtonText = actionButton ? actionButton.textContent : '';
+      if(actionButton){ actionButton.disabled = true; actionButton.textContent = '저장 중... | Saving...'; }
 
       try{
         // 레이스 컨디션 방지: DB에서 최신 데이터를 직접 읽어 점수 계산
@@ -7038,18 +7106,19 @@
 
         const recoveryTotal = Object.values(freshRecovery)
           .filter(r =>
-            String(r.studentKey||'') === String(studentKey) &&
-            String(r.level||'') === String(level||'') &&
+            String(getRecordStudentKey(r)||'') === String(studentKey) &&
+            isRecordInLevel(r, level) &&
             isCurrentYearRecord(r, curYear)
           )
           .reduce((s, r) => s + Number(r.recoveryPoints || 0), 0);
 
         const currentTotalBefore = Math.max(0, overallTotal - recoveryTotal);
 
-        // 완료점수: 입력값 우선, 없으면 기본 3점 (최대 currentTotalBefore)
-        const rpInput = document.getElementById('rp-' + studentKey);
-        const inputPts = rpInput ? Math.max(1, parseInt(rpInput.value)||3) : 3;
-        const recoveryPoints = Math.min(inputPts, Math.max(currentTotalBefore, 0));
+        // 사용자가 입력한 완료점수를 사용하되 현재 잔여점수를 넘을 수 없습니다.
+        if(requestedPoints > currentTotalBefore){
+          return toast('입력한 회복점수가 현재 잔여점수보다 큽니다.\nRecovery points cannot exceed the remaining points.', 'err');
+        }
+        const recoveryPoints = requestedPoints;
 
         if (recoveryPoints <= 0){
           return toast('회복할 점수가 없습니다.\nNo points left to recover.', 'err');
@@ -7075,15 +7144,36 @@
           completedAt: new Date().toISOString()
         };
 
+        // 새 회복교육 기록은 가장 최근 완료 이벤트(알림/위원회)에 묶습니다.
+        // 이렇게 해야 이전 알림에 사용된 recovery key와 충돌하지 않습니다.
         const completedNoticeObj = findLatestCompletedNotice(studentKey, level);
-        const noticeKeyForRecovery = completedNoticeObj ? completedNoticeObj.key : 'no_notice';
-        const recoveryKey = ['recovery', safeDbKey(studentKey), safeDbKey(level), curYear, safeDbKey(noticeKeyForRecovery), String(currentTotalBefore), String(recoveryTotal)].join('_');
-        const txResult = await db.ref(RECOVERY_DB_PATH + '/' + recoveryKey).transaction(current => current || payload);
-        if(!txResult || txResult.committed === false){
-          toast('이미 저장된 회복교육 기록입니다.\nThis restorative education record is already saved.', 'warn');
-        } else {
-          toast('회복교육 완료가 저장되었습니다.\nRestorative Education completion saved.', 'ok');
+        const doneCommitteeEntries = Object.entries(committeeEntries||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(studentKey)&&!!c.completedAt&&isCurrentYearRecord(c,curYear))
+          .sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+        const latestCommittee = doneCommitteeEntries.length ? doneCommitteeEntries[0] : null;
+        const noticeAt = completedNoticeObj ? String(completedNoticeObj.notice.completedAt||'') : '';
+        const committeeAt = latestCommittee ? String(latestCommittee.completedAt||'') : '';
+        const useCommitteeBaseline = !!latestCommittee && (!completedNoticeObj || committeeAt > noticeAt);
+        const sourceKey = useCommitteeBaseline
+          ? ('committee_' + latestCommittee.key)
+          : (completedNoticeObj ? ('notice_' + completedNoticeObj.key) : 'no_source');
+        const recoveryKey = ['recovery', safeDbKey(studentKey), safeDbKey(level), curYear, safeDbKey(sourceKey), String(currentTotalBefore), String(recoveryTotal)].join('_');
+        payload.sourceType = useCommitteeBaseline ? 'committee' : (completedNoticeObj ? 'notice' : 'unknown');
+        payload.sourceKey = useCommitteeBaseline ? latestCommittee.key : (completedNoticeObj ? completedNoticeObj.key : '');
+        const recoveryRef = db.ref(RECOVERY_DB_PATH + '/' + recoveryKey);
+        const beforeSnap = await recoveryRef.once('value');
+        if(beforeSnap.exists()){
+          toast('같은 상태의 회복교육 기록이 이미 있습니다. 새로고침 후 다시 확인해 주세요.\nA recovery record for this same state already exists. Refresh and check the record.', 'warn');
+          await loadData();
+          return;
         }
+        const txResult = await recoveryRef.transaction(current => current || payload);
+        if(!txResult || txResult.committed === false){
+          toast('회복교육 기록 저장이 완료되지 않았습니다. 다시 시도해 주세요.\nRecovery was not saved. Please try again.', 'err');
+          return;
+        }
+        toast('회복교육 완료가 저장되었습니다.\nRestorative Education completion saved.', 'ok');
         // recalculateStudentState: 위원회 상태 보존하면서 회복교육 처리
         try{ await recalculateStudentState(studentKey, level); }catch(e){ console.error(e); }
         loadData();
@@ -7092,6 +7182,7 @@
         toast('회복교육 저장 실패\nFailed to save recovery.', 'err');
       }finally{
         delete _noticeInProgress[lockKey];
+        if(actionButton){ actionButton.disabled = false; actionButton.textContent = originalButtonText; }
       }
     }
 
