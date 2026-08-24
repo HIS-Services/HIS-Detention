@@ -1,12 +1,12 @@
 const firebaseConfig = {
-  "apiKey": "AIzaSyCc3rwlIlZd7NaFkd2viT-tYhS9IemsV9o",
-  "authDomain": "his-detention.firebaseapp.com",
-  "databaseURL": "https://his-detention-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  "projectId": "his-detention",
-  "storageBucket": "his-detention.firebasestorage.app",
-  "messagingSenderId": "357843127217",
-  "appId": "1:357843127217:web:88175e347add4931294b90",
-  "measurementId": "G-K3X22E8JL5"
+  apiKey: "AIzaSyCmugtHVJsEL929N6eGC2quOY_mLTXzlpE",
+  authDomain: "his-detention-e6d2f.firebaseapp.com",
+  databaseURL: "https://his-detention-e6d2f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "his-detention-e6d2f",
+  storageBucket: "his-detention-e6d2f.firebasestorage.app",
+  messagingSenderId: "81711445183",
+  appId: "1:81711445183:web:8539e413ab41bbcb7e020a",
+  measurementId: "G-VWBLPX866N"
 };
 
 // Firebase 앱이 이미 초기화된 화면(import-data 등)에서도 common.js를 재사용할 수 있게 방어합니다.
@@ -16,8 +16,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 window.db = db;
 
-// Firebase Realtime Database 보안 규칙이 auth != null을 요구할 때,
-// 기존 교사/관리자 로그인 기능을 유지하기 위한 익명 Firebase Auth 세션입니다.
+// 최종 전환 이후에는 등록된 학교 Google 계정만 Firebase 인증에 사용합니다.
 const firebaseAuth = (typeof firebase.auth === 'function') ? firebase.auth() : null;
 window.firebaseAuth = firebaseAuth;
 let _firebaseAuthPromise = null;
@@ -26,31 +25,34 @@ async function ensureFirebaseAuth() {
   if (!firebaseAuth) {
     throw new Error('Firebase Auth SDK가 로드되지 않았습니다. firebase-auth-compat.js를 확인하세요.');
   }
-  if (firebaseAuth.currentUser) return firebaseAuth.currentUser;
+  if (firebaseAuth.currentUser && !firebaseAuth.currentUser.isAnonymous) return firebaseAuth.currentUser;
   if (_firebaseAuthPromise) return _firebaseAuthPromise;
+
   _firebaseAuthPromise = new Promise((resolve, reject) => {
-    const unsubscribe = firebaseAuth.onAuthStateChanged(async user => {
-      if (user) {
-        try { unsubscribe(); } catch(_) {}
+    let settled = false;
+    const finishReject = () => {
+      if (settled) return;
+      settled = true;
+      _firebaseAuthPromise = null;
+      reject(new Error('학교 Google 로그인이 필요합니다.'));
+    };
+
+    const unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+      if (settled) return;
+      try { unsubscribe(); } catch (_) {}
+      if (user && !user.isAnonymous) {
+        settled = true;
         resolve(user);
         return;
       }
-      try {
-        const cred = await firebaseAuth.signInAnonymously();
-        try { unsubscribe(); } catch(_) {}
-        resolve(cred.user);
-      } catch (err) {
-        try { unsubscribe(); } catch(_) {}
-        console.error('Firebase anonymous auth failed:', err);
-        _firebaseAuthPromise = null;
-        reject(err);
-      }
+      finishReject();
     }, err => {
       console.error('Firebase auth state failed:', err);
-      _firebaseAuthPromise = null;
-      reject(err);
+      try { unsubscribe(); } catch (_) {}
+      finishReject();
     });
   });
+
   return _firebaseAuthPromise;
 }
 window.ensureFirebaseAuth = ensureFirebaseAuth;
@@ -107,40 +109,35 @@ function studentKey(name, className) {
 function requireTeacherSession() {
   const raw = sessionStorage.getItem('his_teacher');
   if (!raw) {
-    // 관리자 화면에서 먼저 로그인한 경우, 관리자 세션을 교사 화면의 Admin 권한으로 이어갑니다.
-    // 별도의 교사 로그인 정보를 만들거나 기존 교사 세션을 덮어쓰지 않습니다.
-    if (sessionStorage.getItem('his_admin_session') === '1') {
-      return {
-        name: '관리자',
-        email: 'admin',
-        homeroom: '',
-        roles: ['admin'],
-        source: 'admin-session'
-      };
-    }
     location.href = 'index.html';
     return null;
   }
 
   try {
-    return JSON.parse(raw);
-  } catch (e) {
-    if (sessionStorage.getItem('his_admin_session') === '1') {
-      return {
-        name: '관리자',
-        email: 'admin',
-        homeroom: '',
-        roles: ['admin'],
-        source: 'admin-session'
-      };
+    const teacher = JSON.parse(raw);
+    if (!teacher || teacher.authProvider !== 'google' || !teacher.authEmailVerified) {
+      sessionStorage.removeItem('his_teacher');
+      location.href = 'index.html';
+      return null;
     }
+    return teacher;
+  } catch (e) {
+    sessionStorage.removeItem('his_teacher');
     location.href = 'index.html';
     return null;
   }
 }
 
-function logoutTeacher() {
+async function logoutTeacher() {
   sessionStorage.removeItem('his_teacher');
+  sessionStorage.removeItem('his_admin_session');
+  try {
+    if (firebaseAuth && firebaseAuth.currentUser) {
+      await firebaseAuth.signOut();
+    }
+  } catch (e) {
+    console.error('Google logout failed:', e);
+  }
   location.href = 'index.html';
 }
 
