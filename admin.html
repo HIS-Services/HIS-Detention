@@ -2275,14 +2275,27 @@
       const name=cleanupSnapshotName(item.record)||'Unknown';
       if(label) label.textContent=`${name} · ${item.label}`;
       const matches=cleanupPossibleMatches(item);
-      const matchHtml=matches.length?`<div style="margin:12px 0;padding:10px;border:1px solid var(--bd);border-radius:8px">
+      const suggestedHtml=matches.length?`
+        <div style="margin-top:8px">
+          <div class="small" style="font-weight:700;margin-bottom:5px">추천 학생 | Suggested Matches</div>
+          ${matches.slice(0,5).map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:5px 0">
+            <span>${cleanupEsc(m.student.name||'-')} · ${cleanupEsc(m.student.className||'-')} · ${cleanupEsc(m.student.selfEmail||'')}</span>
+            <button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(item.id)}','${cleanupEsc(m.key)}')">연결 | Link</button>
+          </div>`).join('')}
+        </div>`:`<div class="small" style="margin-top:7px;color:var(--sb)">자동으로 일치하는 학생을 찾지 못했습니다. 아래에서 직접 검색할 수 있습니다. | No automatic match found. Search manually below.</div>`;
+      const matchHtml=`<div style="margin:12px 0;padding:10px;border:1px solid var(--bd);border-radius:8px">
         <b>현재 학생과 연결 | Link to Current Student</b>
-        <div class="small" style="margin:4px 0 8px">확인 후 연결하세요. 과거 기록의 학반/스냅샷은 변경하지 않고 studentKey와 비어 있는 연결 정보만 보완합니다.<br>Confirm before linking. Historical class/snapshot fields are preserved.</div>
-        ${matches.slice(0,5).map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:5px 0">
-          <span>${cleanupEsc(m.student.name||'-')} · ${cleanupEsc(m.student.className||'-')} · ${cleanupEsc(m.student.selfEmail||'')}</span>
-          <button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(item.id)}','${cleanupEsc(m.key)}')">연결 | Link</button>
-        </div>`).join('')}
-      </div>`:`<div class="notice" style="margin:12px 0">일치하는 현재 학생을 찾지 못했습니다. | No matching current student found.</div>`;
+        <div class="small" style="margin:4px 0 8px">과거 기록의 학반/스냅샷은 변경하지 않고 studentKey와 비어 있는 연결 정보만 보완합니다.<br>Historical class/snapshot fields are preserved.</div>
+        ${suggestedHtml}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+          <div class="small" style="font-weight:700;margin-bottom:5px">학생 직접 검색 | Manual Student Search</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="cleanup-manual-student-search" type="search" placeholder="학생명, 영문명, 학반, 이메일 | Name, English, class, email"
+              oninput="renderCleanupManualStudentSearch('${cleanupEsc(item.id)}')" style="flex:1;min-width:0">
+          </div>
+          <div id="cleanup-manual-student-results" style="margin-top:6px"></div>
+        </div>
+      </div>`;
       detail.innerHTML=`<div>
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
           <div><b>${cleanupEsc(name)}</b> · ${cleanupEsc(cleanupSnapshotClass(item.record)||'-')}<div class="small">${cleanupEsc(item.label)} · ${cleanupEsc(item.path+'/'+item.key)}</div></div>
@@ -2292,6 +2305,44 @@
         <div style="margin-top:12px"><b>전체 기록 내용 | Full Record</b>${cleanupDetailRows(item.record)}</div>
       </div>`;
     }
+
+    function renderCleanupManualStudentSearch(itemId){
+      const box=document.getElementById('cleanup-manual-student-results');
+      const input=document.getElementById('cleanup-manual-student-search');
+      if(!box||!input) return;
+      const q=String(input.value||'').trim().toLowerCase();
+      if(!q){
+        box.innerHTML='<div class="small" style="color:var(--sb)">학생을 검색하세요. | Search for a current student.</div>';
+        return;
+      }
+      const results=Object.entries(studentsRaw||{}).filter(([key,student])=>{
+        student=student||{};
+        const hay=[
+          student.name,student.englishName,student.engName,student.nameEn,
+          student.className,student.selfEmail,student.studentEmail,key
+        ].map(v=>String(v||'').toLowerCase()).join(' ');
+        return hay.includes(q);
+      }).sort((a,b)=>{
+        const ac=String((a[1]||{}).className||'');
+        const bc=String((b[1]||{}).className||'');
+        return ac.localeCompare(bc)||String((a[1]||{}).name||'').localeCompare(String((b[1]||{}).name||''));
+      }).slice(0,20);
+      if(!results.length){
+        box.innerHTML='<div class="small" style="color:var(--sb)">검색 결과가 없습니다. | No students found.</div>';
+        return;
+      }
+      box.innerHTML=results.map(([key,student])=>`
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #eef2f7">
+          <span>
+            <b>${cleanupEsc(student.name||'-')}</b>
+            ${student.englishName||student.engName||student.nameEn?` · ${cleanupEsc(student.englishName||student.engName||student.nameEn)}`:''}
+            · ${cleanupEsc(student.className||'-')}
+            ${student.selfEmail?`<div class="small">${cleanupEsc(student.selfEmail)}</div>`:''}
+          </span>
+          <button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(itemId)}','${cleanupEsc(key)}')">연결 | Link</button>
+        </div>`).join('');
+    }
+
     async function linkCleanupRecord(id,studentKey){
       const item=cleanupRecords.find(x=>x.id===id);
       const student=(studentsRaw||{})[studentKey];

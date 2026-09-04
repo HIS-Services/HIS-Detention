@@ -4661,8 +4661,13 @@
           const totalWeight = overall>=21?'800':'500';
           const bg = i%2===0?'#fff':'#f7faff';
           return `<tr style="background:${bg}">
-            <td style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="margin-left:4px;color:#b45309;font-size:10px">명단없음</span>' : ''}</td>
-            <td style="font-size:11px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName||'')}</td>
+            <td style="overflow:hidden;white-space:nowrap">
+              <div style="display:flex;align-items:baseline;gap:6px;min-width:0">
+                <span style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}</span>
+                ${s.englishName ? `<span style="font-size:10.5px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName)}</span>` : ''}
+                ${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="color:#b45309;font-size:9.5px;white-space:nowrap">명단없음</span>' : ''}
+              </div>
+            </td>
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
             <td style="text-align:center;font-size:11px;color:${totalColor};font-weight:${totalWeight};white-space:nowrap">${overall}</td>
             <td style="text-align:center;padding:0 3px;white-space:nowrap">
@@ -4679,11 +4684,10 @@
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:28%;white-space:nowrap">이름 | Name</th>
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:28%;white-space:nowrap">영문명 | English</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:12%;white-space:nowrap">잔여 | Rem.</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:12%;white-space:nowrap">누적 | Total</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%;white-space:nowrap">보기 | View</th>
+                <th style="font-size:11px;padding:4px 6px;text-align:left;width:52%;white-space:nowrap">학생 | Student</th>
+                <th style="font-size:11px;padding:4px 3px;text-align:center;width:13%;white-space:nowrap">잔여 | Rem.</th>
+                <th style="font-size:11px;padding:4px 3px;text-align:center;width:13%;white-space:nowrap">누적 | Total</th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:22%;white-space:nowrap">보기 | View</th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
