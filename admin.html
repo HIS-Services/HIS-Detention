@@ -535,8 +535,8 @@
             </div>
           </div>
           <div class="notice" style="margin:0 0 12px">
-            현재 학생 명단의 studentKey와 연결되지 않은 학생 관련 기록만 표시합니다. 가능한 현재 학생이 있으면 상세 화면에서 연결할 수 있습니다.<br>
-            Only student-related records that are not linked to a current roster student are shown. Possible current-student matches can be linked from the detail view.
+            현재 학생 명단의 studentKey와 정확히 일치하지 않는 학생 관련 기록만 표시합니다. 같은 학생으로 보이더라도 과거/레거시 studentKey가 다르면 이 목록에 나타날 수 있습니다. 가능한 현재 학생이 있으면 상세 화면에서 연결할 수 있습니다.<br>
+            Records appear here when their studentKey does not exactly match a current roster student. A record may still belong to a current student if it uses an older/legacy key. Possible matches can be linked from the detail view.
           </div>
           <div class="filter-bar" style="margin:0 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input id="cleanup-search" type="search" placeholder="학생명, 학반, 기록 검색 | Search student, class, record" oninput="renderDataCleanup()" style="flex:1;min-width:260px">
@@ -2156,21 +2156,37 @@
       r=r||{};
       return String(r.studentEmail||r.selfEmail||r.student?.selfEmail||r.studentSnapshot?.selfEmail||'').trim().toLowerCase();
     }
+    function cleanupIdentityFromStudentKey(studentKey){
+      const raw=String(studentKey||'').trim();
+      if(!raw) return {className:'',name:''};
+      const idx=raw.indexOf('_');
+      if(idx<=0 || idx>=raw.length-1) return {className:'',name:''};
+      const className=raw.slice(0,idx).trim();
+      const name=raw.slice(idx+1).trim();
+      // Only treat the prefix as a class when it looks like a normal HIS class label.
+      if(!/^\d{1,2}[A-Za-z]?$/.test(className)) return {className:'',name:''};
+      return {className:className.toUpperCase(),name};
+    }
     function cleanupRecordDate(r){
       r=r||{};
       return String(r.createdAt||r.date||r.entryDate||r.confirmedAt||r.completedAt||r.parentMailAt||r.studentTeacherMailAt||r.updatedAt||'').trim();
     }
     function cleanupPossibleMatches(item){
-      const name=cleanupSnapshotName(item.record).toLowerCase();
+      const legacy=cleanupIdentityFromStudentKey(item.studentKey);
+      const name=String(cleanupSnapshotName(item.record)||legacy.name||'').trim().toLowerCase();
+      const cls=String(cleanupSnapshotClass(item.record)||legacy.className||'').trim().toLowerCase();
       const email=cleanupSnapshotEmail(item.record);
       if(!name&&!email) return [];
       return Object.entries(studentsRaw||{}).map(([key,v])=>{
-        const vn=String((v||{}).name||'').trim().toLowerCase();
-        const ve=String((v||{}).selfEmail||'').trim().toLowerCase();
+        v=v||{};
+        const vn=String(v.name||'').trim().toLowerCase();
+        const ve=String(v.selfEmail||v.studentEmail||'').trim().toLowerCase();
+        const vc=String(v.className||'').trim().toLowerCase();
         let score=0;
         if(email&&ve&&email===ve) score+=100;
         if(name&&vn&&name===vn) score+=50;
-        return {key,student:v||{},score};
+        if(score>0 && cls&&vc&&cls===vc) score+=10;
+        return {key,student:v,score};
       }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
     }
     function cleanupDetailRows(obj,prefix='',depth=0){
@@ -2225,9 +2241,10 @@
         if(filter==='unknown' && matches.length) return false;
         if(!q) return true;
         const r=item.record||{};
+        const legacy=cleanupIdentityFromStudentKey(item.studentKey);
         const hay=[
           cleanupSnapshotName(r),cleanupSnapshotClass(r),cleanupSnapshotEmail(r),
-          item.studentKey,item.label,item.path,item.key,cleanupRecordDate(r),
+          legacy.name,legacy.className,item.studentKey,item.label,item.path,item.key,cleanupRecordDate(r),
           r.violation,r.status,r.teacherName,r.createdBy
         ].map(v=>String(v||'').toLowerCase()).join(' ');
         return hay.includes(q);
@@ -2254,8 +2271,9 @@
         return;
       }
       tbody.innerHTML=visibleRecords.map(item=>{
-        const name=cleanupSnapshotName(item.record)||'(정보 없음 | Unknown)';
-        const cls=cleanupSnapshotClass(item.record)||'-';
+        const legacy=cleanupIdentityFromStudentKey(item.studentKey);
+        const name=cleanupSnapshotName(item.record)||legacy.name||'(정보 없음 | Unknown)';
+        const cls=cleanupSnapshotClass(item.record)||legacy.className||'-';
         const date=cleanupRecordDate(item.record);
         return `<tr style="cursor:pointer" onclick="selectCleanupRecord('${cleanupEsc(item.id)}')">
           <td><b>${cleanupEsc(name)}</b><div class="small">${item.studentKey?cleanupEsc(item.studentKey):'학생 연결 없음 | No Student Link'}</div></td>
@@ -2272,33 +2290,39 @@
       if(!item) return;
       const detail=document.getElementById('cleanup-detail');
       const label=document.getElementById('cleanup-selected-label');
-      const name=cleanupSnapshotName(item.record)||'Unknown';
+      const legacy=cleanupIdentityFromStudentKey(item.studentKey);
+      const name=cleanupSnapshotName(item.record)||legacy.name||'Unknown';
+      const displayClass=cleanupSnapshotClass(item.record)||legacy.className||'-';
       if(label) label.textContent=`${name} · ${item.label}`;
       const matches=cleanupPossibleMatches(item);
+      const isDerivedCycleState=item.path==='studentCycleState';
       const suggestedHtml=matches.length?`
         <div style="margin-top:8px">
           <div class="small" style="font-weight:700;margin-bottom:5px">추천 학생 | Suggested Matches</div>
           ${matches.slice(0,5).map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:5px 0">
             <span>${cleanupEsc(m.student.name||'-')} · ${cleanupEsc(m.student.className||'-')} · ${cleanupEsc(m.student.selfEmail||'')}</span>
-            <button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(item.id)}','${cleanupEsc(m.key)}')">연결 | Link</button>
+            ${isDerivedCycleState ? '<span class="small" style="color:var(--sb)">파생 상태 | Derived state</span>' : `<button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(item.id)}','${cleanupEsc(m.key)}')">연결 | Link</button>`}
           </div>`).join('')}
         </div>`:`<div class="small" style="margin-top:7px;color:var(--sb)">자동으로 일치하는 학생을 찾지 못했습니다. 아래에서 직접 검색할 수 있습니다. | No automatic match found. Search manually below.</div>`;
       const matchHtml=`<div style="margin:12px 0;padding:10px;border:1px solid var(--bd);border-radius:8px">
         <b>현재 학생과 연결 | Link to Current Student</b>
         <div class="small" style="margin:4px 0 8px">과거 기록의 학반/스냅샷은 변경하지 않고 studentKey와 비어 있는 연결 정보만 보완합니다.<br>Historical class/snapshot fields are preserved.</div>
         ${suggestedHtml}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+        ${isDerivedCycleState ? `<div class="notice" style="margin-top:10px">
+          이 항목은 학생의 현재 처리 단계를 저장하는 파생 상태(Cycle State)입니다. studentKey 필드를 추가하는 방식으로 연결하면 실제 연결이 되지 않으므로 여기서는 직접 Link하지 않습니다. 관련 원본 기록(Detention/Notice/Recovery/Committee)을 먼저 연결한 뒤 상태를 다시 계산하는 것이 안전합니다.<br>
+          This is derived Cycle State data. Adding a studentKey field would not truly relink it. Link the underlying Detention/Notice/Recovery/Committee records first, then let the state be recalculated.
+        </div>` : `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
           <div class="small" style="font-weight:700;margin-bottom:5px">학생 직접 검색 | Manual Student Search</div>
           <div style="display:flex;gap:6px;align-items:center">
             <input id="cleanup-manual-student-search" type="search" placeholder="학생명, 영문명, 학반, 이메일 | Name, English, class, email"
               oninput="renderCleanupManualStudentSearch('${cleanupEsc(item.id)}')" style="flex:1;min-width:0">
           </div>
           <div id="cleanup-manual-student-results" style="margin-top:6px"></div>
-        </div>
+        </div>`}
       </div>`;
       detail.innerHTML=`<div>
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-          <div><b>${cleanupEsc(name)}</b> · ${cleanupEsc(cleanupSnapshotClass(item.record)||'-')}<div class="small">${cleanupEsc(item.label)} · ${cleanupEsc(item.path+'/'+item.key)}</div></div>
+          <div><b>${cleanupEsc(name)}</b> · ${cleanupEsc(displayClass)}<div class="small">${cleanupEsc(item.label)} · ${cleanupEsc(item.path+'/'+item.key)}</div></div>
           <button class="btn btn-danger btn-xs" onclick="deleteCleanupRecord('${cleanupEsc(item.id)}')">삭제 | Delete</button>
         </div>
         ${matchHtml}
@@ -2347,6 +2371,7 @@
       const item=cleanupRecords.find(x=>x.id===id);
       const student=(studentsRaw||{})[studentKey];
       if(!item||!student) return toast('연결할 학생을 찾을 수 없습니다. | Student not found.','err');
+      if(item.path==='studentCycleState') return toast('Cycle State는 파생 데이터이므로 직접 연결하지 않습니다. 관련 원본 기록을 먼저 연결해 주세요. | Cycle State is derived data; link the underlying records instead.','warn');
       const ok=confirm(`${cleanupSnapshotName(item.record)||'이 기록'}을(를) ${student.name||studentKey} (${student.className||'-'}) 학생에게 연결합니다.\n과거 스냅샷 정보는 덮어쓰지 않습니다.\n\nLink this record to the selected current student? Historical snapshot fields will not be overwritten.`);
       if(!ok) return;
       const updates={};
