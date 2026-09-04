@@ -748,7 +748,14 @@
     .settings-section{padding:10px 12px}
     .admin-form-section{margin-bottom:10px}
 
-  </style>
+  
+    /* 2026-09 bilingual button fit */
+    .admin-center-actions .btn,.admin-center-actions a.btn,.teacher-account-actions .btn,.filter-bar .btn,button.small-btn{min-width:0 !important;max-width:100%;}
+    button.small-btn{padding:4px 7px;font-size:10.5px;line-height:1.15;}
+    .admin-editor-actions,.committee-editor-actions,.student-bulk-actions,.admin-center-actions{min-width:0;flex-wrap:wrap;gap:5px;}
+    .admin-editor-actions .btn,.committee-editor-actions .btn,.student-bulk-actions .btn{white-space:normal;overflow-wrap:anywhere;}
+
+</style>
 </head>
 <body>
   <div id="toast"></div>

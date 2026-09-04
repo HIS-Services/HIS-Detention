@@ -488,3 +488,9 @@ tbody tr:hover td .edit-input{
   width:100%;
   min-width:0;
 }
+
+/* 2026-09 bilingual button fit pass */
+.btn,a.btn,button.btn{box-sizing:border-box;max-width:100%;line-height:1.15;text-align:center;}
+.btn{padding:7px 10px;font-size:12px;}
+.inline-actions,.mini-actions,.section-btn-group{min-width:0;}
+.tbl-wrap td .btn,.tbl-wrap td button.btn{padding:4px 7px;font-size:11px;min-width:0;max-width:100%;}

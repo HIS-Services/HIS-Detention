@@ -263,7 +263,13 @@
     .settings-section{padding:10px 12px}
     .admin-form-section{margin-bottom:10px}
 
-  </style>
+  
+    /* 2026-09 bilingual button fit */
+    .admin-center-actions .btn,.admin-center-actions a.btn,.teacher-account-actions .btn,.student-account-actions .btn,.filter-bar .btn,button.small-btn{min-width:0 !important;max-width:100%;}
+    button.small-btn{padding:4px 7px;font-size:10.5px;line-height:1.15;}
+    .teacher-account-actions,.student-account-actions,.admin-center-actions,.settings-action-row{min-width:0;flex-wrap:wrap;}
+
+</style>
 </head>
 <body>
   <div id="toast"></div>
@@ -302,6 +308,7 @@
       <button type="button" data-admin-tab="teachers" onclick="switchAdminView('teachers')">교사 계정 | Teachers</button>
       <button type="button" data-admin-tab="students" onclick="switchAdminView('students')">학생 명단 | Students</button>
       <a href="detention-admin.html#entries" data-admin-link="detention">디텐션 DB | Database</a>
+      <button type="button" data-admin-tab="cleanup" onclick="switchAdminView('cleanup')">데이터 정리 | Cleanup</button>
       <button type="button" data-admin-tab="settings" onclick="switchAdminView('settings')">설정 | Settings</button>
     </nav>
 
@@ -334,6 +341,7 @@
         <a href="detention-admin.html#entries" class="tab-btn" style="text-decoration:none;display:inline-flex;align-items:center;">
           디텐션 DB 관리 | Detention DB
         </a>
+        <button class="tab-btn" data-tab="cleanup">데이터 정리 | Cleanup</button>
         <button class="tab-btn" data-tab="csv">CSV 업로드 | CSV Upload</button>
       </div>
 
@@ -385,6 +393,9 @@
             <a class="admin-management-item" href="detention-admin.html#entries">
               <span><span class="admin-management-main">디텐션 DB</span><span class="admin-management-sub">입력 기록 확인·확정·반려 | Review detention records</span></span><span class="admin-management-arrow">›</span>
             </a>
+            <button type="button" class="admin-management-item" onclick="switchAdminView('cleanup')">
+              <span><span class="admin-management-main">데이터 정리</span><span class="admin-management-sub">학생과 연결되지 않은 기록 확인·연결·삭제 | Review, link, or delete orphaned records</span></span><span class="admin-management-arrow">›</span>
+            </button>
             <button type="button" class="admin-management-item" onclick="switchAdminView('settings')">
               <span><span class="admin-management-main">설정</span><span class="admin-management-sub">관리자 비밀번호와 운영 설정 | Admin settings</span></span><span class="admin-management-arrow">›</span>
             </button>
@@ -509,6 +520,44 @@
         </div>
       </div>
 
+
+      <div id="tab-cleanup" class="tab-panel">
+        <div class="card">
+          <div class="student-account-head">
+            <div>
+              <div class="student-account-title">데이터 정리 <span>Data Cleanup</span></div>
+              <div id="cleanup-page-summary" class="student-account-sub">연결되지 않은 기록 확인 중... | Checking unlinked records...</div>
+            </div>
+            <div class="student-account-actions">
+              <button class="btn btn-secondary" onclick="loadDataCleanup()">새로고침 | Refresh</button>
+              <button id="btn-cleanup-all" class="btn btn-danger" onclick="cleanupAllOrphanRecords()" disabled>전체 정리 | Cleanup All</button>
+            </div>
+          </div>
+          <div class="notice" style="margin:0 0 12px">
+            현재 학생 명단의 studentKey와 연결되지 않은 학생 관련 기록만 표시합니다. 가능한 현재 학생이 있으면 상세 화면에서 연결할 수 있습니다.<br>
+            Only student-related records that are not linked to a current roster student are shown. Possible current-student matches can be linked from the detail view.
+          </div>
+          <div class="admin-workspace">
+            <div class="admin-list-card">
+              <div class="admin-list-head">
+                <b>연결되지 않은 기록 | Orphaned Records</b>
+                <div id="cleanup-list-summary" class="admin-count-row"></div>
+              </div>
+              <div class="admin-list-scroll">
+                <table class="admin-list-table">
+                  <thead><tr><th style="width:30%">학생</th><th style="width:12%">학반</th><th style="width:20%">기록 종류</th><th style="width:18%">날짜</th><th style="width:20%">작업</th></tr></thead>
+                  <tbody id="cleanup-tbody"><tr><td colspan="5" class="small">새로고침을 눌러 확인하세요. | Click Refresh to scan.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="admin-detail-card">
+              <div class="admin-detail-head"><b>기록 상세 | Record Details</b><span id="cleanup-selected-label" style="float:right;font-size:11px;color:var(--sb)"></span></div>
+              <div id="cleanup-detail" class="admin-detail-body"><div class="admin-detail-empty">왼쪽 목록에서 기록을 선택하세요. | Select a record from the list.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="tab-csv" class="tab-panel">
         <div class="card">
           <div class="card-title">학생 명단 엑셀 붙여넣기 | Student Excel Paste</div>
@@ -606,6 +655,10 @@
                 <span><span class="settings-tool-main">디텐션 DB 관리 | Detention Database</span><span class="settings-tool-sub">기록 조회·수정·상태 점검 화면을 엽니다. | Open record review, editing, and status checks.</span></span>
                 <span class="settings-tool-arrow" aria-hidden="true">›</span>
               </a>
+              <button type="button" class="settings-tool-item settings-tool-button" onclick="switchAdminView('cleanup')">
+                <span><span class="settings-tool-main">데이터 정리 | Data Cleanup</span><span class="settings-tool-sub">현재 학생과 연결되지 않은 학생 관련 기록을 확인·연결·삭제합니다. | Review, link, or delete records not connected to a current student.</span></span>
+                <span class="settings-tool-arrow" aria-hidden="true">›</span>
+              </button>
             </div>
           </section>
         </div>
@@ -644,6 +697,8 @@
     let selectedStudentIndex = -1;
     let teacherSnapshot = '';
     let studentSnapshot = '';
+    let cleanupRecords = [];
+    let cleanupSelectedId = '';
 
     /* ── Dirty-check ────────────────────────────────── */
     function teacherRowSig(r) {
@@ -2056,6 +2111,216 @@
       }
     }
 
+
+    const CLEANUP_COLLECTIONS = [
+      {path:'detentionEntries', label:'디텐션 | Detention'},
+      {path:'detentionRecords', label:'레거시 디텐션 | Legacy Detention'},
+      {path:'detentionNotices', label:'알림 | Notice'},
+      {path:'recoveryEntries', label:'회복교육 | Recovery'},
+      {path:'committeeRecords', label:'위원회 | Committee'},
+      {path:'studentCycleState', label:'학생 상태 | Cycle State'}
+    ];
+
+    function cleanupEsc(v){
+      return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function cleanupRecordStudentKey(path,key,r){
+      r=r||{};
+      const direct=String(r.studentKey||r.studentId||r.studentID||'').trim();
+      if(direct) return direct;
+      if(path==='studentCycleState'){
+        const k=String(key||'');
+        const suffix=k.match(/^(.*)_(ms|hs)$/i);
+        if(suffix&&suffix[1]) return suffix[1];
+      }
+      return '';
+    }
+    function cleanupSnapshotName(r){
+      r=r||{};
+      return String(r.studentName||r.name||r.student?.name||r.studentSnapshot?.name||r.snapshot?.name||'').trim();
+    }
+    function cleanupSnapshotClass(r){
+      r=r||{};
+      return String(r.className||r.class||r.studentClass||r.student?.className||r.studentSnapshot?.className||r.snapshot?.className||'').trim();
+    }
+    function cleanupSnapshotEmail(r){
+      r=r||{};
+      return String(r.studentEmail||r.selfEmail||r.student?.selfEmail||r.studentSnapshot?.selfEmail||'').trim().toLowerCase();
+    }
+    function cleanupRecordDate(r){
+      r=r||{};
+      return String(r.createdAt||r.date||r.entryDate||r.confirmedAt||r.completedAt||r.parentMailAt||r.studentTeacherMailAt||r.updatedAt||'').trim();
+    }
+    function cleanupPossibleMatches(item){
+      const name=cleanupSnapshotName(item.record).toLowerCase();
+      const email=cleanupSnapshotEmail(item.record);
+      if(!name&&!email) return [];
+      return Object.entries(studentsRaw||{}).map(([key,v])=>{
+        const vn=String((v||{}).name||'').trim().toLowerCase();
+        const ve=String((v||{}).selfEmail||'').trim().toLowerCase();
+        let score=0;
+        if(email&&ve&&email===ve) score+=100;
+        if(name&&vn&&name===vn) score+=50;
+        return {key,student:v||{},score};
+      }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+    }
+    function cleanupDetailRows(obj,prefix='',depth=0){
+      if(depth>3||obj==null) return '';
+      if(typeof obj!=='object') return `<div style="margin:3px 0"><b>${cleanupEsc(prefix||'Value')}</b>: ${cleanupEsc(obj)}</div>`;
+      return Object.entries(obj).map(([k,v])=>{
+        const label=prefix?prefix+'.'+k:k;
+        if(v&&typeof v==='object') return cleanupDetailRows(v,label,depth+1);
+        const text=String(v==null?'':v);
+        return `<div style="margin:4px 0;line-height:1.45"><b>${cleanupEsc(label)}</b>: <span style="white-space:pre-wrap;word-break:break-word">${cleanupEsc(text||'-')}</span></div>`;
+      }).join('');
+    }
+    async function loadDataCleanup(){
+      const tbody=document.getElementById('cleanup-tbody');
+      const summary=document.getElementById('cleanup-page-summary');
+      if(tbody) tbody.innerHTML='<tr><td colspan="5" class="small">확인 중... | Scanning...</td></tr>';
+      try{
+        await ensureFirebaseAuth();
+        const snaps=await Promise.all(CLEANUP_COLLECTIONS.map(c=>db.ref(c.path).once('value')));
+        const currentKeys=new Set(Object.keys(studentsRaw||{}));
+        const rows=[];
+        CLEANUP_COLLECTIONS.forEach((c,i)=>{
+          const raw=snaps[i].val()||{};
+          Object.entries(raw).forEach(([key,record])=>{
+            record=record||{};
+            const studentKey=cleanupRecordStudentKey(c.path,key,record);
+            if(studentKey&&currentKeys.has(studentKey)) return;
+            // Committee rows can be indirectly linked through a current detention entry.
+            // If they have a valid direct student key, the check above already retains them.
+            rows.push({
+              id:c.path+'::'+key,path:c.path,key,label:c.label,record,studentKey,
+              reason:studentKey?'missing_student':'no_student_key'
+            });
+          });
+        });
+        cleanupRecords=rows.sort((a,b)=>cleanupRecordDate(b.record).localeCompare(cleanupRecordDate(a.record)));
+        cleanupSelectedId='';
+        renderDataCleanup();
+        if(summary) summary.textContent=`연결되지 않은 기록 ${cleanupRecords.length}건 | ${cleanupRecords.length} orphaned/unlinked records`;
+      }catch(e){
+        console.error('Cleanup scan failed:',e);
+        if(tbody) tbody.innerHTML='<tr><td colspan="5" class="small">데이터 확인 실패 | Cleanup scan failed</td></tr>';
+        toast('데이터 정리 목록을 불러오지 못했습니다. | Failed to load cleanup records.','err');
+      }
+    }
+    function renderDataCleanup(){
+      const tbody=document.getElementById('cleanup-tbody');
+      const listSummary=document.getElementById('cleanup-list-summary');
+      const allBtn=document.getElementById('btn-cleanup-all');
+      if(listSummary) listSummary.textContent=`${cleanupRecords.length} records`;
+      if(allBtn) allBtn.disabled=cleanupRecords.length===0;
+      if(!tbody) return;
+      if(!cleanupRecords.length){
+        tbody.innerHTML='<tr><td colspan="5"><div class="admin-detail-empty">정리할 기록이 없습니다. | No orphaned records found.</div></td></tr>';
+        document.getElementById('cleanup-detail').innerHTML='<div class="admin-detail-empty">현재 학생과 연결되지 않은 학생 관련 기록이 없습니다. | No unlinked student records.</div>';
+        return;
+      }
+      tbody.innerHTML=cleanupRecords.map(item=>{
+        const name=cleanupSnapshotName(item.record)||'(정보 없음 | Unknown)';
+        const cls=cleanupSnapshotClass(item.record)||'-';
+        const date=cleanupRecordDate(item.record);
+        return `<tr style="cursor:pointer" onclick="selectCleanupRecord('${cleanupEsc(item.id)}')">
+          <td><b>${cleanupEsc(name)}</b><div class="small">${item.studentKey?cleanupEsc(item.studentKey):'학생 연결 없음 | No Student Link'}</div></td>
+          <td>${cleanupEsc(cls)}</td>
+          <td>${cleanupEsc(item.label)}</td>
+          <td>${cleanupEsc(date?date.slice(0,10):'-')}</td>
+          <td><button class="btn btn-danger btn-xs" onclick="event.stopPropagation();deleteCleanupRecord('${cleanupEsc(item.id)}')">삭제 | Delete</button></td>
+        </tr>`;
+      }).join('');
+    }
+    function selectCleanupRecord(id){
+      cleanupSelectedId=id;
+      const item=cleanupRecords.find(x=>x.id===id);
+      if(!item) return;
+      const detail=document.getElementById('cleanup-detail');
+      const label=document.getElementById('cleanup-selected-label');
+      const name=cleanupSnapshotName(item.record)||'Unknown';
+      if(label) label.textContent=`${name} · ${item.label}`;
+      const matches=cleanupPossibleMatches(item);
+      const matchHtml=matches.length?`<div style="margin:12px 0;padding:10px;border:1px solid var(--bd);border-radius:8px">
+        <b>현재 학생과 연결 | Link to Current Student</b>
+        <div class="small" style="margin:4px 0 8px">확인 후 연결하세요. 과거 기록의 학반/스냅샷은 변경하지 않고 studentKey와 비어 있는 연결 정보만 보완합니다.<br>Confirm before linking. Historical class/snapshot fields are preserved.</div>
+        ${matches.slice(0,5).map(m=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:5px 0">
+          <span>${cleanupEsc(m.student.name||'-')} · ${cleanupEsc(m.student.className||'-')} · ${cleanupEsc(m.student.selfEmail||'')}</span>
+          <button class="btn btn-primary btn-xs" onclick="linkCleanupRecord('${cleanupEsc(item.id)}','${cleanupEsc(m.key)}')">연결 | Link</button>
+        </div>`).join('')}
+      </div>`:`<div class="notice" style="margin:12px 0">일치하는 현재 학생을 찾지 못했습니다. | No matching current student found.</div>`;
+      detail.innerHTML=`<div>
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+          <div><b>${cleanupEsc(name)}</b> · ${cleanupEsc(cleanupSnapshotClass(item.record)||'-')}<div class="small">${cleanupEsc(item.label)} · ${cleanupEsc(item.path+'/'+item.key)}</div></div>
+          <button class="btn btn-danger btn-xs" onclick="deleteCleanupRecord('${cleanupEsc(item.id)}')">삭제 | Delete</button>
+        </div>
+        ${matchHtml}
+        <div style="margin-top:12px"><b>전체 기록 내용 | Full Record</b>${cleanupDetailRows(item.record)}</div>
+      </div>`;
+    }
+    async function linkCleanupRecord(id,studentKey){
+      const item=cleanupRecords.find(x=>x.id===id);
+      const student=(studentsRaw||{})[studentKey];
+      if(!item||!student) return toast('연결할 학생을 찾을 수 없습니다. | Student not found.','err');
+      const ok=confirm(`${cleanupSnapshotName(item.record)||'이 기록'}을(를) ${student.name||studentKey} (${student.className||'-'}) 학생에게 연결합니다.\n과거 스냅샷 정보는 덮어쓰지 않습니다.\n\nLink this record to the selected current student? Historical snapshot fields will not be overwritten.`);
+      if(!ok) return;
+      const updates={};
+      updates[`${item.path}/${item.key}/studentKey`]=studentKey;
+      // Fill only missing identity/link fields; never overwrite historical snapshot values.
+      if(!String(item.record.studentName||'').trim()) updates[`${item.path}/${item.key}/studentName`]=student.name||'';
+      if(!String(item.record.studentEmail||'').trim() && student.selfEmail) updates[`${item.path}/${item.key}/studentEmail`]=student.selfEmail;
+      await db.ref().update(updates);
+      toast('학생 연결이 저장되었습니다. | Record linked to student.','ok');
+      await loadDataCleanup();
+    }
+    async function deleteCleanupRecord(id){
+      const item=cleanupRecords.find(x=>x.id===id);
+      if(!item) return;
+      const name=cleanupSnapshotName(item.record)||'Unknown';
+      const ok=confirm(`${name}의 ${item.label} 기록 1건을 영구 삭제합니다.\nThis permanently deletes this orphaned record.\n\n계속하시겠습니까? | Continue?`);
+      if(!ok) return;
+      await db.ref(`${item.path}/${item.key}`).remove();
+      toast('기록이 삭제되었습니다. | Record deleted.','ok');
+      await loadDataCleanup();
+    }
+    async function cleanupAllOrphanRecords(){
+      if(!cleanupRecords.length) return toast('정리할 기록이 없습니다. | Nothing to clean up.','ok');
+      const count=cleanupRecords.length;
+      const possible=cleanupRecords.filter(x=>cleanupPossibleMatches(x).length).length;
+      const ok=confirm(`현재 학생 명단과 연결되지 않은 기록 ${count}건을 모두 영구 삭제합니다.${possible?`\n이 중 ${possible}건은 현재 학생과 일치할 가능성이 있습니다.`:''}\n\nThis permanently deletes all ${count} records shown in Data Cleanup.${possible?`\n${possible} record(s) have possible current-student matches.`:''}\n\n이 작업은 되돌릴 수 없습니다. | This cannot be undone.\n계속하시겠습니까? | Continue?`);
+      if(!ok) return;
+      const updates={};
+      cleanupRecords.forEach(item=>{updates[`${item.path}/${item.key}`]=null;});
+      await db.ref().update(updates);
+      toast(`${count}건의 기록을 정리했습니다. | Cleaned up ${count} records.`,'ok');
+      await loadDataCleanup();
+    }
+
+    function adminStudentRelatedKeyList(value){
+      if(Array.isArray(value)) return value.map(v=>String(v||'')).filter(Boolean);
+      if(value && typeof value==='object') return Object.entries(value).filter(([,v])=>v!==false&&v!==null&&v!==undefined).map(([k,v])=>typeof v==='string'&&v.trim()?v.trim():String(k||'').trim()).filter(Boolean);
+      return String(value||'').split(/[|,;\n]+/).map(v=>v.trim()).filter(Boolean);
+    }
+
+    async function buildStudentCascadeDeleteUpdates(studentKeys){
+      const keys=new Set((studentKeys||[]).map(v=>String(v||'').trim()).filter(Boolean));
+      if(!keys.size) return {updates:{},counts:{students:0,entries:0,legacyEntries:0,notices:0,recovery:0,committee:0,states:0}};
+      const [entrySnap,legacySnap,noticeSnap,recoverySnap,committeeSnap,stateSnap]=await Promise.all([
+        db.ref('detentionEntries').once('value'), db.ref('detentionRecords').once('value'), db.ref('detentionNotices').once('value'),
+        db.ref('recoveryEntries').once('value'), db.ref('committeeRecords').once('value'), db.ref('studentCycleState').once('value')
+      ]);
+      const entries=entrySnap.val()||{},legacy=legacySnap.val()||{},notices=noticeSnap.val()||{},recovery=recoverySnap.val()||{},committee=committeeSnap.val()||{},states=stateSnap.val()||{};
+      const out={},counts={students:0,entries:0,legacyEntries:0,notices:0,recovery:0,committee:0,states:0},deletedEntryKeys=new Set();
+      keys.forEach(k=>{out['students/'+k]=null;counts.students++;});
+      Object.entries(entries).forEach(([k,r])=>{if(keys.has(String((r||{}).studentKey||'').trim())){out['detentionEntries/'+k]=null;deletedEntryKeys.add(String(k));counts.entries++;}});
+      Object.entries(legacy).forEach(([k,r])=>{if(keys.has(String((r||{}).studentKey||'').trim())){out['detentionRecords/'+k]=null;deletedEntryKeys.add(String(k));counts.legacyEntries++;}});
+      Object.entries(notices).forEach(([k,r])=>{if(keys.has(String((r||{}).studentKey||'').trim())){out['detentionNotices/'+k]=null;counts.notices++;}});
+      Object.entries(recovery).forEach(([k,r])=>{if(keys.has(String((r||{}).studentKey||'').trim())){out['recoveryEntries/'+k]=null;counts.recovery++;}});
+      Object.entries(committee).forEach(([k,r])=>{r=r||{};const direct=keys.has(String(r.studentKey||'').trim());const entryLinked=deletedEntryKeys.has(String(r.entryKey||'').trim());const linked=adminStudentRelatedKeyList(r.linkedEntryKeys).some(v=>deletedEntryKeys.has(String(v)));if(direct||entryLinked||linked){out['committeeRecords/'+k]=null;counts.committee++;}});
+      Object.entries(states).forEach(([k,r])=>{const direct=keys.has(String((r||{}).studentKey||'').trim());const keyMatch=Array.from(keys).some(sk=>String(k)===sk+'_ms'||String(k)===sk+'_hs'||String(k).startsWith(sk+'_'));if(direct||keyMatch){out['studentCycleState/'+k]=null;counts.states++;}});
+      return {updates:out,counts};
+    }
+
     async function saveStudents() {
       try {
         const updates = {};
@@ -2109,15 +2374,19 @@
           }
         });
 
-        // 개별 update (다른 학생 키 건드리지 않음)
-        if (Object.keys(updates).length) {
-          await db.ref().update(updates);
+        let cascadeResult={updates:{},counts:{students:0,entries:0,legacyEntries:0,notices:0,recovery:0,committee:0,states:0}};
+        if(removes.length){
+          const names=studentRows.filter(r=>r._delete&&r.oldKey).map(r=>`${r.className||''} ${r.name||r.oldKey}`.trim()).join(', ');
+          const ok=confirm(`학생 ${removes.length}명을 완전히 삭제합니다.\n${names}\n\n학생 명단뿐 아니라 해당 학생의 디텐션, 알림, 회복교육, 위원회, 상태 기록도 함께 삭제됩니다.\nThis permanently deletes the roster entry and all related detention, notice, recovery, committee, and status records.\n\n계속하시겠습니까? | Continue?`);
+          if(!ok) return toast('학생 삭제가 취소되었습니다. | Student deletion cancelled.', 'ok');
+          cascadeResult=await buildStudentCascadeDeleteUpdates(removes);
         }
-        // 삭제는 개별 remove
-        await Promise.all(removes.map(k => db.ref(`students/${k}`).remove()));
-
-        toast('학생 데이터가 저장되었습니다.\nStudent data has been saved.', 'ok');
-        refreshAll();
+        const finalUpdates=Object.assign({},updates,cascadeResult.updates);
+        if(Object.keys(finalUpdates).length) await db.ref().update(finalUpdates);
+        const c=cascadeResult.counts;
+        const deletedSummary=removes.length?`\n삭제: 학생 ${c.students}, 디텐션 ${c.entries+c.legacyEntries}, 알림 ${c.notices}, 회복교육 ${c.recovery}, 위원회 ${c.committee}, 상태 ${c.states}`:'';
+        toast('학생 데이터가 저장되었습니다.'+deletedSummary+'\nStudent data has been saved.', 'ok');
+        await refreshAll();
       } catch (e) {
         console.error(e);
         toast('학생 데이터 저장 실패\nFailed to save student data', 'err');
@@ -2215,7 +2484,7 @@
         .split('\n').map(l => l.split('\t').map(v => v.trim()))
         .filter(cols => cols.some(v => v !== ''));
     }
-    const ADMIN_VIEWS = ['home','teachers','students','csv','settings'];
+    const ADMIN_VIEWS = ['home','teachers','students','csv','settings', 'cleanup'];
     function updateAdminNav(name) {
       document.querySelectorAll('.admin-center-nav [data-admin-tab], .admin-center-nav [data-admin-link]').forEach(el => el.classList.remove('active'));
       const current = document.querySelector(`.admin-center-nav [data-admin-tab="${name}"]`);
@@ -2230,6 +2499,7 @@
       updateAdminNav(target);
       if (!options.skipHash) history.replaceState(null, '', '#' + target);
       if (target !== 'settings') document.getElementById('pw-change-box')?.classList.add('hidden');
+      if (target === 'cleanup') loadDataCleanup();
       window.scrollTo({top:0, behavior: options.instant ? 'auto' : 'smooth'});
     }
     function switchToTab(name) { switchAdminView(name); }

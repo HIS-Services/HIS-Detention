@@ -1271,6 +1271,18 @@
       max-width:none !important;
       white-space:nowrap !important;
     }
+
+    /* Recovery Active table spacing */
+    #tab-recovery-ms table:has(#recovery-ms-active-tbody) td:last-child, #tab-recovery-hs table:has(#recovery-hs-active-tbody) td:last-child{white-space:nowrap;overflow:visible;padding-left:4px;padding-right:4px;}
+    #tab-recovery-ms table:has(#recovery-ms-active-tbody) td:last-child button, #tab-recovery-hs table:has(#recovery-hs-active-tbody) td:last-child button{white-space:nowrap;width:auto !important;max-width:none !important;min-width:0 !important;}
+
+
+    /* 2026-09 bilingual button fit */
+    .teacher-actions .btn,.teacher-actions a.btn,.teacher-nav-buttons .tab-btn,#tab-students .filter-bar .btn{min-width:0 !important;max-width:100%;}
+    .teacher-actions,.teacher-nav-buttons,.section-btn-group,.mini-actions{min-width:0;flex-wrap:wrap;}
+    .tbl-wrap td .btn,.tbl-wrap td button.btn{box-sizing:border-box;max-width:100%;}
+    .btn-xs{padding:4px 6px !important;font-size:10.5px !important;line-height:1.15 !important;}
+
 </style>
 </head>
 <body>
@@ -1760,14 +1772,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
-                <th class="nowrap tc" style="width:6%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap" style="width:15%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
                 <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
                 <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
-                <th style="width:28%;">위반 행위<span class="th-en">Violation</span></th>
+                <th style="width:27%;">위반 행위<span class="th-en">Violation</span></th>
                 <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
                 <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
-                <th class="nowrap tc" style="width:10%;">처리<span class="th-en">Action</span></th>
+                <th class="nowrap tc" style="width:19%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-active-tbody"></tbody>
@@ -1816,14 +1828,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
-                <th class="nowrap tc" style="width:6%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap" style="width:15%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
                 <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
                 <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
-                <th style="width:28%;">위반 행위<span class="th-en">Violation</span></th>
+                <th style="width:27%;">위반 행위<span class="th-en">Violation</span></th>
                 <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
                 <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
-                <th class="nowrap tc" style="width:10%;">처리<span class="th-en">Action</span></th>
+                <th class="nowrap tc" style="width:19%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-active-tbody"></tbody>
@@ -4273,6 +4285,24 @@
        'discipline-active-tbody','discipline-done-tbody'
       ].forEach(stripeTable);
     }
+    async function cancelNoticeMailStatus(noticeKey, field){
+      noticeKey=String(noticeKey||'').trim();
+      if(!noticeKey || !['parentMailAt','studentTeacherMailAt'].includes(field)){
+        return toast('알림 기록을 찾을 수 없습니다. | Notice record not found.','err');
+      }
+      const isParent=field==='parentMailAt';
+      const label=isParent?'학부모 알림 | Parent notice':'학생·교사 알림 | Student/Teacher notice';
+      if(!confirm(`${label}의 발송 완료 상태를 취소하고 미발송 상태로 되돌립니다.\n\nCancel the sent status and return this email to pending?`)) return;
+      try{
+        await db.ref('detentionNotices/'+noticeKey+'/'+field).remove();
+        toast(`${label} 상태를 취소했습니다. | Sent status cancelled.`,'ok');
+      }catch(e){
+        console.error('Cancel notice mail status failed:',e);
+        toast('메일 상태 취소에 실패했습니다. | Failed to cancel email status.','err');
+      }
+    }
+
+
 
     async function updateNoticeDateField(noticeKey, field, dateValue){
       if(!noticeKey) return toast('noticeKey 없음', 'err');
@@ -4603,12 +4633,14 @@
           const _pts = getStudentPoints(s.key, getSchoolLevel(s.className||''));
           const current=_pts.current, overall=_pts.overall, recovered=overall-current;
           const ptColor = current>=9?'var(--rd)':current>=6?'#b45309':current>=3?'#1d4ed8':'#9ca3af';
+          const totalColor = overall>=31?'var(--rd)':overall>=21?'#1d4ed8':'var(--sb)';
+          const totalWeight = overall>=21?'800':'500';
           const bg = i%2===0?'#fff':'#f7faff';
           return `<tr style="background:${bg}">
             <td style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="margin-left:4px;color:#b45309;font-size:10px">명단없음</span>' : ''}</td>
             <td style="font-size:11px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName||'')}</td>
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
-            <td style="text-align:center;font-size:11px;color:var(--sb);white-space:nowrap">${overall}</td>
+            <td style="text-align:center;font-size:11px;color:${totalColor};font-weight:${totalWeight};white-space:nowrap">${overall}</td>
             <td style="text-align:center;padding:0 2px;white-space:nowrap">
               <button class="btn-view student-view-btn" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
             </td>
@@ -4725,6 +4757,8 @@
           const _pts = getStudentPoints(s.key, level||getSchoolLevel(s.className||''));
           const currentTotal = _pts.current, overallTotal = _pts.overall;
           const ptColor = currentTotal>=9?'var(--rd)':currentTotal>=6?'#b45309':currentTotal>=3?'#1d4ed8':'#9ca3af';
+          const overallColor = overallTotal>=31?'var(--rd)':overallTotal>=21?'#1d4ed8':'#9ca3af';
+          const overallWeight = overallTotal>=21?'800':'500';
           return `<div class="student-list-row" data-skey="${skey}" onclick="selectStudentInPanel('${skey}')">
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.name||'')}${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="margin-left:4px;color:#b45309;font-size:10px">명단없음</span>' : ''}</div>
@@ -4732,7 +4766,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
               <span style="font-size:12px;font-weight:700;color:${ptColor}">${currentTotal}</span>
-              <span style="font-size:10px;color:#9ca3af">/${overallTotal}</span>
+              <span style="font-size:10px;color:${overallColor};font-weight:${overallWeight}">/${overallTotal}</span>
               <button class="btn-det" data-skey="${skey}" onclick="event.stopPropagation();goToDetentionEntry('${skey}')">+</button>
             </div>
           </div>`;
@@ -5425,7 +5459,7 @@
             <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(true)">전체 펼침 | Expand All</button>
             <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(false)">전체 접기 | Collapse All</button>
             <button class="btn-det" onclick="goToDetentionEntry('${esc(studentKey)}')">디텐션 입력 | Add Detention</button>
-            ${hasFullWorkRole() && students[studentKey] ? `<button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="hideStudentFromList('${esc(studentKey)}')">학생 삭제 | Delete Student</button>` : ''}
+
           </div>
         </div>
 
@@ -5742,10 +5776,10 @@
           }
 
           const parentAction = notice.parentMailAt
-            ? `<span class="notice-mail-badge sent">발송 완료 | Sent</span>`
+            ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(s.noticeKey || '')}','parentMailAt')">학부모 알림 취소 | Cancel Parent</button>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendParentMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학부모 메일 | Parent Email</button>`;
           const studentAction = notice.studentTeacherMailAt
-            ? `<span class="notice-mail-badge sent">발송 완료 | Sent</span>`
+            ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(s.noticeKey || '')}','studentTeacherMailAt')">학생·교사 알림 취소 | Cancel Student/Teacher</button>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학생·교사 메일 | Student/Teacher Email</button>`;
 
           const dateEditSection = canEditDate ? `<div class="notice-detail-section full">
