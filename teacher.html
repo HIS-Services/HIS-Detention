@@ -5692,6 +5692,13 @@
 
       function activeDetailHtml(s, level){
         const notice = s.notice || {};
+        const activeNoticeKey = String(s.noticeDocKey || '');
+        const parentAction = notice.parentMailAt
+          ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span>${activeNoticeKey ? `<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(activeNoticeKey)}','parentMailAt')">학부모 알림 취소 | Cancel Parent</button>` : ''}`
+          : `<button class="btn-mail" onclick="event.stopPropagation();sendParentMail('${esc(s.key)}','${level}')">학부모 메일 | Parent Email</button>`;
+        const studentAction = notice.studentTeacherMailAt
+          ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span>${activeNoticeKey ? `<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(activeNoticeKey)}','studentTeacherMailAt')">학생·교사 알림 취소 | Cancel Student/Teacher</button>` : ''}`
+          : `<button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMail('${esc(s.key)}','${level}')">학생·교사 메일 | Student/Teacher Email</button>`;
         return `<div class="notice-inline-panel">
           ${identityHtml(s, level)}
           <div class="notice-detail-grid">
@@ -5712,8 +5719,8 @@
               <div class="notice-detail-title">메일 처리 | Email Actions</div>
               <div class="notice-detail-content">메일 발송 여부와 시간을 확인한 뒤 필요한 알림을 보냅니다.<br>Check the status and send the required notice.</div>
               <div class="notice-detail-actions">
-                <button class="btn-mail" onclick="event.stopPropagation();sendParentMail('${esc(s.key)}','${level}')">학부모 메일 | Parent Email</button>
-                <button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMail('${esc(s.key)}','${level}')">학생·교사 메일 | Student/Teacher Email</button>
+                ${parentAction}
+                ${studentAction}
               </div>
             </div>
           </div>
@@ -5776,10 +5783,10 @@
           }
 
           const parentAction = notice.parentMailAt
-            ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(s.noticeKey || '')}','parentMailAt')">학부모 알림 취소 | Cancel Parent</button>`
+            ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendParentMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학부모 메일 | Parent Email</button>`;
           const studentAction = notice.studentTeacherMailAt
-            ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(s.noticeKey || '')}','studentTeacherMailAt')">학생·교사 알림 취소 | Cancel Student/Teacher</button>`
+            ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학생·교사 메일 | Student/Teacher Email</button>`;
 
           const dateEditSection = canEditDate ? `<div class="notice-detail-section full">
