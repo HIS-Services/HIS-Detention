@@ -301,13 +301,19 @@ function readFileText(file, enc = 'utf-8') {
     const yearRawPoints = confirmedEntries.reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0);
 
     // 현재 학년도 + 같은 학년군의 회복교육 차감점수입니다.
-    const recoveredTotal = hisValues(recovery)
+    const studentRecoveryArr = hisValues(recovery)
       .filter(r =>
         String((r || {}).studentKey || '') === sk &&
         hisRecordLevel(r, lv) === lv &&
         hisIsCurrentYearRecord(r, curYear)
-      )
+      );
+    const recoveredTotal = studentRecoveryArr
       .reduce((sum, r) => sum + Number((r || {}).recoveryPoints || 0), 0);
+    const latestRecoveryCompletedAt = studentRecoveryArr
+      .map(r => String((r || {}).completedAt || ''))
+      .filter(Boolean)
+      .sort()
+      .pop() || '';
 
     const currentPoints = Math.max(0, yearRawPoints - recoveredTotal);
 
@@ -350,9 +356,20 @@ function readFileText(file, enc = 'utf-8') {
     const hasPendingCommittee = !!pendingCommitteeEntry;
     const needsCommittee = currentPoints >= 12 && !hasPendingCommittee && !committeeCoversLatestEntry;
 
+    // Recovery is "sticky" after a completed Notice/Committee until a Recovery completion
+    // is actually recorded. New confirmed detention points during that period increase
+    // the student's balance but must NOT send the student backward to Notice.
+    const lastNoticeCompletedAt = lastCompletedNotice ? String(lastCompletedNotice.notice.completedAt || '') : '';
+    const latestRecoveryBaselineAt = [lastNoticeCompletedAt, latestCommitteeCompletedAt].filter(Boolean).sort().pop() || '';
+    const recoveryPending = !!latestRecoveryBaselineAt &&
+      currentPoints >= 3 &&
+      (!latestRecoveryCompletedAt || latestRecoveryCompletedAt < latestRecoveryBaselineAt);
+
     let phase = 'clean';
     if (hasPendingCommittee) {
       phase = 'committee_pending';
+    } else if (recoveryPending) {
+      phase = 'in_recovery';
     } else if (committeeCoversLatestEntry && currentPoints >= 3) {
       // 위원회 완료 후에는 같은 위반 묶음을 다시 알림으로 보내지 않고 회복교육 단계로 보냅니다.
       phase = 'in_recovery';
@@ -395,6 +412,9 @@ function readFileText(file, enc = 'utf-8') {
         needsCommittee,
         latestCommitteeCompletedAt,
         committeeCoversLatestEntry,
+        latestRecoveryCompletedAt,
+        latestRecoveryBaselineAt,
+        recoveryPending,
         // 구버전 호출부 호환용 별칭
         hasActiveReferral: false,
         hasManualReferralPending: hasPendingCommittee,

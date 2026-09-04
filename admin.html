@@ -530,12 +530,21 @@
             </div>
             <div class="student-account-actions">
               <button class="btn btn-secondary" onclick="loadDataCleanup()">새로고침 | Refresh</button>
+              <button id="btn-cleanup-unknown" class="btn btn-secondary" onclick="cleanupUnknownRecords()" disabled>미확인 정리 | Cleanup Unknown</button>
               <button id="btn-cleanup-all" class="btn btn-danger" onclick="cleanupAllOrphanRecords()" disabled>전체 정리 | Cleanup All</button>
             </div>
           </div>
           <div class="notice" style="margin:0 0 12px">
             현재 학생 명단의 studentKey와 연결되지 않은 학생 관련 기록만 표시합니다. 가능한 현재 학생이 있으면 상세 화면에서 연결할 수 있습니다.<br>
             Only student-related records that are not linked to a current roster student are shown. Possible current-student matches can be linked from the detail view.
+          </div>
+          <div class="filter-bar" style="margin:0 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="cleanup-search" type="search" placeholder="학생명, 학반, 기록 검색 | Search student, class, record" oninput="renderDataCleanup()" style="flex:1;min-width:260px">
+            <select id="cleanup-match-filter" onchange="renderDataCleanup()" style="min-width:230px">
+              <option value="">전체 | All Records</option>
+              <option value="match">연결 가능 | Possible Match</option>
+              <option value="unknown">학생 확인 필요 | Unknown Student</option>
+            </select>
           </div>
           <div class="admin-workspace">
             <div class="admin-list-card">
@@ -2207,19 +2216,44 @@
         toast('데이터 정리 목록을 불러오지 못했습니다. | Failed to load cleanup records.','err');
       }
     }
+    function getFilteredCleanupRecords(){
+      const q=String(document.getElementById('cleanup-search')?.value||'').trim().toLowerCase();
+      const filter=String(document.getElementById('cleanup-match-filter')?.value||'');
+      return cleanupRecords.filter(item=>{
+        const matches=cleanupPossibleMatches(item);
+        if(filter==='match' && !matches.length) return false;
+        if(filter==='unknown' && matches.length) return false;
+        if(!q) return true;
+        const r=item.record||{};
+        const hay=[
+          cleanupSnapshotName(r),cleanupSnapshotClass(r),cleanupSnapshotEmail(r),
+          item.studentKey,item.label,item.path,item.key,cleanupRecordDate(r),
+          r.violation,r.status,r.teacherName,r.createdBy
+        ].map(v=>String(v||'').toLowerCase()).join(' ');
+        return hay.includes(q);
+      });
+    }
     function renderDataCleanup(){
       const tbody=document.getElementById('cleanup-tbody');
       const listSummary=document.getElementById('cleanup-list-summary');
       const allBtn=document.getElementById('btn-cleanup-all');
-      if(listSummary) listSummary.textContent=`${cleanupRecords.length} records`;
+      const unknownBtn=document.getElementById('btn-cleanup-unknown');
+      const visibleRecords=getFilteredCleanupRecords();
+      const unknownRecords=cleanupRecords.filter(item=>cleanupPossibleMatches(item).length===0);
+      if(listSummary) listSummary.textContent=`${visibleRecords.length} / ${cleanupRecords.length} records`;
       if(allBtn) allBtn.disabled=cleanupRecords.length===0;
+      if(unknownBtn) unknownBtn.disabled=unknownRecords.length===0;
       if(!tbody) return;
       if(!cleanupRecords.length){
         tbody.innerHTML='<tr><td colspan="5"><div class="admin-detail-empty">정리할 기록이 없습니다. | No orphaned records found.</div></td></tr>';
         document.getElementById('cleanup-detail').innerHTML='<div class="admin-detail-empty">현재 학생과 연결되지 않은 학생 관련 기록이 없습니다. | No unlinked student records.</div>';
         return;
       }
-      tbody.innerHTML=cleanupRecords.map(item=>{
+      if(!visibleRecords.length){
+        tbody.innerHTML='<tr><td colspan="5"><div class="admin-detail-empty">검색/필터 조건에 맞는 기록이 없습니다. | No records match the current search/filter.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML=visibleRecords.map(item=>{
         const name=cleanupSnapshotName(item.record)||'(정보 없음 | Unknown)';
         const cls=cleanupSnapshotClass(item.record)||'-';
         const date=cleanupRecordDate(item.record);
@@ -2283,6 +2317,20 @@
       toast('기록이 삭제되었습니다. | Record deleted.','ok');
       await loadDataCleanup();
     }
+
+    async function cleanupUnknownRecords(){
+      const unknownRecords=cleanupRecords.filter(item=>cleanupPossibleMatches(item).length===0);
+      if(!unknownRecords.length) return toast('정리할 미확인 기록이 없습니다. | No unknown records to clean up.','ok');
+      const count=unknownRecords.length;
+      const ok=confirm(`현재 학생과 일치하는 후보를 찾을 수 없는 기록 ${count}건만 영구 삭제합니다.\n가능한 학생 일치 항목(Possible Match)은 삭제하지 않습니다.\n\nThis permanently deletes only ${count} unknown record(s) with no possible current-student match.\nPossible Match records will be kept.\n\n이 작업은 되돌릴 수 없습니다. | This cannot be undone.\n계속하시겠습니까? | Continue?`);
+      if(!ok) return;
+      const updates={};
+      unknownRecords.forEach(item=>{updates[`${item.path}/${item.key}`]=null;});
+      await db.ref().update(updates);
+      toast(`${count}건의 미확인 기록을 정리했습니다. | Cleaned up ${count} unknown records.`,'ok');
+      await loadDataCleanup();
+    }
+
     async function cleanupAllOrphanRecords(){
       if(!cleanupRecords.length) return toast('정리할 기록이 없습니다. | Nothing to clean up.','ok');
       const count=cleanupRecords.length;

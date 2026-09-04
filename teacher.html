@@ -393,7 +393,9 @@
     .points-note{grid-column:1/-1;margin-top:-4px;padding:7px 9px;border-radius:8px;background:#f7f9fc;color:var(--sb);font-size:11px;line-height:1.45}
     @media(max-width:980px){.teacher-nav-groups{grid-template-columns:1fr}.teacher-user-main span{max-width:140px}}
       .committee-readonly-control:disabled{opacity:.55;cursor:not-allowed;background:#f3f5f9;color:#64748b;}
-    .committee-action-group{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;}
+    .committee-action-group{display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%;}
+    #discipline-active-tbody td:last-child{padding-left:6px !important;padding-right:6px !important;overflow:visible !important;}
+    #discipline-active-tbody .committee-action-btn{min-width:118px;max-width:100%;white-space:normal;line-height:1.15;padding:5px 7px;}
     .btn-exception{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
     .btn-exception:hover:not(:disabled){background:#ffedd5;}
   
@@ -822,7 +824,7 @@
     /* 2026-08 bilingual roster fit pass */
     .student-overview-grid{
       display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
+      grid-template-columns:repeat(auto-fit,minmax(430px,1fr));
       gap:14px;
       align-items:start;
     }
@@ -837,7 +839,7 @@
       vertical-align:middle;
     }
     .student-overview-grid .student-view-btn{
-      min-width:72px;
+      min-width:84px;
       padding:4px 8px;
       font-size:11px;
       line-height:1.2;
@@ -865,12 +867,12 @@
       padding:0 14px;
       white-space:nowrap;
     }
-    @media(max-width:1180px){
-      .student-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    @media(max-width:920px){
+      .student-overview-grid{grid-template-columns:1fr;}
     }
     @media(max-width:760px){
       .student-overview-grid{grid-template-columns:1fr;}
-      .student-overview-grid .student-view-btn{min-width:68px;}
+      .student-overview-grid .student-view-btn{min-width:76px;}
     }
 
 
@@ -886,7 +888,7 @@
     .student-overview-grid td{font-size:12.5px !important;padding-top:5px !important;padding-bottom:5px !important}
     .student-overview-grid td:nth-child(2){font-size:12px !important}
     .student-overview-grid td:nth-child(3){font-size:13.5px !important}
-    .student-overview-grid .student-view-btn{min-width:76px;padding:4px 9px;font-size:11.5px}
+    .student-overview-grid .student-view-btn{min-width:84px;padding:4px 10px;font-size:11.5px}
     .section-title-row{margin-top:8px;margin-bottom:6px}
     .section-title-row.notice-divider{margin-top:12px}
     .section-btn-group{gap:5px}
@@ -899,6 +901,10 @@
     #tab-confirm .edit-input{min-height:36px}
     #tab-recovery-ms .card,#tab-recovery-hs .card{padding:10px 12px}
     #tab-recovery-ms .notice,#tab-recovery-hs .notice{margin-bottom:7px}
+    #recovery-ms-active-tbody td:last-child,
+    #recovery-hs-active-tbody td:last-child{padding-left:8px !important;padding-right:8px !important;overflow:visible !important;}
+    #recovery-ms-active-tbody td:last-child .btn,
+    #recovery-hs-active-tbody td:last-child .btn{min-width:132px;white-space:nowrap;padding-left:10px !important;padding-right:10px !important;}
     #tab-recovery-ms th,#tab-recovery-hs th{line-height:1.15;white-space:normal}
     #tab-recovery-ms .th-en,#tab-recovery-hs .th-en{display:block;font-size:9.5px;font-weight:600;margin-top:1px;line-height:1.05}
     .admin-note-input{font-size:12.5px}
@@ -1284,6 +1290,24 @@
     .btn-xs{padding:4px 6px !important;font-size:10.5px !important;line-height:1.15 !important;}
 
 </style>
+
+<style>
+/* Active Committee Cases: reserve enough room for Committee, Note, and bilingual Action buttons. */
+#tab-discipline table:has(#discipline-active-tbody){table-layout:fixed;width:100%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(1){width:16%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(2){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(3){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(4){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(5){width:6%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(6){width:8%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(7){width:14%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(8){width:13%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(9){width:22%;}
+#discipline-active-tbody td:nth-child(7) select,
+#discipline-active-tbody td:nth-child(8) input,
+#discipline-active-tbody td:nth-child(8) textarea{width:100%;max-width:100%;box-sizing:border-box;}
+</style>
+
 </head>
 <body>
   <div id="toast"></div>
@@ -1772,14 +1796,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:15%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap" style="width:14%;">학생<span class="th-en">Student</span></th>
                 <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
                 <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
                 <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
-                <th style="width:27%;">위반 행위<span class="th-en">Violation</span></th>
+                <th style="width:24%;">위반 행위<span class="th-en">Violation</span></th>
                 <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
                 <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
-                <th class="nowrap tc" style="width:19%;">처리<span class="th-en">Action</span></th>
+                <th class="nowrap tc" style="width:23%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-active-tbody"></tbody>
@@ -1828,14 +1852,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:15%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap" style="width:14%;">학생<span class="th-en">Student</span></th>
                 <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
                 <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
                 <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
-                <th style="width:27%;">위반 행위<span class="th-en">Violation</span></th>
+                <th style="width:24%;">위반 행위<span class="th-en">Violation</span></th>
                 <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
                 <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
-                <th class="nowrap tc" style="width:19%;">처리<span class="th-en">Action</span></th>
+                <th class="nowrap tc" style="width:23%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-active-tbody"></tbody>
@@ -4641,7 +4665,7 @@
             <td style="font-size:11px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName||'')}</td>
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
             <td style="text-align:center;font-size:11px;color:${totalColor};font-weight:${totalWeight};white-space:nowrap">${overall}</td>
-            <td style="text-align:center;padding:0 2px;white-space:nowrap">
+            <td style="text-align:center;padding:0 6px;white-space:nowrap">
               <button class="btn-view student-view-btn" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
             </td>
           </tr>`;
@@ -4655,11 +4679,11 @@
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:28%;white-space:nowrap">이름 | Name</th>
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:30%;white-space:nowrap">영문명 | English</th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:27%;white-space:nowrap">이름 | Name</th>
+                <th style="font-size:11px;padding:4px 8px;text-align:left;width:27%;white-space:nowrap">영문명 | English</th>
                 <th style="font-size:11px;padding:4px;text-align:center;width:13%;white-space:nowrap">잔여 | Rem.</th>
                 <th style="font-size:11px;padding:4px;text-align:center;width:13%;white-space:nowrap">누적 | Total</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:16%;white-space:nowrap">보기 | View</th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%;white-space:nowrap">보기 | View</th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
@@ -7201,3 +7225,8 @@
   </script>
 </body>
 </html>
+<style>
+#discipline-active-tbody select.committee-readonly-control,
+#discipline-active-tbody input.committee-note-input,
+#discipline-active-tbody textarea.committee-note-input{max-width:100%;box-sizing:border-box;}
+</style>
