@@ -535,8 +535,8 @@
             </div>
           </div>
           <div class="notice" style="margin:0 0 12px">
-            현재 사용 중인 학생 명단의 studentKey와 정확히 일치하지 않는 학생 관련 기록만 표시합니다. 예전 Search의 학생 삭제는 실제 삭제가 아니라 숨김/비활성 처리였으므로, 그 학생들도 여기서는 삭제된 학생으로 취급합니다. 과거/레거시 studentKey가 다른 현재 학생은 Possible Match로 연결할 수 있습니다.<br>
-            Records appear only when their studentKey does not exactly match a current active roster student. The old Search-page delete only hid/deactivated students, so those legacy hidden roster rows are treated as deleted here. Current students with older/legacy keys can be linked as Possible Matches.
+            Cleanup의 실제 연결 여부는 현재 학생 명단(Student List)에 같은 studentKey가 존재하는지만 기준으로 판단합니다. 기록 안에 학생 이름·학반·이메일이 남아 있어도 Student List에 해당 key가 없으면 연결되지 않은 기록으로 표시됩니다. 예전 Search에서 숨김/비활성 처리된 학생도 현재 학생으로 보지 않습니다.<br>
+            Cleanup determines a real link only from the current Student List. A record is linked only when its exact studentKey exists for a current roster student. Stored name, class, or email snapshots do not count as a link. Legacy hidden/inactive students are also treated as no longer current.
           </div>
           <div class="filter-bar" style="margin:0 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input id="cleanup-search" type="search" placeholder="학생명, 학반, 기록 검색 | Search student, class, record" oninput="renderDataCleanup()" style="flex:1;min-width:260px">
@@ -708,6 +708,8 @@
     let studentSnapshot = '';
     let cleanupRecords = [];
     let cleanupSelectedId = '';
+    let cleanupLoadSequence = 0;
+    let cleanupSourceData = {};
 
     /* ── Dirty-check ────────────────────────────────── */
     function teacherRowSig(r) {
@@ -1457,13 +1459,18 @@
       updateAdminIdentity();
       try {
         await ensureFirebaseAuth();
-        const [t, s] = await Promise.all([
+        const [t, s, ...cleanupSnaps] = await Promise.all([
           db.ref('teachers').once('value'),
-          db.ref('students').once('value')
+          db.ref('students').once('value'),
+          ...CLEANUP_COLLECTIONS.map(c=>db.ref(c.path).once('value'))
         ]);
 
         teachersRaw = t.val() || {};
         studentsRaw = s.val() || {};
+        cleanupSourceData = {};
+        CLEANUP_COLLECTIONS.forEach((c,i)=>{
+          cleanupSourceData[c.path]=(cleanupSnaps[i]&&cleanupSnaps[i].val())||{};
+        });
 
         // Security rules use roleFlags as the authoritative, fixed-position
         // permission map. Backfill/repair them from the saved roles whenever
@@ -2152,6 +2159,14 @@
     function cleanupCurrentStudentMap(){
       return Object.fromEntries(cleanupCurrentStudentEntries());
     }
+    function cleanupHasActualRosterLink(studentKey){
+      const key=String(studentKey||'').trim();
+      if(!key) return false;
+      const student=(studentsRaw||{})[key];
+      // A record is actually linked only when the exact studentKey exists in the
+      // current Student List and that roster row is active/current.
+      return !!student && cleanupIsCurrentRosterStudent(student);
+    }
     function cleanupRecordStudentKey(path,key,r){
       r=r||{};
       const direct=String(r.studentKey||r.studentId||r.studentID||'').trim();
@@ -2219,37 +2234,65 @@
       }).join('');
     }
     async function loadDataCleanup(){
+      const loadSequence=++cleanupLoadSequence;
       const tbody=document.getElementById('cleanup-tbody');
       const summary=document.getElementById('cleanup-page-summary');
       if(tbody) tbody.innerHTML='<tr><td colspan="5" class="small">확인 중... | Scanning...</td></tr>';
       try{
         await ensureFirebaseAuth();
-        const snaps=await Promise.all(CLEANUP_COLLECTIONS.map(c=>db.ref(c.path).once('value')));
-        const currentEntries=cleanupCurrentStudentEntries();
-        const currentKeys=new Set(currentEntries.map(([key])=>key));
+
+        // Always read the Student List and the student-related database collections
+        // in the same scan. Snapshot names/classes/emails never count as a link by
+        // themselves; only an exact current roster studentKey does.
+        const [studentSnap,...snaps]=await Promise.all([
+          db.ref('students').once('value'),
+          ...CLEANUP_COLLECTIONS.map(c=>db.ref(c.path).once('value'))
+        ]);
+        if(loadSequence!==cleanupLoadSequence) return;
+
+        studentsRaw=studentSnap.val()||{};
+        cleanupSourceData={};
+        CLEANUP_COLLECTIONS.forEach((c,i)=>{
+          cleanupSourceData[c.path]=(snaps[i]&&snaps[i].val())||{};
+        });
+
         const legacyHiddenKeys=new Set(
           Object.entries(studentsRaw||{})
             .filter(([,student])=>!cleanupIsCurrentRosterStudent(student))
             .map(([key])=>key)
         );
+
         const rows=[];
-        CLEANUP_COLLECTIONS.forEach((c,i)=>{
-          const raw=snaps[i].val()||{};
+        CLEANUP_COLLECTIONS.forEach(c=>{
+          const raw=cleanupSourceData[c.path]||{};
           Object.entries(raw).forEach(([key,record])=>{
             record=record||{};
             const studentKey=cleanupRecordStudentKey(c.path,key,record);
-            if(studentKey&&currentKeys.has(studentKey)) return;
-            // Committee rows can be indirectly linked through a current detention entry.
-            // If they have a valid direct student key, the check above already retains them.
+
+            // This is the authoritative Cleanup rule:
+            // exact studentKey exists in current Student List => linked, hide from Cleanup.
+            // exact studentKey missing (or legacy hidden/inactive) => orphaned, show in Cleanup.
+            if(cleanupHasActualRosterLink(studentKey)) return;
+
             rows.push({
-              id:c.path+'::'+key,path:c.path,key,label:c.label,record,studentKey,
-              reason:studentKey?(legacyHiddenKeys.has(studentKey)?'legacy_hidden_student':'missing_student'):'no_student_key'
+              id:c.path+'::'+key,
+              path:c.path,
+              key,
+              label:c.label,
+              record,
+              studentKey,
+              reason:studentKey
+                ? (legacyHiddenKeys.has(studentKey)?'legacy_hidden_student':'missing_student')
+                : 'no_student_key'
             });
           });
         });
+
+        if(loadSequence!==cleanupLoadSequence) return;
         cleanupRecords=rows.sort((a,b)=>cleanupRecordDate(b.record).localeCompare(cleanupRecordDate(a.record)));
         cleanupSelectedId='';
         renderDataCleanup();
+
         if(summary){
           const hiddenCount=legacyHiddenKeys.size;
           summary.textContent=`연결되지 않은 기록 ${cleanupRecords.length}건 | ${cleanupRecords.length} orphaned/unlinked records`+
