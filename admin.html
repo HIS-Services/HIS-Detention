@@ -535,8 +535,8 @@
             </div>
           </div>
           <div class="notice" style="margin:0 0 12px">
-            현재 학생 명단의 studentKey와 정확히 일치하지 않는 학생 관련 기록만 표시합니다. 같은 학생으로 보이더라도 과거/레거시 studentKey가 다르면 이 목록에 나타날 수 있습니다. 가능한 현재 학생이 있으면 상세 화면에서 연결할 수 있습니다.<br>
-            Records appear here when their studentKey does not exactly match a current roster student. A record may still belong to a current student if it uses an older/legacy key. Possible matches can be linked from the detail view.
+            현재 사용 중인 학생 명단의 studentKey와 정확히 일치하지 않는 학생 관련 기록만 표시합니다. 예전 Search의 학생 삭제는 실제 삭제가 아니라 숨김/비활성 처리였으므로, 그 학생들도 여기서는 삭제된 학생으로 취급합니다. 과거/레거시 studentKey가 다른 현재 학생은 Possible Match로 연결할 수 있습니다.<br>
+            Records appear only when their studentKey does not exactly match a current active roster student. The old Search-page delete only hid/deactivated students, so those legacy hidden roster rows are treated as deleted here. Current students with older/legacy keys can be linked as Possible Matches.
           </div>
           <div class="filter-bar" style="margin:0 0 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <input id="cleanup-search" type="search" placeholder="학생명, 학반, 기록 검색 | Search student, class, record" oninput="renderDataCleanup()" style="flex:1;min-width:260px">
@@ -2133,6 +2133,25 @@
     function cleanupEsc(v){
       return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
+    function cleanupIsCurrentRosterStudent(student){
+      const v=student||{};
+      // Old Search-page "Delete Student" did not remove /students/<key>.
+      // It marked the roster row hidden/inactive instead. For Cleanup purposes
+      // those legacy hidden rows must NOT count as current students.
+      return !(
+        v.hiddenFromList===true ||
+        v.listHidden===true ||
+        v.inactive===true ||
+        String(v.studentStatus||'').toLowerCase()==='hidden' ||
+        String(v.inactiveReasonCode||'').trim()!==''
+      );
+    }
+    function cleanupCurrentStudentEntries(){
+      return Object.entries(studentsRaw||{}).filter(([,student])=>cleanupIsCurrentRosterStudent(student));
+    }
+    function cleanupCurrentStudentMap(){
+      return Object.fromEntries(cleanupCurrentStudentEntries());
+    }
     function cleanupRecordStudentKey(path,key,r){
       r=r||{};
       const direct=String(r.studentKey||r.studentId||r.studentID||'').trim();
@@ -2177,7 +2196,7 @@
       const cls=String(cleanupSnapshotClass(item.record)||legacy.className||'').trim().toLowerCase();
       const email=cleanupSnapshotEmail(item.record);
       if(!name&&!email) return [];
-      return Object.entries(studentsRaw||{}).map(([key,v])=>{
+      return cleanupCurrentStudentEntries().map(([key,v])=>{
         v=v||{};
         const vn=String(v.name||'').trim().toLowerCase();
         const ve=String(v.selfEmail||v.studentEmail||'').trim().toLowerCase();
@@ -2206,7 +2225,13 @@
       try{
         await ensureFirebaseAuth();
         const snaps=await Promise.all(CLEANUP_COLLECTIONS.map(c=>db.ref(c.path).once('value')));
-        const currentKeys=new Set(Object.keys(studentsRaw||{}));
+        const currentEntries=cleanupCurrentStudentEntries();
+        const currentKeys=new Set(currentEntries.map(([key])=>key));
+        const legacyHiddenKeys=new Set(
+          Object.entries(studentsRaw||{})
+            .filter(([,student])=>!cleanupIsCurrentRosterStudent(student))
+            .map(([key])=>key)
+        );
         const rows=[];
         CLEANUP_COLLECTIONS.forEach((c,i)=>{
           const raw=snaps[i].val()||{};
@@ -2218,14 +2243,18 @@
             // If they have a valid direct student key, the check above already retains them.
             rows.push({
               id:c.path+'::'+key,path:c.path,key,label:c.label,record,studentKey,
-              reason:studentKey?'missing_student':'no_student_key'
+              reason:studentKey?(legacyHiddenKeys.has(studentKey)?'legacy_hidden_student':'missing_student'):'no_student_key'
             });
           });
         });
         cleanupRecords=rows.sort((a,b)=>cleanupRecordDate(b.record).localeCompare(cleanupRecordDate(a.record)));
         cleanupSelectedId='';
         renderDataCleanup();
-        if(summary) summary.textContent=`연결되지 않은 기록 ${cleanupRecords.length}건 | ${cleanupRecords.length} orphaned/unlinked records`;
+        if(summary){
+          const hiddenCount=legacyHiddenKeys.size;
+          summary.textContent=`연결되지 않은 기록 ${cleanupRecords.length}건 | ${cleanupRecords.length} orphaned/unlinked records`+
+            (hiddenCount?` · 이전 숨김 학생 ${hiddenCount}명 제외 | ${hiddenCount} legacy hidden student(s) treated as deleted`:'');
+        }
       }catch(e){
         console.error('Cleanup scan failed:',e);
         if(tbody) tbody.innerHTML='<tr><td colspan="5" class="small">데이터 확인 실패 | Cleanup scan failed</td></tr>';
@@ -2275,8 +2304,11 @@
         const name=cleanupSnapshotName(item.record)||legacy.name||'(정보 없음 | Unknown)';
         const cls=cleanupSnapshotClass(item.record)||legacy.className||'-';
         const date=cleanupRecordDate(item.record);
+        const legacyHiddenBadge=item.reason==='legacy_hidden_student'
+          ? '<span class="small" style="display:inline-block;margin-top:2px;color:#b45309;font-weight:700">이전 숨김 학생 | Legacy Hidden Student</span>'
+          : '';
         return `<tr style="cursor:pointer" onclick="selectCleanupRecord('${cleanupEsc(item.id)}')">
-          <td><b>${cleanupEsc(name)}</b><div class="small">${item.studentKey?cleanupEsc(item.studentKey):'학생 연결 없음 | No Student Link'}</div></td>
+          <td><b>${cleanupEsc(name)}</b><div class="small">${item.studentKey?cleanupEsc(item.studentKey):'학생 연결 없음 | No Student Link'}</div>${legacyHiddenBadge}</td>
           <td>${cleanupEsc(cls)}</td>
           <td>${cleanupEsc(item.label)}</td>
           <td>${cleanupEsc(date?date.slice(0,10):'-')}</td>
@@ -2339,7 +2371,7 @@
         box.innerHTML='<div class="small" style="color:var(--sb)">학생을 검색하세요. | Search for a current student.</div>';
         return;
       }
-      const results=Object.entries(studentsRaw||{}).filter(([key,student])=>{
+      const results=cleanupCurrentStudentEntries().filter(([key,student])=>{
         student=student||{};
         const hay=[
           student.name,student.englishName,student.engName,student.nameEn,
@@ -2370,7 +2402,7 @@
     async function linkCleanupRecord(id,studentKey){
       const item=cleanupRecords.find(x=>x.id===id);
       const student=(studentsRaw||{})[studentKey];
-      if(!item||!student) return toast('연결할 학생을 찾을 수 없습니다. | Student not found.','err');
+      if(!item||!student||!cleanupIsCurrentRosterStudent(student)) return toast('현재 학생 명단에서 연결할 학생을 찾을 수 없습니다. | Current roster student not found.','err');
       if(item.path==='studentCycleState') return toast('Cycle State는 파생 데이터이므로 직접 연결하지 않습니다. 관련 원본 기록을 먼저 연결해 주세요. | Cycle State is derived data; link the underlying records instead.','warn');
       const ok=confirm(`${cleanupSnapshotName(item.record)||'이 기록'}을(를) ${student.name||studentKey} (${student.className||'-'}) 학생에게 연결합니다.\n과거 스냅샷 정보는 덮어쓰지 않습니다.\n\nLink this record to the selected current student? Historical snapshot fields will not be overwritten.`);
       if(!ok) return;
