@@ -773,12 +773,7 @@
     #audit-detail pre{margin:0;max-height:360px;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:9px;font-size:10px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
     @media(max-width:900px){#panel-audit .audit-toolbar{grid-template-columns:1fr 1fr}#panel-audit .audit-toolbar .audit-search{grid-column:1/-1}}
 
-  
-    /* 2026-09 shared table alignment */
-    table th, table td{vertical-align:middle;}
-    .student-name-stack{justify-content:center;text-align:left;}
-
-</style>
+  </style>
 </head>
 <body>
   <div id="toast"></div>
@@ -813,6 +808,7 @@
       <button class="subtab-btn" data-panel="recovery">회복교육 기록 | Recovery</button>
       <button class="subtab-btn" data-panel="committee">위원회 기록 | Committee</button>
       <button class="subtab-btn" data-panel="audit">감사 로그 | Audit Log</button>
+      <button class="subtab-btn" data-panel="workflow-preview">워크플로우 미리보기 | Workflow Preview</button>
     </div>
 
     <!-- Student Data Search -->
@@ -1035,6 +1031,30 @@
       </div>
     </div>
 
+
+
+    <!-- Unified Workflow Preview: READ ONLY -->
+    <div id="panel-workflow-preview" class="panel">
+      <div class="card">
+        <div class="card-title"><span>통합 워크플로우 미리보기 | Unified Workflow Preview</span><span style="font-size:11px;color:#15803d;font-weight:700;">읽기 전용 · Firebase 쓰기 없음 | READ ONLY · NO WRITES</span></div>
+        <div class="notice">새 통합 모델이 현재 데이터를 어떻게 해석하는지 확인하는 테스트 화면입니다. 이 화면은 Firebase에서 데이터를 읽기만 하며 생성·수정·삭제 작업을 수행하지 않습니다.<br>This test view only reads Firebase data and calculates the proposed unified Notice → Recovery / Committee workflow locally in the browser.</div>
+        <div class="toolbar" style="margin-top:10px;">
+          <button class="btn btn-primary" onclick="runWorkflowPreview()">미리보기 실행 | Run Preview</button>
+          <button class="btn btn-secondary" onclick="resetWorkflowSimulation()">임시 기록 초기화 | Reset Temp Records</button>
+          <input id="workflow-preview-search" class="edit-input" style="max-width:420px" placeholder="학생명·영문명·학반·studentKey 검색 | Search student" oninput="renderWorkflowPreview()">
+          <select id="workflow-preview-filter" class="edit-input" style="max-width:220px" onchange="renderWorkflowPreview()"><option value="all">전체 | All</option><option value="change">변경 예상 | Would Change</option><option value="review">검토 필요 | Needs Review</option><option value="ok">변경 없음 | No Change</option></select>
+        </div>
+        <div id="workflow-preview-summary" style="margin:8px 0 10px;padding:10px;border:1px solid #dbe4ef;border-radius:6px;background:#f8fafc;font-size:12px;">아직 실행하지 않았습니다. | Not run yet.</div>
+        <div class="notice" style="margin-bottom:10px"><b>임시 테스트 기록 | Temporary test records:</b> 학생을 선택한 뒤 오른쪽 패널에서 Detention / Notice / Recovery / Committee 작업을 시뮬레이션할 수 있습니다. 모든 임시 변경은 메모리에서만 존재하며 새로고침하면 사라집니다.<br>Select a student, then use the right panel to simulate workflow actions. Temporary changes exist only in browser memory and disappear on refresh.</div>
+        <div class="admin-workspace">
+          <div class="admin-list-pane">
+            <div class="tbl-wrap admin-list-wrap"><table class="admin-summary-table"><thead><tr><th>학생</th><th style="width:55px">학반</th><th style="width:72px">잔여</th><th style="width:82px">Notice</th><th style="width:82px">Recovery</th><th style="width:92px">Committee</th><th style="width:92px">결과</th></tr></thead><tbody id="workflow-preview-tbody"><tr><td colspan="7">미리보기를 실행하세요. | Run Preview.</td></tr></tbody></table></div>
+          </div>
+          <aside id="workflow-preview-detail" class="admin-editor-pane"><div class="admin-editor-empty">학생 행을 선택하면 계산 근거를 확인할 수 있습니다.<br>Select a student to inspect the calculation.</div></aside>
+        </div>
+      </div>
+    </div>
+
     <!-- Audit Log -->
     <div id="panel-audit" class="panel">
       <div class="card">
@@ -1057,6 +1077,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="common.js"></script>
+  <script src="workflow-preview-engine.js"></script>
 
   <script>
     let entryRows = [];
@@ -1809,8 +1830,179 @@
       return '<span class="status-chip pending">대기</span>';
     }
 
+
+
+    // ── Unified Workflow Preview (STRICTLY READ-ONLY) ─────────────────────────
+    // This code intentionally contains no Firebase set/update/push/remove/transaction calls.
+    let workflowPreviewResults = [];
+    let workflowPreviewStudents = {};
+    let workflowPreviewBaseData = null;
+    let workflowPreviewSimData = null;
+    let workflowPreviewTempActions = [];
+    let workflowPreviewTempSeq = 0;
+    let selectedWorkflowPreviewKey = '';
+
+    function workflowPreviewAcademicYear(){
+      const now=new Date();
+      return String(now.getMonth()<2 ? now.getFullYear()-1 : now.getFullYear());
+    }
+
+    function workflowPreviewStudentLabel(r){
+      const st=workflowPreviewStudents[r.studentKey]||{};
+      const name=String(st.name||r.studentKey||'-');
+      const en=String(st.englishName||'').trim();
+      return '<div style="font-weight:800">'+esc(name)+'</div>'+(en?'<div style="font-size:10px;color:#64748b">'+esc(en)+'</div>':'');
+    }
+
+    async function runWorkflowPreview(){
+      const summary=document.getElementById('workflow-preview-summary');
+      if(!window.HISWorkflowPreview){ if(summary) summary.textContent='Preview engine failed to load.'; return; }
+      if(summary) summary.textContent='Firebase 데이터를 읽고 로컬에서 계산 중입니다... | Reading Firebase and calculating locally...';
+      try{
+        // READS ONLY. No write methods are used anywhere in this preview flow.
+        const [studentsSnap,entriesSnap,noticesSnap,recoverySnap,committeeSnap,cycleSnap]=await Promise.all([
+          db.ref('students').once('value'),
+          db.ref('detentionEntries').once('value'),
+          db.ref('detentionNotices').once('value'),
+          db.ref('recoveryEntries').once('value'),
+          db.ref('committeeRecords').once('value'),
+          db.ref('studentCycleState').once('value')
+        ]);
+        workflowPreviewStudents=studentsSnap.val()||{};
+        workflowPreviewBaseData={students:workflowPreviewStudents,entries:entriesSnap.val()||{},notices:noticesSnap.val()||{},recovery:recoverySnap.val()||{},committee:committeeSnap.val()||{},cycleState:cycleSnap.val()||{}};
+        // Deep clone into an in-memory sandbox. ALL simulated mutations below touch only this clone.
+        workflowPreviewSimData=JSON.parse(JSON.stringify(workflowPreviewBaseData));
+        workflowPreviewTempActions=[]; workflowPreviewTempSeq=0;
+        const out=window.HISWorkflowPreview.analyzeAll(workflowPreviewSimData,{year:workflowPreviewAcademicYear()});
+        workflowPreviewResults=out.results||[];
+        selectedWorkflowPreviewKey='';
+        if(summary){
+          summary.innerHTML='<b>학년도 | School Year: '+esc(workflowPreviewAcademicYear())+'</b> · 전체 '+out.counts.total+'명 · <span style="color:#15803d">변경 없음 '+out.counts.ok+'</span> · <span style="color:#b45309">변경 예상 '+out.counts.change+'</span> · <span style="color:#b91c1c">검토 필요 '+out.counts.review+'</span><br><span style="color:#64748b">이 결과는 미리보기 계산일 뿐이며 Firebase 데이터는 변경되지 않았습니다. | Preview calculation only; Firebase data was not changed.</span>';
+        }
+        renderWorkflowPreview();
+      }catch(err){ console.error(err); if(summary) summary.textContent='미리보기 읽기/계산 실패 | Preview failed: '+(err&&err.message?err.message:err); }
+    }
+
+    function workflowPreviewRecalculate(keepSelection){
+      if(!workflowPreviewSimData||!window.HISWorkflowPreview)return;
+      const out=window.HISWorkflowPreview.analyzeAll(workflowPreviewSimData,{year:workflowPreviewAcademicYear()});
+      workflowPreviewResults=out.results||[];
+      const summary=document.getElementById('workflow-preview-summary');
+      if(summary){
+        const temp=workflowPreviewTempActions.length;
+        summary.innerHTML='<b>학년도 | School Year: '+esc(workflowPreviewAcademicYear())+'</b> · 전체 '+out.counts.total+'명 · <span style="color:#15803d">변경 없음 '+out.counts.ok+'</span> · <span style="color:#b45309">변경 예상 '+out.counts.change+'</span> · <span style="color:#b91c1c">검토 필요 '+out.counts.review+'</span> · <b>임시 작업 '+temp+' | Temp actions '+temp+'</b><br><span style="color:#64748b">Firebase에는 아무 변경도 저장되지 않습니다. 모든 테스트 변경은 브라우저 메모리에만 있습니다. | No changes are saved to Firebase. All test mutations are browser-memory only.</span>';
+      }
+      renderWorkflowPreview();
+      if(keepSelection&&selectedWorkflowPreviewKey){const [sk,lv]=selectedWorkflowPreviewKey.split('|||');showWorkflowPreviewDetail(sk,lv);}
+    }
+
+    function resetWorkflowSimulation(){
+      if(!workflowPreviewBaseData)return;
+      workflowPreviewSimData=JSON.parse(JSON.stringify(workflowPreviewBaseData));
+      workflowPreviewTempActions=[]; workflowPreviewTempSeq=0;
+      workflowPreviewRecalculate(true);
+    }
+
+    function wpNow(){return new Date(Date.now()+(++workflowPreviewTempSeq)*1000).toISOString();}
+    function wpTempKey(prefix){return '__PREVIEW_ONLY__'+prefix+'_'+Date.now()+'_'+(++workflowPreviewTempSeq);}
+    function wpStudent(sk){return (workflowPreviewStudents||{})[sk]||{};}
+    function wpLevel(sk,lv){return lv||((String((wpStudent(sk).className)||'').match(/\d+/)||[''])[0]>=9?'hs':'ms');}
+    function wpLog(text){workflowPreviewTempActions.push(text);}
+    function wpRecords(coll,sk,lv){const obj=(workflowPreviewSimData&&workflowPreviewSimData[coll])||{};return Object.entries(obj).filter(([,r])=>String((r||{}).studentKey||'')===sk && (!lv||!r.schoolLevel||String(r.schoolLevel).toLowerCase()===lv)).map(([key,record])=>({key,record}));}
+
+    function workflowPreviewSimAction(action,sk,lv,arg){
+      if(!workflowPreviewSimData)return;
+      const st=wpStudent(sk), className=st.className||'', level=wpLevel(sk,lv), year=workflowPreviewAcademicYear();
+      const base={studentKey:sk,studentName:st.name||'',englishName:st.englishName||'',className,schoolLevel:level,year};
+      if(action==='addPoints'){
+        const pts=Math.max(1,Number(arg)||1), key=wpTempKey('detention'), at=wpNow();
+        workflowPreviewSimData.entries[key]={...base,status:'확정',totalPoints:pts,confirmedAt:at,createdAt:at,reason:'PREVIEW TEMP RECORD'};
+        wpLog('+'+pts+' detention points');
+      }else if(action==='cancelLatestDetention'){
+        const arr=wpRecords('entries',sk).filter(x=>x.record.status==='확정').sort((a,b)=>String(b.record.confirmedAt||b.record.createdAt||'').localeCompare(String(a.record.confirmedAt||a.record.createdAt||'')));
+        if(!arr.length)return alert('No confirmed detention record to simulate canceling.');
+        delete workflowPreviewSimData.entries[arr[0].key]; wpLog('Canceled latest confirmed detention (simulation only)');
+      }else if(action==='materializeNotice'){
+        const r=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
+        if(!r.desired.noticeDue)return alert('Unified model does not currently require an active Notice.');
+        if(r.current.activeNoticeCount>0)return alert('An active Notice already exists in the simulation.');
+        const key=wpTempKey('notice'),at=wpNow(); workflowPreviewSimData.notices[key]={...base,createdAt:at}; wpLog('Created expected active Notice');
+      }else if(action==='completeNotice'){
+        const arr=wpRecords('notices',sk,level).filter(x=>!x.record.completedAt).sort((a,b)=>String(a.record.createdAt||'').localeCompare(String(b.record.createdAt||'')));
+        if(!arr.length)return alert('No active Notice exists. Use Create Expected Notice first if the model says one is due.');
+        const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
+        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; wpLog('Completed active Notice');
+      }else if(action==='cancelLatestNoticeCompletion'){
+        const arr=wpRecords('notices',sk,level).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No completed Notice to simulate canceling.');
+        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; wpLog('Canceled latest Notice completion');
+      }else if(action==='completeRecovery'){
+        const r=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
+        const src=(r.details.pendingRecoverySources||[])[0]; if(!src)return alert('No pending Recovery obligation exists.');
+        const raw=prompt('Recovery deduction points | 회복 차감 점수',String(Math.min(3,r.currentPoints||3))); if(raw===null)return;
+        const pts=Number(raw); if(!Number.isInteger(pts)||pts<1)return alert('Enter a positive whole number.');
+        const key=wpTempKey('recovery'),at=wpNow(); workflowPreviewSimData.recovery[key]={...base,completedAt:at,recoveryPoints:pts,sourceType:src.type,sourceKey:src.key}; wpLog('Completed Recovery -'+pts+' linked to '+src.type+':'+src.key);
+      }else if(action==='cancelLatestRecovery'){
+        const arr=wpRecords('recovery',sk,level).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No completed Recovery to simulate canceling.');
+        delete workflowPreviewSimData.recovery[arr[0].key]; wpLog('Canceled latest Recovery completion');
+      }else if(action==='addCommittee'){
+        const flow=arg==='referral'?'referral':'edu',key=wpTempKey('committee'),at=wpNow();
+        workflowPreviewSimData.committee[key]={...base,type:flow==='referral'?'referral':'edu',committeeCategory:flow,createdAt:at,referredAt:at}; wpLog('Created pending '+flow+' Committee');
+      }else if(action==='completeCommittee'){
+        const arr=wpRecords('committee',sk).filter(x=>!x.record.completedAt).sort((a,b)=>String(a.record.createdAt||a.record.referredAt||'').localeCompare(String(b.record.createdAt||b.record.referredAt||'')));
+        if(!arr.length)return alert('No pending Committee record exists.');
+        const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
+        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; wpLog('Completed pending Committee');
+      }else if(action==='cancelLatestCommittee'){
+        const arr=wpRecords('committee',sk).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No completed Committee to simulate canceling.');
+        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; wpLog('Canceled latest Committee completion');
+      }
+      workflowPreviewRecalculate(true);
+    }
+
+    function renderWorkflowPreview(){
+      const body=document.getElementById('workflow-preview-tbody'); if(!body)return;
+      const q=String((document.getElementById('workflow-preview-search')||{}).value||'').trim().toLowerCase();
+      const f=String((document.getElementById('workflow-preview-filter')||{}).value||'all');
+      const rows=workflowPreviewResults.filter(r=>{
+        if(f!=='all'&&r.status!==f)return false;
+        const st=workflowPreviewStudents[r.studentKey]||{};
+        const hay=[r.studentKey,st.name,st.englishName,st.className,r.level].join(' ').toLowerCase();
+        return !q||hay.includes(q);
+      }).sort((a,b)=>{const rank={review:0,change:1,ok:2};return (rank[a.status]-rank[b.status])||String(a.studentKey).localeCompare(String(b.studentKey),'ko');});
+      if(!rows.length){body.innerHTML='<tr><td colspan="7">표시할 결과가 없습니다. | No matching results.</td></tr>';return;}
+      body.innerHTML=rows.map(r=>{
+        const st=workflowPreviewStudents[r.studentKey]||{};
+        const status=r.status==='review'?'<span style="color:#b91c1c;font-weight:800">검토 필요</span>':r.status==='change'?'<span style="color:#b45309;font-weight:800">변경 예상</span>':'<span style="color:#15803d;font-weight:800">변경 없음</span>';
+        const committee=r.desired.committeeDue?(r.desired.committeeFlow==='referral'?'회부':'생활교육'):'-';
+        return '<tr style="cursor:pointer" data-sk="'+esc(encodeURIComponent(r.studentKey))+'" data-lv="'+esc(r.level)+'" onclick="showWorkflowPreviewDetail(decodeURIComponent(this.dataset.sk),this.dataset.lv)"><td>'+workflowPreviewStudentLabel(r)+'</td><td class="tc">'+esc(st.className||'-')+'</td><td class="tc"><b>'+esc(String(r.currentPoints))+'</b></td><td class="tc">'+r.current.activeNoticeCount+' → <b>'+r.desired.activeNoticeCount+'</b></td><td class="tc"><b>'+r.desired.pendingRecoveryCount+'</b> pending</td><td class="tc">'+committee+'</td><td class="tc">'+status+'</td></tr>';
+      }).join('');
+    }
+
+    function showWorkflowPreviewDetail(studentKey,level){
+      selectedWorkflowPreviewKey=studentKey+'|||'+level;
+      const r=workflowPreviewResults.find(x=>x.studentKey===studentKey&&x.level===level);
+      const pane=document.getElementById('workflow-preview-detail'); if(!pane||!r)return;
+      const st=workflowPreviewStudents[r.studentKey]||{};
+      const issueHtml=r.issues.length?'<div class="admin-form-section"><div class="admin-form-title">확인 사항 | Findings</div><div class="detail-content">'+r.issues.map(x=>'• '+esc(x)).join('<br>')+'</div></div>':'';
+      const actionHtml=r.actions.length?'<div class="admin-form-section"><div class="admin-form-title">새 모델이 기대하는 상태 | Proposed State</div><div class="detail-content">'+r.actions.map(x=>'• '+esc(x)).join('<br>')+'</div></div>':'';
+      const source=(r.details.latestSource?esc(r.details.latestSource.type+' / '+r.details.latestSource.key+' / '+r.details.latestSource.completedAt):'-');
+      pane.innerHTML='<div class="admin-editor-head"><div><div class="admin-editor-title">'+esc(st.name||r.studentKey)+' · '+esc(st.className||r.level.toUpperCase())+'</div><div class="admin-editor-sub">'+esc(r.studentKey)+' · READ ONLY</div></div></div><div class="admin-editor-body">'+
+        '<div class="admin-form-section"><div class="admin-form-title">점수 계산 | Point Calculation</div><div class="detail-content">Raw confirmed: <b>'+r.rawPoints+'</b><br>Stored Recovery deductions: '+r.storedRecoveredPoints+'<br>Effective linked deductions: <b>'+r.effectiveRecoveredPoints+'</b><br>Current remaining: <b>'+r.currentPoints+'</b><br>Latest workflow baseline raw points: '+r.baselineRaw+'<br>New/uncovered points since baseline: <b>'+r.uncoveredRawPoints+'</b></div></div>'+
+        '<div class="admin-form-section"><div class="admin-form-title">현재 → 새 모델 | Current → Unified Model</div><div class="detail-content">Active Notice: '+r.current.activeNoticeCount+' → <b>'+r.desired.activeNoticeCount+'</b><br>Pending Recovery obligations: <b>'+r.desired.pendingRecoveryCount+'</b><br>Committee due: <b>'+(r.desired.committeeDue?(r.desired.committeeFlow||'yes'):'no')+'</b><br>Stored phase (comparison only): '+esc(r.current.persistedPhase||'-')+'<br>Latest completed workflow source: '+source+'</div></div>'+issueHtml+actionHtml+
+        '<div class="admin-form-section"><div class="admin-form-title">임시 시뮬레이션 | Temporary Simulation</div><div class="detail-content" style="display:flex;flex-wrap:wrap;gap:6px">'+
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',1)">+1 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',3)">+3 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestDetention\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Latest Detention</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'materializeNotice\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Create Expected Notice</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeNotice\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Notice</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestNoticeCompletion\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Notice Completion</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeRecovery\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Recovery</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestRecovery\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Recovery</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',\'referral\')">Add Referral Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',\'edu\')">Add Education Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Committee</button>'+ 
+        '</div><div style="margin-top:8px;font-size:11px;color:#64748b">Temp action history: '+esc(workflowPreviewTempActions.join(' → ')||'none')+'</div></div>'+ 
+        '<div class="admin-form-section"><div class="admin-form-title">안전 | Safety</div><div class="detail-content"><b>시뮬레이션 버튼은 Firebase를 호출하지 않습니다. 메모리 복사본만 수정합니다.</b><br>Simulation buttons never call Firebase. They mutate only an in-memory clone loaded by Preview.</div></div></div>';
+    }
+
     function openPanel(name){
-      const valid=['entries','student-data','notices','recovery','committee','audit'];
+      const valid=['entries','student-data','notices','recovery','committee','audit','workflow-preview'];
       const target=valid.includes(String(name||''))?String(name):'entries';
       document.querySelectorAll('.subtab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.panel === target);
