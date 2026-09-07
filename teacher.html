@@ -1297,7 +1297,15 @@
 .search-header-stack{display:flex;flex-direction:column;align-items:inherit;justify-content:center;line-height:1.08}
 .search-header-stack .header-en{font-size:9.5px;font-weight:600;color:var(--sb);margin-top:2px}
 
-</style>
+
+    /* 2026-09 row/header alignment pass */
+    table th, table td{vertical-align:middle;}
+    .student-name-stack{justify-content:center;text-align:left;}
+    .search-header-stack{display:flex;flex-direction:column;justify-content:center;align-items:center;line-height:1.08;}
+    .search-header-stack.search-student-header{align-items:flex-start;text-align:left;}
+    .search-header-stack .header-en{display:block;margin-top:2px;font-size:9.5px;font-weight:600;}
+
+  </style>
 
 <style>
 /* Active Committee Cases: reserve enough room for Committee, Note, and bilingual Action buttons. */
@@ -2838,8 +2846,17 @@
       return getStudentCatalog().filter(s=>getSchoolLevel(s.className)===level).map(s=>{
         const state = getCycleState(s.key, level);
         const recoveryPhases=['in_recovery','edu_in_recovery','edu_committee'];
-        if(!recoveryPhases.includes(state.phase)) return null;
-        const completedNoticeObj=findLatestCompletedNotice(s.key,level);
+        const hasPendingRecovery = Number(state.recoveryPendingCount || 0) > 0 || state.recoveryPending === true;
+        if(!recoveryPhases.includes(state.phase) && !hasPendingRecovery) return null;
+        const completedNoticeRows=Object.entries(noticeEntries||{})
+          .filter(([,v])=>String(v.studentKey||'')===String(s.key)&&isRecordInLevel(v,level)&&!!v.completedAt&&isCurrentYearRecord(v,getCurrentYear()))
+          .sort((a,b)=>String(a[1].completedAt||'').localeCompare(String(b[1].completedAt||'')));
+        const completedRecoveryRows=Object.entries(recoveryEntries||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(r=>String(r.studentKey||'')===String(s.key)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,getCurrentYear()))
+          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
+        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
+        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
         const doneCommitteeEntries=Object.entries(committeeEntries||{})
           .map(([key,value])=>({key,...(value||{})}))
           .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(s.key)&&!!c.completedAt&&isCurrentYearRecord(c,getCurrentYear()))
@@ -4695,9 +4712,9 @@
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 6px;text-align:left;width:46%"><span class="search-header-stack"><span>학생</span><span class="header-en">Student</span></span></th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%"><span class="search-header-stack"><span>잔여</span><span class="header-en">Rem.</span></span></th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%"><span class="search-header-stack"><span>누적</span><span class="header-en">Total</span></span></th>
+                <th style="font-size:11px;padding:4px 6px;text-align:left;width:40%"><span class="search-header-stack search-student-header"><span>학생</span><span class="header-en">Student</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>잔여</span><span class="header-en">Remaining</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>누적</span><span class="header-en">Total</span></span></th>
                 <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>보기</span><span class="header-en">View</span></span></th>
               </tr>
             </thead>
@@ -6873,8 +6890,13 @@
     }
 
     function getNoticeCycleKey(studentKey, level){
-      const latestDate = String(getLatestConfirmedAt(studentKey) || '').slice(0,10).replace(/\D/g,'') || 'nodate';
-      return ['notice', safeDbKey(studentKey), safeDbKey(level), getCurrentYear(), latestDate].join('_');
+      const yr = getCurrentYear();
+      const existingCount = Object.values(noticeEntries || {}).filter(v =>
+        String((v || {}).studentKey || '') === String(studentKey) &&
+        isRecordInLevel(v, level) &&
+        isCurrentYearRecord(v, yr)
+      ).length;
+      return ['notice', safeDbKey(studentKey), safeDbKey(level), yr, 'cycle', String(existingCount + 1)].join('_');
     }
 
     async function upsertNoticeEntry(studentKey, level, fields, fixedNoticeKey){
@@ -7080,11 +7102,16 @@
     async function completeNotice(studentKey,level){
       if(!canManageNoticeLevel(level)) return toast('알림 완료 처리 권한이 없습니다.', 'err');
       try{
+        const curYear=getCurrentYear();
+        const rawPointsAtCompletion=Object.values(entries||{})
+          .filter(r=>String((r||{}).studentKey||'')===String(studentKey)&&String((r||{}).status||'')==='확정'&&isCurrentYearRecord(r,curYear))
+          .reduce((sum,r)=>sum+Number((r||{}).totalPoints||0),0);
         await upsertNoticeEntry(studentKey, level, {
           completedAt:new Date().toISOString(),
           completedBy:teacher.name||'',
           completedByEmail:teacher.email||'',
-          cycleViolationsSnapshot:buildNoticeReasonText(studentKey)
+          cycleViolationsSnapshot:buildNoticeReasonText(studentKey),
+          rawPointsAtCompletion
         });
         toast('알림 완료가 저장되었습니다.','ok');
         const sLevel2 = getSchoolLevel((students[String(studentKey||'')] || {}).className||'');
@@ -7103,13 +7130,15 @@
       const actionButton=rpInput&&rpInput.closest('tr')?rpInput.closest('tr').querySelector('button[onclick*="completeRecovery"]'):null; const originalButtonText=actionButton?actionButton.textContent:''; if(actionButton){actionButton.disabled=true;actionButton.textContent='저장 중... | Saving...';}
       try{
         // 레이스 컨디션 방지: DB에서 최신 데이터를 직접 읽어 점수 계산
-        const [freshEntrySnap, freshRecoverySnap] = await Promise.all([
+        const [freshEntrySnap, freshRecoverySnap, freshNoticeSnap] = await Promise.all([
           db.ref(DETENTION_DB_PATH).once('value'),
-          db.ref(RECOVERY_DB_PATH).once('value')
+          db.ref(RECOVERY_DB_PATH).once('value'),
+          db.ref(NOTICE_DB_PATH).once('value')
         ]);
 
         const freshEntries = freshEntrySnap.val() || {};
         const freshRecovery = freshRecoverySnap.val() || {};
+        const freshNotices = freshNoticeSnap.val() || {};
 
         const curYear = getCurrentYear();
         const overallTotal = Object.values(freshEntries)
@@ -7153,7 +7182,15 @@
           completedAt: new Date().toISOString()
         };
 
-        const completedNoticeObj=findLatestCompletedNotice(studentKey,level);
+        const completedNoticeRows=Object.entries(freshNotices||{})
+          .filter(([,v])=>String((v||{}).studentKey||'')===String(studentKey)&&isRecordInLevel(v,level)&&!!(v||{}).completedAt&&isCurrentYearRecord(v,curYear))
+          .sort((a,b)=>String((a[1]||{}).completedAt||'').localeCompare(String((b[1]||{}).completedAt||'')));
+        const completedRecoveryRows=Object.entries(freshRecovery||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(r=>String(getRecordStudentKey(r)||'')===String(studentKey)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,curYear))
+          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
+        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
+        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
         const doneCommitteeEntries=Object.entries(committeeEntries||{}).map(([key,value])=>({key,...(value||{})})).filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(studentKey)&&!!c.completedAt&&isCurrentYearRecord(c,curYear)).sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
         const latestCommittee=doneCommitteeEntries.length?doneCommitteeEntries[0]:null; const noticeAt=completedNoticeObj?String(completedNoticeObj.notice.completedAt||''):''; const committeeAt=latestCommittee?String(latestCommittee.completedAt||''):''; const useCommitteeBaseline=!!latestCommittee&&(!completedNoticeObj||committeeAt>noticeAt);
         const sourceKey=useCommitteeBaseline?('committee_'+latestCommittee.key):(completedNoticeObj?('notice_'+completedNoticeObj.key):'no_source');

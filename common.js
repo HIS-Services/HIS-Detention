@@ -395,51 +395,64 @@ function readFileText(file, enc = 'utf-8') {
     const hasPendingCommittee = !!pendingCommitteeEntry;
     const needsCommittee = currentPoints >= 12 && !hasPendingCommittee && !committeeCoversLatestEntry;
 
-    // Recovery is "sticky" after a completed Notice/Committee until a Recovery completion
-    // is actually recorded. New confirmed detention points during that period increase
-    // the student's balance but must NOT send the student backward to Notice.
-    const lastNoticeCompletedAt = lastCompletedNotice ? String(lastCompletedNotice.notice.completedAt || '') : '';
-    const latestRecoveryBaselineAt = [lastNoticeCompletedAt, latestCommitteeCompletedAt].filter(Boolean).sort().pop() || '';
-    const recoveryPending = !!latestRecoveryBaselineAt &&
+    // Notice-cycle baseline:
+    // An active Notice absorbs additional detention points until completion.
+    // One completed Notice creates exactly one Recovery obligation.
+    // A later Notice is due only after 3+ NEW raw points accumulate after the
+    // previous Notice completion baseline. Recovery deduction remains manual.
+    const noticeRecordsThisYear = hisEntries(notices)
+      .filter(([, v]) =>
+        String((v || {}).studentKey || '') === sk &&
+        hisRecordLevel(v, lv) === lv &&
+        hisIsCurrentYearRecord(v, curYear)
+      );
+    const completedNoticeRows = noticeRecordsThisYear
+      .filter(([, v]) => !!(v || {}).completedAt)
+      .sort((a, b) => String((a[1] || {}).completedAt || '').localeCompare(String((b[1] || {}).completedAt || '')));
+    const completedNoticeCount = completedNoticeRows.length;
+    const activeNoticeCount = noticeRecordsThisYear.filter(([, v]) => !(v || {}).completedAt).length;
+
+    const lastCompletedNoticeRow = completedNoticeRows.length ? completedNoticeRows[completedNoticeRows.length - 1] : null;
+    const lastCompletedNoticeRecord = lastCompletedNoticeRow ? (lastCompletedNoticeRow[1] || {}) : null;
+    const lastNoticeCompletedAt = lastCompletedNoticeRecord ? String(lastCompletedNoticeRecord.completedAt || '') : '';
+    const reconstructedNoticeBaseline = lastNoticeCompletedAt
+      ? confirmedEntries
+          .filter(([, r]) => hisLatestEntryDate(r) <= lastNoticeCompletedAt)
+          .reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0)
+      : 0;
+    const lastNoticeRawPointBaseline = lastCompletedNoticeRecord
+      ? Number(lastCompletedNoticeRecord.rawPointsAtCompletion ?? reconstructedNoticeBaseline)
+      : 0;
+    const newRawPointsSinceLastNotice = Math.max(0, yearRawPoints - lastNoticeRawPointBaseline);
+
+    const noticeDue = !activeNotice && (
+      completedNoticeCount === 0 ? yearRawPoints >= 3 : newRawPointsSinceLastNotice >= 3
+    );
+
+    const completedRecoveryCount = studentRecoveryArr.filter(r => !!(r || {}).completedAt).length;
+    const noticeRecoveryPendingCount = Math.max(0, completedNoticeCount - completedRecoveryCount);
+    const committeeRecoveryPending = !!latestCommitteeCompletedAt &&
       currentPoints >= 3 &&
-      (!latestRecoveryCompletedAt || latestRecoveryCompletedAt < latestRecoveryBaselineAt);
+      (!latestRecoveryCompletedAt || latestRecoveryCompletedAt < latestCommitteeCompletedAt);
+    const recoveryPendingCount = noticeRecoveryPendingCount + (committeeRecoveryPending ? 1 : 0);
+    const recoveryPending = recoveryPendingCount > 0 && currentPoints > 0;
+
+    const latestRecoveryBaselineAt = [lastNoticeCompletedAt, latestCommitteeCompletedAt].filter(Boolean).sort().pop() || '';
 
     let phase = 'clean';
     if (hasPendingCommittee) {
       phase = 'committee_pending';
+    } else if (activeNotice) {
+      phase = (activeNotice.notice.parentMailAt || activeNotice.notice.studentTeacherMailAt) ? 'notice_active' : 'notice_needed';
+    } else if (noticeDue) {
+      phase = 'notice_needed';
     } else if (recoveryPending) {
       phase = 'in_recovery';
     } else if (committeeCoversLatestEntry && currentPoints >= 3) {
-      // 위원회 완료 후에는 같은 위반 묶음을 다시 알림으로 보내지 않고 회복교육 단계로 보냅니다.
       phase = 'in_recovery';
-    } else if (activeNotice) {
-      phase = (activeNotice.notice.parentMailAt || activeNotice.notice.studentTeacherMailAt) ? 'notice_active' : 'notice_needed';
-    } else if (lastCompletedNotice && currentPoints >= 3) {
-      const latestEntryAt = confirmedEntries.length ? hisLatestEntryDate(confirmedEntries[0][1]) : '';
-      const lastNoticeAt = String(lastCompletedNotice.notice.completedAt || '');
-      phase = latestEntryAt > lastNoticeAt ? 'notice_needed' : 'in_recovery';
-    } else if (lastCompletedNotice && currentPoints > 0) {
+    } else if (currentPoints > 0) {
       phase = 'residual';
-    } else if (currentPoints >= 3) {
-      phase = 'notice_needed';
     }
-
-    const committeeStatus = hasPendingCommittee ? 'pending' : (needsCommittee ? 'eligible' : 'none');
-
-    const state = {
-      phase,
-      cyclePoints: currentPoints,
-      overallPoints: yearRawPoints,
-      currentPoints,
-      yearRawPoints,
-      recoveryPoints: recoveredTotal,
-      currentYear: curYear,
-      committeeStatus,
-      committeeThreshold: 12,
-      updatedAt: new Date().toISOString(),
-      updatedBy: options.updatedBy || 'system_recalculate'
-    };
-
     return {
       state,
       meta: {
@@ -453,6 +466,13 @@ function readFileText(file, enc = 'utf-8') {
         committeeCoversLatestEntry,
         latestRecoveryCompletedAt,
         latestRecoveryBaselineAt,
+        completedRecoveryCount,
+        completedNoticeCount,
+        activeNoticeCount,
+      lastNoticeRawPointBaseline,
+      newRawPointsSinceLastNotice,
+        noticeDue,
+        recoveryPendingCount,
         recoveryPending,
         // 구버전 호출부 호환용 별칭
         hasActiveReferral: false,
