@@ -2183,6 +2183,30 @@
     function getCycleState(studentKey, level){
       return cycleStates[getCycleStateKey(studentKey,level)] || {phase:'clean',cyclePoints:0};
     }
+
+    // UI should be driven from the loaded source records, not from the persisted
+    // studentCycleState cache. This prevents old/stale state rows from making a
+    // completed Notice appear active again.
+    function getLiveCycleResult(studentKey, level){
+      if(typeof window.calculateStudentCycleState !== 'function'){
+        const fallback = getCycleState(studentKey, level);
+        return {state:fallback, meta:{}};
+      }
+      return window.calculateStudentCycleState(
+        String(studentKey||''),
+        String(level||''),
+        {
+          entries: entries || {},
+          notices: noticeEntries || {},
+          recovery: recoveryEntries || {},
+          committee: committeeEntries || {}
+        },
+        {year:getCurrentYear()}
+      );
+    }
+    function getLiveCycleState(studentKey, level){
+      return getLiveCycleResult(studentKey, level).state || {phase:'clean',cyclePoints:0};
+    }
     async function setCycleState(studentKey, level, patch){
       const key = getCycleStateKey(studentKey, level);
       const current = getCycleState(studentKey, level);
@@ -2559,23 +2583,6 @@
     // current: 현재 미해소 점수 / yearRaw: 현재 학년도 원점수 / overall: 기존 호환 별칭(yearRaw와 동일)
     function getStudentPoints(studentKey, level, year){
       const y = String(year || getCurrentYear());
-      const state = level
-        ? getCycleState(studentKey, level)
-        : (getCycleState(studentKey,'ms').phase !== 'clean'
-            ? getCycleState(studentKey,'ms')
-            : getCycleState(studentKey,'hs'));
-
-      if(state && (typeof state.yearRawPoints === 'number' || typeof state.overallPoints === 'number')){
-        const yearRaw = Number(
-          typeof state.yearRawPoints === 'number' ? state.yearRawPoints : state.overallPoints
-        ) || 0;
-        const current = Math.max(0, Number(
-          typeof state.currentPoints === 'number' ? state.currentPoints :
-          (typeof state.cyclePoints === 'number' ? state.cyclePoints : yearRaw - getStudentRecoveryTotal(studentKey, level, y))
-        ) || 0);
-        return { overall: yearRaw, yearRaw, current };
-      }
-
       const yearRaw = getStudentYearRawTotal(studentKey, y);
       const current = Math.max(0, yearRaw - getStudentRecoveryTotal(studentKey, level, y));
       return { overall: yearRaw, yearRaw, current };
@@ -2794,15 +2801,18 @@
       return getStudentCatalog()
         .filter(s=>getSchoolLevel(s.className)===level)
         .map(s=>{
-          const state = getCycleState(s.key, level);
-          // 위원회 회부(referral) 중이면 알림 목록 제외
-          const noticePhases=['notice_needed','notice_active','edu_notice_needed','edu_notice_active'];
-          if(!noticePhases.includes(state.phase)) return null;
+          const live = getLiveCycleResult(s.key, level);
+          const state = live.state || {};
+          const meta = live.meta || {};
+          // Notice membership is independent from Recovery membership.
+          // A student belongs here if an active Notice exists OR a new Notice is due.
+          if(!(meta.activeNotice || meta.noticeDue || state.noticeActive || state.noticeDue)) return null;
+          if(meta.hasPendingCommittee) return null;
           const pts = getStudentPoints(s.key, level);
           const currentTotal=pts.current, overallTotal=pts.overall;
           const reasons=buildNoticeReasonText(s.key);
           const latestEntry=getConfirmedEntriesForStudent(s.key)[0]||null,latestConfirmedAt=getLatestConfirmedAt(s.key);
-          const activeNoticeObj=findActiveNotice(s.key,level);
+          const activeNoticeObj=meta.activeNotice || findActiveNotice(s.key,level);
           const notice=activeNoticeObj?activeNoticeObj.notice:{},noticeDocKey=activeNoticeObj?activeNoticeObj.key:null;
           const cycleEntries=getCurrentCycleEntries(s.key);
           const hasReferralInCycle=cycleEntries.some(r=>r.isReferral===true);
@@ -2844,19 +2854,18 @@
       // ── STATE MACHINE 기반 ──
       // in_recovery 상태인 학생만 반환
       return getStudentCatalog().filter(s=>getSchoolLevel(s.className)===level).map(s=>{
-        const state = getCycleState(s.key, level);
-        const recoveryPhases=['in_recovery','edu_in_recovery','edu_committee'];
-        const hasPendingRecovery = Number(state.recoveryPendingCount || 0) > 0 || state.recoveryPending === true;
-        if(!recoveryPhases.includes(state.phase) && !hasPendingRecovery) return null;
-        const completedNoticeRows=Object.entries(noticeEntries||{})
-          .filter(([,v])=>String(v.studentKey||'')===String(s.key)&&isRecordInLevel(v,level)&&!!v.completedAt&&isCurrentYearRecord(v,getCurrentYear()))
-          .sort((a,b)=>String(a[1].completedAt||'').localeCompare(String(b[1].completedAt||'')));
-        const completedRecoveryRows=Object.entries(recoveryEntries||{})
-          .map(([key,value])=>({key,...(value||{})}))
-          .filter(r=>String(r.studentKey||'')===String(s.key)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,getCurrentYear()))
-          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
-        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
-        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
+        const live = getLiveCycleResult(s.key, level);
+        const state = live.state || {};
+        const meta = live.meta || {};
+        const hasPendingRecovery = Number(meta.recoveryPendingCount ?? state.recoveryPendingCount ?? 0) > 0 ||
+          meta.recoveryPending === true || state.recoveryPending === true;
+        if(!hasPendingRecovery) return null;
+        const pendingNoticeKey = Array.isArray(meta.pendingNoticeKeys) && meta.pendingNoticeKeys.length
+          ? String(meta.pendingNoticeKeys[0] || '')
+          : '';
+        const completedNoticeObj = pendingNoticeKey && noticeEntries[pendingNoticeKey]
+          ? {key:pendingNoticeKey, notice:noticeEntries[pendingNoticeKey]}
+          : null;
         const doneCommitteeEntries=Object.entries(committeeEntries||{})
           .map(([key,value])=>({key,...(value||{})}))
           .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(s.key)&&!!c.completedAt&&isCurrentYearRecord(c,getCurrentYear()))
@@ -5949,7 +5958,7 @@
       const activeTb = document.getElementById(level === 'ms' ? 'recovery-ms-active-tbody' : 'recovery-hs-active-tbody');
       const doneTb = document.getElementById(level === 'ms' ? 'recovery-ms-done-tbody' : 'recovery-hs-done-tbody');
       const candidates = getRecoveryCandidates(level);
-      const activeList = candidates.filter(s => Number(s.currentTotal || 0) >= 3);
+      const activeList = candidates;
       const historyList = getRecoveryHistoryRows(level)
         .sort((a,b) => String(b.completedAt || '').localeCompare(String(a.completedAt || '')));
 
@@ -6889,41 +6898,54 @@
       return String(value || '').replace(/[.#$/\[\]]/g, '_');
     }
 
-    function getNoticeCycleKey(studentKey, level){
+    function getNoticeCycleInfo(studentKey, level){
       const yr = getCurrentYear();
-      const existingCount = Object.values(noticeEntries || {}).filter(v =>
+      const rows = Object.entries(noticeEntries || {}).filter(([,v]) =>
         String((v || {}).studentKey || '') === String(studentKey) &&
         isRecordInLevel(v, level) &&
         isCurrentYearRecord(v, yr)
-      ).length;
-      return ['notice', safeDbKey(studentKey), safeDbKey(level), yr, 'cycle', String(existingCount + 1)].join('_');
+      );
+      const maxCycle = rows.reduce((max, [key, v]) => {
+        const explicit = Number((v || {}).cycleNumber);
+        if(Number.isFinite(explicit) && explicit > max) return explicit;
+        const m = String(key || '').match(/_cycle_(\d+)/);
+        return m ? Math.max(max, Number(m[1]) || 0) : max;
+      }, 0);
+      return {year:yr, cycleNumber:maxCycle + 1};
+    }
+    function getNoticeCycleKey(studentKey, level, cycleNumber){
+      return ['notice', safeDbKey(studentKey), safeDbKey(level), getCurrentYear(), 'cycle', String(cycleNumber || 1), String(Date.now())].join('_');
     }
 
     async function upsertNoticeEntry(studentKey, level, fields, fixedNoticeKey){
+      const cycleInfo = getNoticeCycleInfo(studentKey, level);
       const base = {
         studentKey,
         level,
-        year:getCurrentYear(),
+        year:cycleInfo.year,
+        cycleNumber:cycleInfo.cycleNumber,
         createdAt:new Date().toISOString(),
         cycleViolationsSnapshot:buildNoticeReasonText(studentKey)
       };
       if(fixedNoticeKey){
         await db.ref(NOTICE_DB_PATH+'/'+fixedNoticeKey).update(Object.assign({}, fields));
+        noticeEntries[fixedNoticeKey] = Object.assign({}, noticeEntries[fixedNoticeKey] || {}, fields);
         return fixedNoticeKey;
       }
       const ao = findActiveNotice(studentKey, level);
       if(ao && ao.key){
         await db.ref(NOTICE_DB_PATH+'/'+ao.key).update(Object.assign({}, fields));
+        noticeEntries[ao.key] = Object.assign({}, noticeEntries[ao.key] || ao.notice || {}, fields);
         return ao.key;
       }
-      const key = getNoticeCycleKey(studentKey, level);
-      await db.ref(NOTICE_DB_PATH+'/'+key).transaction(current => {
-        const cur = current || base;
-        return Object.assign({}, cur, fields, {
-          studentKey, level, year:getCurrentYear(),
-          cycleViolationsSnapshot: fields.cycleViolationsSnapshot || cur.cycleViolationsSnapshot || base.cycleViolationsSnapshot
-        });
+      const key = getNoticeCycleKey(studentKey, level, cycleInfo.cycleNumber);
+      const payload = Object.assign({}, base, fields, {
+        studentKey, level, year:cycleInfo.year, cycleNumber:cycleInfo.cycleNumber,
+        cycleViolationsSnapshot: fields.cycleViolationsSnapshot || base.cycleViolationsSnapshot
       });
+      const tx = await db.ref(NOTICE_DB_PATH+'/'+key).transaction(current => current || payload);
+      if(!tx || tx.committed === false) throw new Error('Notice record was not created.');
+      noticeEntries[key] = Object.assign({}, payload);
       return key;
     }
 
@@ -7103,7 +7125,9 @@
       if(!canManageNoticeLevel(level)) return toast('알림 완료 처리 권한이 없습니다.', 'err');
       try{
         const curYear=getCurrentYear();
-        const rawPointsAtCompletion=Object.values(entries||{})
+        const freshEntrySnap=await db.ref(DETENTION_DB_PATH).once('value');
+        const freshEntriesForNotice=freshEntrySnap.val()||{};
+        const rawPointsAtCompletion=Object.values(freshEntriesForNotice)
           .filter(r=>String((r||{}).studentKey||'')===String(studentKey)&&String((r||{}).status||'')==='확정'&&isCurrentYearRecord(r,curYear))
           .reduce((sum,r)=>sum+Number((r||{}).totalPoints||0),0);
         await upsertNoticeEntry(studentKey, level, {
@@ -7116,7 +7140,7 @@
         toast('알림 완료가 저장되었습니다.','ok');
         const sLevel2 = getSchoolLevel((students[String(studentKey||'')] || {}).className||'');
         if(sLevel2){ try{ await recalculateStudentState(String(studentKey||''), sLevel2); }catch(e){} }
-        loadData();
+        await loadData();
       }catch(e){console.error(e);toast('알림 완료 저장 실패','err');}
     }
 
@@ -7130,15 +7154,17 @@
       const actionButton=rpInput&&rpInput.closest('tr')?rpInput.closest('tr').querySelector('button[onclick*="completeRecovery"]'):null; const originalButtonText=actionButton?actionButton.textContent:''; if(actionButton){actionButton.disabled=true;actionButton.textContent='저장 중... | Saving...';}
       try{
         // 레이스 컨디션 방지: DB에서 최신 데이터를 직접 읽어 점수 계산
-        const [freshEntrySnap, freshRecoverySnap, freshNoticeSnap] = await Promise.all([
+        const [freshEntrySnap, freshRecoverySnap, freshNoticeSnap, freshCommitteeSnap] = await Promise.all([
           db.ref(DETENTION_DB_PATH).once('value'),
           db.ref(RECOVERY_DB_PATH).once('value'),
-          db.ref(NOTICE_DB_PATH).once('value')
+          db.ref(NOTICE_DB_PATH).once('value'),
+          db.ref(COMMITTEE_DB_PATH).once('value')
         ]);
 
         const freshEntries = freshEntrySnap.val() || {};
         const freshRecovery = freshRecoverySnap.val() || {};
         const freshNotices = freshNoticeSnap.val() || {};
+        const freshCommittee = freshCommitteeSnap.val() || {};
 
         const curYear = getCurrentYear();
         const overallTotal = Object.values(freshEntries)
@@ -7161,10 +7187,6 @@
         if (recoveryPoints <= 0){
           return toast('회복할 점수가 없습니다.\nNo points left to recover.', 'err');
         }
-        if (currentTotalBefore < 3){
-          return toast('회복교육 대상 점수가 아닙니다. (3점 미만)\nNot enough points for recovery session.', 'warn');
-        }
-
         const payload = {
           studentKey,
           studentName: student.name || '',
@@ -7182,19 +7204,34 @@
           completedAt: new Date().toISOString()
         };
 
-        const completedNoticeRows=Object.entries(freshNotices||{})
-          .filter(([,v])=>String((v||{}).studentKey||'')===String(studentKey)&&isRecordInLevel(v,level)&&!!(v||{}).completedAt&&isCurrentYearRecord(v,curYear))
-          .sort((a,b)=>String((a[1]||{}).completedAt||'').localeCompare(String((b[1]||{}).completedAt||'')));
-        const completedRecoveryRows=Object.entries(freshRecovery||{})
+        const freshCycleResult = (typeof window.calculateStudentCycleState === 'function')
+          ? window.calculateStudentCycleState(studentKey, level, {
+              entries:freshEntries,
+              notices:freshNotices,
+              recovery:freshRecovery,
+              committee:freshCommittee
+            }, {year:curYear})
+          : {meta:{}};
+        const freshMeta = freshCycleResult.meta || {};
+        const pendingNoticeKey = Array.isArray(freshMeta.pendingNoticeKeys) && freshMeta.pendingNoticeKeys.length
+          ? String(freshMeta.pendingNoticeKeys[0] || '')
+          : '';
+        const completedNoticeObj = pendingNoticeKey && freshNotices[pendingNoticeKey]
+          ? {key:pendingNoticeKey, notice:freshNotices[pendingNoticeKey]}
+          : null;
+
+        const doneCommitteeEntries=Object.entries(freshCommittee||{})
           .map(([key,value])=>({key,...(value||{})}))
-          .filter(r=>String(getRecordStudentKey(r)||'')===String(studentKey)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,curYear))
-          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
-        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
-        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
-        const doneCommitteeEntries=Object.entries(committeeEntries||{}).map(([key,value])=>({key,...(value||{})})).filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(studentKey)&&!!c.completedAt&&isCurrentYearRecord(c,curYear)).sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
-        const latestCommittee=doneCommitteeEntries.length?doneCommitteeEntries[0]:null; const noticeAt=completedNoticeObj?String(completedNoticeObj.notice.completedAt||''):''; const committeeAt=latestCommittee?String(latestCommittee.completedAt||''):''; const useCommitteeBaseline=!!latestCommittee&&(!completedNoticeObj||committeeAt>noticeAt);
+          .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(studentKey)&&!!c.completedAt&&isCurrentYearRecord(c,curYear))
+          .sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+        const latestCommittee=doneCommitteeEntries.length?doneCommitteeEntries[0]:null;
+
+        // Notice obligations have priority when both Notice and Committee Recovery are pending.
+        const useCommitteeBaseline=!completedNoticeObj && !!latestCommittee && freshMeta.committeeRecoveryPending !== false;
         const sourceKey=useCommitteeBaseline?('committee_'+latestCommittee.key):(completedNoticeObj?('notice_'+completedNoticeObj.key):'no_source');
-        const recoveryKey=['recovery',safeDbKey(studentKey),safeDbKey(level),curYear,safeDbKey(sourceKey),String(currentTotalBefore),String(recoveryTotal)].join('_'); payload.sourceType=useCommitteeBaseline?'committee':(completedNoticeObj?'notice':'unknown'); payload.sourceKey=useCommitteeBaseline?latestCommittee.key:(completedNoticeObj?completedNoticeObj.key:'');
+        const recoveryKey=['recovery',safeDbKey(studentKey),safeDbKey(level),curYear,safeDbKey(sourceKey),String(currentTotalBefore),String(recoveryTotal)].join('_');
+        payload.sourceType=useCommitteeBaseline?'committee':(completedNoticeObj?'notice':'unknown');
+        payload.sourceKey=useCommitteeBaseline?latestCommittee.key:(completedNoticeObj?completedNoticeObj.key:'');
         const recoveryRef=db.ref(RECOVERY_DB_PATH+'/'+recoveryKey); const beforeSnap=await recoveryRef.once('value'); if(beforeSnap.exists()){toast('같은 상태의 회복교육 기록이 이미 있습니다. 새로고침 후 다시 확인해 주세요.\nA recovery record for this same state already exists. Refresh and check the record.','warn');await loadData();return;}
         const txResult=await recoveryRef.transaction(current=>current||payload); if(!txResult||txResult.committed===false){toast('회복교육 기록 저장이 완료되지 않았습니다. 다시 시도해 주세요.\nRecovery was not saved. Please try again.','err');return;} toast('회복교육 완료가 저장되었습니다.\nRestorative Education completion saved.','ok');
         // recalculateStudentState: 위원회 상태 보존하면서 회복교육 처리

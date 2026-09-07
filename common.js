@@ -395,47 +395,137 @@ function readFileText(file, enc = 'utf-8') {
     const hasPendingCommittee = !!pendingCommitteeEntry;
     const needsCommittee = currentPoints >= 12 && !hasPendingCommittee && !committeeCoversLatestEntry;
 
-    // Notice-cycle baseline:
-    // An active Notice absorbs additional detention points until completion.
-    // One completed Notice creates exactly one Recovery obligation.
-    // A later Notice is due only after 3+ NEW raw points accumulate after the
-    // previous Notice completion baseline. Recovery deduction remains manual.
+    // Notice / Recovery are separate obligations.
+    // Notice rule:
+    //   - No second Notice is created while one is active.
+    //   - Completing a Notice snapshots the raw confirmed-point total.
+    //   - A later Notice requires 3+ NEW raw points after that snapshot.
+    // Recovery rule:
+    //   - Every completed Notice creates one Recovery obligation.
+    //   - Recovery records resolve Notice obligations by sourceKey when available.
+    //   - Legacy Recovery records without a sourceKey are matched oldest-first.
     const noticeRecordsThisYear = hisEntries(notices)
       .filter(([, v]) =>
         String((v || {}).studentKey || '') === sk &&
         hisRecordLevel(v, lv) === lv &&
         hisIsCurrentYearRecord(v, curYear)
       );
+
     const completedNoticeRows = noticeRecordsThisYear
       .filter(([, v]) => !!(v || {}).completedAt)
       .sort((a, b) => String((a[1] || {}).completedAt || '').localeCompare(String((b[1] || {}).completedAt || '')));
     const completedNoticeCount = completedNoticeRows.length;
     const activeNoticeCount = noticeRecordsThisYear.filter(([, v]) => !(v || {}).completedAt).length;
 
+    function comparableTime(value, endOfDayForMidnight){
+      const raw = String(value || '').trim();
+      if (!raw) return NaN;
+      let normalized = raw;
+      // Admin date edits are stored at midnight. Treat that as the whole selected day
+      // when reconstructing legacy Notice baselines so same-day detentions are not
+      // incorrectly treated as "new after Notice".
+      if (endOfDayForMidnight && /T00:00:00(?:\.000)?(?:Z)?$/.test(normalized)) {
+        normalized = normalized.slice(0, 10) + 'T23:59:59.999';
+      }
+      const ms = Date.parse(normalized);
+      return Number.isFinite(ms) ? ms : NaN;
+    }
+
     const lastCompletedNoticeRow = completedNoticeRows.length ? completedNoticeRows[completedNoticeRows.length - 1] : null;
     const lastCompletedNoticeRecord = lastCompletedNoticeRow ? (lastCompletedNoticeRow[1] || {}) : null;
     const lastNoticeCompletedAt = lastCompletedNoticeRecord ? String(lastCompletedNoticeRecord.completedAt || '') : '';
-    const reconstructedNoticeBaseline = lastNoticeCompletedAt
-      ? confirmedEntries
-          .filter(([, r]) => hisLatestEntryDate(r) <= lastNoticeCompletedAt)
-          .reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0)
-      : 0;
-    const lastNoticeRawPointBaseline = lastCompletedNoticeRecord
-      ? Number(lastCompletedNoticeRecord.rawPointsAtCompletion ?? reconstructedNoticeBaseline)
-      : 0;
-    const newRawPointsSinceLastNotice = Math.max(0, yearRawPoints - lastNoticeRawPointBaseline);
 
+    let reconstructedNoticeBaseline = 0;
+    let legacyBaselineReliable = false;
+    if (lastNoticeCompletedAt) {
+      const noticeMs = comparableTime(lastNoticeCompletedAt, true);
+      if (Number.isFinite(noticeMs)) {
+        reconstructedNoticeBaseline = confirmedEntries
+          .filter(([, r]) => {
+            const entryMs = comparableTime(hisLatestEntryDate(r), false);
+            return Number.isFinite(entryMs) && entryMs <= noticeMs;
+          })
+          .reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0);
+        legacyBaselineReliable = true;
+      }
+    }
+
+    const storedBaseline = lastCompletedNoticeRecord && Number(lastCompletedNoticeRecord.rawPointsAtCompletion);
+    let lastNoticeRawPointBaseline;
+    if (lastCompletedNoticeRecord && Number.isFinite(storedBaseline) && storedBaseline >= 0) {
+      lastNoticeRawPointBaseline = storedBaseline;
+    } else if (lastCompletedNoticeRecord && legacyBaselineReliable) {
+      lastNoticeRawPointBaseline = reconstructedNoticeBaseline;
+    } else if (lastCompletedNoticeRecord) {
+      // Conservative compatibility fallback for old Notice records: do not create a
+      // false new Notice merely because an old completion record lacks a usable baseline.
+      lastNoticeRawPointBaseline = yearRawPoints;
+    } else {
+      lastNoticeRawPointBaseline = 0;
+    }
+    lastNoticeRawPointBaseline = Math.max(0, Math.min(yearRawPoints, Number(lastNoticeRawPointBaseline) || 0));
+
+    const newRawPointsSinceLastNotice = Math.max(0, yearRawPoints - lastNoticeRawPointBaseline);
     const noticeDue = !activeNotice && (
-      completedNoticeCount === 0 ? yearRawPoints >= 3 : newRawPointsSinceLastNotice >= 3
+      completedNoticeCount === 0 ? currentPoints >= 3 : newRawPointsSinceLastNotice >= 3
     );
 
-    const completedRecoveryCount = studentRecoveryArr.filter(r => !!(r || {}).completedAt).length;
-    const noticeRecoveryPendingCount = Math.max(0, completedNoticeCount - completedRecoveryCount);
-    const committeeRecoveryPending = !!latestCommitteeCompletedAt &&
-      currentPoints >= 3 &&
-      (!latestRecoveryCompletedAt || latestRecoveryCompletedAt < latestCommitteeCompletedAt);
+    // Resolve Notice -> Recovery obligations.
+    const completedRecoveryRows = studentRecoveryArr
+      .filter(r => !!(r || {}).completedAt)
+      .sort((a, b) => String((a || {}).completedAt || '').localeCompare(String((b || {}).completedAt || '')));
+
+    const completedNoticeKeySet = new Set(completedNoticeRows.map(([key]) => String(key)));
+    const explicitlyResolvedNoticeKeys = new Set(
+      completedRecoveryRows
+        .filter(r => String((r || {}).sourceType || '').toLowerCase() === 'notice' &&
+                     completedNoticeKeySet.has(String((r || {}).sourceKey || '')))
+        .map(r => String((r || {}).sourceKey || ''))
+    );
+
+    let pendingNoticeKeys = completedNoticeRows
+      .map(([key]) => String(key))
+      .filter(key => !explicitlyResolvedNoticeKeys.has(key));
+
+    // Legacy Recovery records did not store sourceType/sourceKey. Match each one to
+    // the oldest still-unresolved Notice. Committee-linked Recovery must NOT consume
+    // a Notice obligation.
+    const legacyRecoveryRows = completedRecoveryRows.filter(r => {
+      const sourceType = String((r || {}).sourceType || '').toLowerCase();
+      const sourceKey = String((r || {}).sourceKey || '');
+      return !sourceType && !sourceKey;
+    });
+    if (legacyRecoveryRows.length && pendingNoticeKeys.length) {
+      pendingNoticeKeys = pendingNoticeKeys.slice(Math.min(legacyRecoveryRows.length, pendingNoticeKeys.length));
+    }
+
+    const completedRecoveryCount = completedRecoveryRows.length;
+    const noticeRecoveryPendingCount = pendingNoticeKeys.length;
+
+    // Preserve the existing Committee -> Recovery path, but do not let a Notice-linked
+    // Recovery accidentally satisfy a Committee obligation.
+    const latestCompletedCommittee = completedCommitteeArr.length
+      ? { key: String(completedCommitteeArr[0][0]), record: completedCommitteeArr[0][1] || {} }
+      : null;
+    const explicitCommitteeRecovery = latestCompletedCommittee && completedRecoveryRows.some(r =>
+      String((r || {}).sourceType || '').toLowerCase() === 'committee' &&
+      String((r || {}).sourceKey || '') === latestCompletedCommittee.key
+    );
+    const hasAnySourceMetadata = completedRecoveryRows.some(r =>
+      String((r || {}).sourceType || '').trim() || String((r || {}).sourceKey || '').trim()
+    );
+    const legacyCommitteeResolved = !hasAnySourceMetadata &&
+      !!latestCommitteeCompletedAt &&
+      !!latestRecoveryCompletedAt &&
+      latestRecoveryCompletedAt >= latestCommitteeCompletedAt;
+
+    const committeeRecoveryPending = !!latestCompletedCommittee &&
+      currentPoints > 0 &&
+      !explicitCommitteeRecovery &&
+      !legacyCommitteeResolved;
+
     const recoveryPendingCount = noticeRecoveryPendingCount + (committeeRecoveryPending ? 1 : 0);
-    const recoveryPending = recoveryPendingCount > 0 && currentPoints > 0;
+    const recoveryPending = recoveryPendingCount > 0;
 
     const latestRecoveryBaselineAt = [lastNoticeCompletedAt, latestCommitteeCompletedAt].filter(Boolean).sort().pop() || '';
 
@@ -465,6 +555,12 @@ function readFileText(file, enc = 'utf-8') {
       currentYear: curYear,
       committeeStatus,
       committeeThreshold: 12,
+      noticeDue,
+      noticeActive: !!activeNotice,
+      noticeActiveKey: activeNotice ? activeNotice.key : '',
+      recoveryPending,
+      recoveryPendingCount,
+      pendingNoticeRecoveryCount: noticeRecoveryPendingCount,
       updatedAt: new Date().toISOString(),
       updatedBy: options.updatedBy || 'system_recalculate'
     };
@@ -490,6 +586,9 @@ function readFileText(file, enc = 'utf-8') {
         noticeDue,
         recoveryPendingCount,
         recoveryPending,
+        noticeRecoveryPendingCount,
+        pendingNoticeKeys,
+        legacyBaselineReliable,
         // 구버전 호출부 호환용 별칭
         hasActiveReferral: false,
         hasManualReferralPending: hasPendingCommittee,
