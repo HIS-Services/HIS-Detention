@@ -315,33 +315,94 @@
     let selectedTeacherEmail = '';
     let teacherAutocompleteReady = false;
 
-    async function init() {
+    async function validateGoogleTeacherUser(user) {
+      if (!user || !user.uid) return null;
+      const email = String(user.email || '').trim().toLowerCase();
+      if (!email || !email.endsWith('@his.sc.kr') || user.emailVerified !== true) return null;
+
+      const matched = await loadGoogleTeacherByEmail(email);
+      if (!matched || !matched.teacher || matched.teacher.active === false) return null;
+
+      // A previously linked teacher UID must continue to match the same Google account.
+      const savedUid = String(matched.teacher.authUid || '').trim();
+      if (savedUid && savedUid !== String(user.uid)) {
+        console.error('Google UID mismatch for teacher account:', matched.key);
+        return null;
+      }
+
+      // If a UID index already exists, it must point to this exact teacher.
       try {
-        const user = firebaseAuth && firebaseAuth.currentUser ? firebaseAuth.currentUser : null;
-        if (user && user.email && user.emailVerified) {
-          const email = String(user.email || '').trim().toLowerCase();
-          if (email.endsWith('@his.sc.kr')) {
-            const matched = await loadGoogleTeacherByEmail(email);
-            if (matched && matched.teacher.active !== false) {
-              const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
-              // Self-heal login-history metadata for every valid Google session,
-              // including teachers returning with an already-authenticated session.
-              const linkResult = await syncGoogleAuthLink(matched.key, matched.teacher, roles, user);
-              const linkedTeacher = {
-                ...matched.teacher,
-                active: matched.teacher.active !== false,
-                loginProvider: 'google',
-                authUid: user.uid,
-                authEmail: email,
-                authEmailVerified: true
-              };
-              saveTeacherSession(matched.key, linkedTeacher, roles, 'google', user);
-              sessionStorage.setItem('his_google_auth_link', JSON.stringify(linkResult));
-            }
+        const indexSnap = await db.ref(`teacherAuthIndex/${user.uid}`).once('value');
+        const indexed = indexSnap.val() || null;
+        if (indexed && String(indexed.teacherKey || '').trim() &&
+            String(indexed.teacherKey || '').trim() !== String(matched.key)) {
+          console.error('teacherAuthIndex mismatch for restored Google account.');
+          return null;
+        }
+      } catch (e) {
+        // Index read failure should not weaken the teacher-record UID/email checks.
+        console.warn('teacherAuthIndex validation unavailable:', e);
+      }
+
+      return { matched, email };
+    }
+
+    async function establishTeacherSessionFromGoogle(user) {
+      const validated = await validateGoogleTeacherUser(user);
+      if (!validated) return false;
+
+      const { matched, email } = validated;
+      const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
+      const linkResult = await syncGoogleAuthLink(matched.key, matched.teacher, roles, user);
+      const linkedTeacher = {
+        ...matched.teacher,
+        active: matched.teacher.active !== false,
+        loginProvider: 'google',
+        authUid: user.uid,
+        authEmail: email,
+        authEmailVerified: true
+      };
+      saveTeacherSession(matched.key, linkedTeacher, roles, 'google', user);
+      sessionStorage.setItem('his_google_auth_link', JSON.stringify(linkResult));
+      return true;
+    }
+
+    async function init() {
+      const button = document.getElementById('google-login-btn');
+      try {
+        if (button) {
+          button.disabled = true;
+          button.querySelector('span').textContent = '로그인 확인 중... | Checking session...';
+        }
+
+        // Wait for Firebase to restore this browser-session credential.
+        const user = (typeof waitForFirebaseAuthState === 'function')
+          ? await waitForFirebaseAuthState()
+          : (firebaseAuth && firebaseAuth.currentUser ? firebaseAuth.currentUser : null);
+
+        if (user) {
+          const ok = await establishTeacherSessionFromGoogle(user);
+          if (ok) {
+            location.replace('teacher.html');
+            return;
           }
+
+          // A restored Firebase user that no longer matches an active/verified
+          // teacher must never be allowed through.
+          try { await firebaseAuth.signOut(); } catch (_) {}
+          sessionStorage.removeItem('his_teacher');
+          sessionStorage.removeItem('his_google_auth_link');
         }
       } catch (e) {
         console.error('Existing Google session check failed:', e);
+        try { if (firebaseAuth && firebaseAuth.currentUser) await firebaseAuth.signOut(); } catch (_) {}
+        sessionStorage.removeItem('his_teacher');
+        sessionStorage.removeItem('his_google_auth_link');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.querySelector('span').textContent = '학교 Google 계정으로 로그인 | Sign in with HIS Google';
+        }
       }
     }
 
@@ -700,40 +761,29 @@
           throw new Error('Firebase Auth SDK is not available.');
         }
 
+        // Keep Firebase credentials only for this browser session.
+        if (window.firebaseSessionPersistenceReady) {
+          await window.firebaseSessionPersistenceReady;
+        } else {
+          await firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+        }
+
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({
-          hd: 'his.sc.kr',
-          prompt: 'select_account'
+          hd: 'his.sc.kr'
         });
 
         const result = await firebaseAuth.signInWithPopup(provider);
         const user = result && result.user ? result.user : firebaseAuth.currentUser;
-        const email = String(user && user.email || '').trim().toLowerCase();
-        const emailVerified = !!(user && user.emailVerified);
 
-        if (!email || !email.endsWith('@his.sc.kr') || !emailVerified) {
+        const ok = await establishTeacherSessionFromGoogle(user);
+        if (!ok) {
           await firebaseAuth.signOut();
-          return toast('학교에서 승인한 @his.sc.kr Google 계정으로 로그인해 주세요.\nPlease sign in with an approved HIS Google account.', 'err');
+          sessionStorage.removeItem('his_teacher');
+          sessionStorage.removeItem('his_google_auth_link');
+          return toast('등록된 학교 Google 계정과 인증 정보가 일치하지 않습니다.\nThe verified Google account does not match an active registered HIS teacher.', 'err');
         }
 
-        const matched = await loadGoogleTeacherByEmail(email);
-        if (!matched || matched.teacher.active === false) {
-          await firebaseAuth.signOut();
-          return toast('관리자센터에 등록되지 않았거나 비활성화된 교사 계정입니다.\nThis teacher account is not registered or is inactive.', 'err');
-        }
-
-        const roles = normalizeRoles(matched.teacher.roles || matched.teacher.role || []);
-        const linkResult = await syncGoogleAuthLink(matched.key, matched.teacher, roles, user);
-        const linkedTeacher = {
-          ...matched.teacher,
-          active: matched.teacher.active !== false,
-          loginProvider: 'google',
-          authUid: user.uid,
-          authEmail: email,
-          authEmailVerified: emailVerified
-        };
-        saveTeacherSession(matched.key, linkedTeacher, roles, 'google', user);
-        sessionStorage.setItem('his_google_auth_link', JSON.stringify(linkResult));
         location.href = 'teacher.html';
       } catch (e) {
         console.error('Google login failed:', e);

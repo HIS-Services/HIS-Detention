@@ -20,11 +20,49 @@ window.db = db;
 const firebaseAuth = (typeof firebase.auth === 'function') ? firebase.auth() : null;
 window.firebaseAuth = firebaseAuth;
 let _firebaseAuthPromise = null;
+let _firebaseAuthStatePromise = null;
+
+// HIS uses browser-session authentication:
+// - refresh/navigation in the same browser session stays signed in
+// - Firebase auth persistence is cleared when the browser session ends
+// - explicit HIS Logout also signs Firebase out immediately
+const _firebaseSessionPersistencePromise = firebaseAuth
+  ? firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => {
+      console.error('Firebase session persistence setup failed:', err);
+      throw err;
+    })
+  : Promise.reject(new Error('Firebase Auth SDK가 로드되지 않았습니다.'));
+
+window.firebaseSessionPersistenceReady = _firebaseSessionPersistencePromise;
+
+async function waitForFirebaseAuthState() {
+  if (!firebaseAuth) return null;
+  try {
+    await _firebaseSessionPersistencePromise;
+  } catch (_) {
+    return null;
+  }
+  if (_firebaseAuthStatePromise) return _firebaseAuthStatePromise;
+  _firebaseAuthStatePromise = new Promise((resolve) => {
+    let unsubscribe = null;
+    unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
+      resolve(user && !user.isAnonymous ? user : null);
+    }, err => {
+      console.error('Firebase auth state restore failed:', err);
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
+      resolve(null);
+    });
+  });
+  return _firebaseAuthStatePromise;
+}
+window.waitForFirebaseAuthState = waitForFirebaseAuthState;
 
 async function ensureFirebaseAuth() {
   if (!firebaseAuth) {
     throw new Error('Firebase Auth SDK가 로드되지 않았습니다. firebase-auth-compat.js를 확인하세요.');
   }
+  await _firebaseSessionPersistencePromise;
   if (firebaseAuth.currentUser && !firebaseAuth.currentUser.isAnonymous) return firebaseAuth.currentUser;
   if (_firebaseAuthPromise) return _firebaseAuthPromise;
 
@@ -37,9 +75,10 @@ async function ensureFirebaseAuth() {
       reject(new Error('학교 Google 로그인이 필요합니다.'));
     };
 
-    const unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+    let unsubscribe = null;
+    unsubscribe = firebaseAuth.onAuthStateChanged(user => {
       if (settled) return;
-      try { unsubscribe(); } catch (_) {}
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
       if (user && !user.isAnonymous) {
         settled = true;
         resolve(user);
@@ -48,7 +87,7 @@ async function ensureFirebaseAuth() {
       finishReject();
     }, err => {
       console.error('Firebase auth state failed:', err);
-      try { unsubscribe(); } catch (_) {}
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
       finishReject();
     });
   });
