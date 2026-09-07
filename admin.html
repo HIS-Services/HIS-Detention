@@ -2458,14 +2458,72 @@
       toast('학생 연결이 저장되었습니다. | Record linked to student.','ok');
       await loadDataCleanup();
     }
+    function adminCenterAuditActor(){
+      let session={};
+      try{session=JSON.parse(sessionStorage.getItem('his_teacher')||'{}')||{};}catch(_){}
+      const authUser=(window.firebaseAuth&&window.firebaseAuth.currentUser)||null;
+      const email=String((authUser&&authUser.email)||session.email||'').trim().toLowerCase();
+      const name=String(session.name||session.teacherName||email||'관리자').trim();
+      return {name,email};
+    }
+
+    function adminCenterCollectionCounts(targets){
+      const counts={};
+      (targets||[]).forEach(target=>{
+        const path=String(target||'').split('/')[0]||'unknown';
+        counts[path]=(counts[path]||0)+1;
+      });
+      return counts;
+    }
+
+    function buildAdminCenterDeleteAudit(source, targets, extra){
+      const actor=adminCenterAuditActor();
+      if(!actor.email) throw new Error('Unable to identify signed-in administrator for audit log.');
+      const list=(targets||[]).map(v=>String(v||'').replace(/^\/+/,'')).filter(Boolean);
+      const now=new Date().toISOString();
+      const details=extra||{};
+      return {
+        timestamp:now,
+        action:'delete',
+        collection:details.collection||'multiple',
+        recordKey:details.recordKey||String(source||'admin-center-delete'),
+        source:String(source||'admin-center-delete'),
+        actorName:actor.name,
+        actorEmail:actor.email,
+        changedFields:['__deleted__'],
+        targetCount:list.length,
+        deletedTargets:list,
+        collectionCounts:adminCenterCollectionCounts(list),
+        studentKeys:Array.isArray(details.studentKeys)?details.studentKeys.map(v=>String(v||'')):[],
+        note:String(details.note||''),
+        before:details.before===undefined?null:details.before,
+        after:null
+      };
+    }
+
+    function attachAdminCenterAudit(updates, audit){
+      const key=db.ref('adminAuditLogs').push().key;
+      updates[`adminAuditLogs/${key}`]=audit;
+      return key;
+    }
+
     async function deleteCleanupRecord(id){
       const item=cleanupRecords.find(x=>x.id===id);
       if(!item) return;
       const name=cleanupSnapshotName(item.record)||'Unknown';
       const ok=confirm(`${name}의 ${item.label} 기록 1건을 영구 삭제합니다.\nThis permanently deletes this orphaned record.\n\n계속하시겠습니까? | Continue?`);
       if(!ok) return;
-      await db.ref(`${item.path}/${item.key}`).remove();
-      toast('기록이 삭제되었습니다. | Record deleted.','ok');
+      const target=`${item.path}/${item.key}`;
+      const updates={[target]:null};
+      attachAdminCenterAudit(updates,buildAdminCenterDeleteAudit('admin-center-cleanup-individual',[target],{
+        collection:item.path,
+        recordKey:item.key,
+        studentKeys:item.studentKey?[item.studentKey]:[],
+        note:`Data Cleanup individual delete: ${name} · ${item.label}`,
+        before:item.record||null
+      }));
+      await db.ref().update(updates);
+      toast('기록이 삭제되었고 감사 로그에 기록되었습니다. | Record deleted and audit logged.','ok');
       await loadDataCleanup();
     }
 
@@ -2476,9 +2534,19 @@
       const ok=confirm(`현재 학생과 일치하는 후보를 찾을 수 없는 기록 ${count}건만 영구 삭제합니다.\n가능한 학생 일치 항목(Possible Match)은 삭제하지 않습니다.\n\nThis permanently deletes only ${count} unknown record(s) with no possible current-student match.\nPossible Match records will be kept.\n\n이 작업은 되돌릴 수 없습니다. | This cannot be undone.\n계속하시겠습니까? | Continue?`);
       if(!ok) return;
       const updates={};
-      unknownRecords.forEach(item=>{updates[`${item.path}/${item.key}`]=null;});
+      const targets=[];
+      unknownRecords.forEach(item=>{
+        const target=`${item.path}/${item.key}`;
+        updates[target]=null;
+        targets.push(target);
+      });
+      attachAdminCenterAudit(updates,buildAdminCenterDeleteAudit('admin-center-cleanup-unknown',targets,{
+        recordKey:`cleanup-unknown-${Date.now()}`,
+        studentKeys:Array.from(new Set(unknownRecords.map(item=>item.studentKey).filter(Boolean))),
+        note:'Data Cleanup: Cleanup Unknown'
+      }));
       await db.ref().update(updates);
-      toast(`${count}건의 미확인 기록을 정리했습니다. | Cleaned up ${count} unknown records.`,'ok');
+      toast(`${count}건의 미확인 기록을 정리했고 감사 로그에 기록했습니다. | Cleaned up ${count} unknown records and audit logged.`,'ok');
       await loadDataCleanup();
     }
 
@@ -2489,9 +2557,19 @@
       const ok=confirm(`현재 학생 명단과 연결되지 않은 기록 ${count}건을 모두 영구 삭제합니다.${possible?`\n이 중 ${possible}건은 현재 학생과 일치할 가능성이 있습니다.`:''}\n\nThis permanently deletes all ${count} records shown in Data Cleanup.${possible?`\n${possible} record(s) have possible current-student matches.`:''}\n\n이 작업은 되돌릴 수 없습니다. | This cannot be undone.\n계속하시겠습니까? | Continue?`);
       if(!ok) return;
       const updates={};
-      cleanupRecords.forEach(item=>{updates[`${item.path}/${item.key}`]=null;});
+      const targets=[];
+      cleanupRecords.forEach(item=>{
+        const target=`${item.path}/${item.key}`;
+        updates[target]=null;
+        targets.push(target);
+      });
+      attachAdminCenterAudit(updates,buildAdminCenterDeleteAudit('admin-center-cleanup-all',targets,{
+        recordKey:`cleanup-all-${Date.now()}`,
+        studentKeys:Array.from(new Set(cleanupRecords.map(item=>item.studentKey).filter(Boolean))),
+        note:`Data Cleanup: Cleanup All (${possible} possible match record(s) included)`
+      }));
       await db.ref().update(updates);
-      toast(`${count}건의 기록을 정리했습니다. | Cleaned up ${count} records.`,'ok');
+      toast(`${count}건의 기록을 정리했고 감사 로그에 기록했습니다. | Cleaned up ${count} records and audit logged.`,'ok');
       await loadDataCleanup();
     }
 
@@ -2574,13 +2652,27 @@
         });
 
         let cascadeResult={updates:{},counts:{students:0,entries:0,legacyEntries:0,notices:0,recovery:0,committee:0,states:0}};
+        let cascadeDeletedStudents=[];
         if(removes.length){
-          const names=studentRows.filter(r=>r._delete&&r.oldKey).map(r=>`${r.className||''} ${r.name||r.oldKey}`.trim()).join(', ');
+          cascadeDeletedStudents=studentRows.filter(r=>r._delete&&r.oldKey).map(r=>({
+            studentKey:String(r.oldKey||''),
+            name:String(r.name||''),
+            className:String(r.className||'')
+          }));
+          const names=cascadeDeletedStudents.map(r=>`${r.className||''} ${r.name||r.studentKey}`.trim()).join(', ');
           const ok=confirm(`학생 ${removes.length}명을 완전히 삭제합니다.\n${names}\n\n학생 명단뿐 아니라 해당 학생의 디텐션, 알림, 회복교육, 위원회, 상태 기록도 함께 삭제됩니다.\nThis permanently deletes the roster entry and all related detention, notice, recovery, committee, and status records.\n\n계속하시겠습니까? | Continue?`);
           if(!ok) return toast('학생 삭제가 취소되었습니다. | Student deletion cancelled.', 'ok');
           cascadeResult=await buildStudentCascadeDeleteUpdates(removes);
         }
         const finalUpdates=Object.assign({},updates,cascadeResult.updates);
+        if(removes.length){
+          const cascadeTargets=Object.keys(cascadeResult.updates).filter(path=>cascadeResult.updates[path]===null);
+          attachAdminCenterAudit(finalUpdates,buildAdminCenterDeleteAudit('admin-center-student-cascade-delete',cascadeTargets,{
+            recordKey:`student-cascade-${Date.now()}`,
+            studentKeys:removes,
+            note:`Student cascade delete: ${cascadeDeletedStudents.map(r=>`${r.className} ${r.name} (${r.studentKey})`).join(', ')}`
+          }));
+        }
         if(Object.keys(finalUpdates).length) await db.ref().update(finalUpdates);
         const c=cascadeResult.counts;
         const deletedSummary=removes.length?`\n삭제: 학생 ${c.students}, 디텐션 ${c.entries+c.legacyEntries}, 알림 ${c.notices}, 회복교육 ${c.recovery}, 위원회 ${c.committee}, 상태 ${c.states}`:'';

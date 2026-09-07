@@ -755,7 +755,25 @@
     .admin-editor-actions,.committee-editor-actions,.student-bulk-actions,.admin-center-actions{min-width:0;flex-wrap:wrap;gap:5px;}
     .admin-editor-actions .btn,.committee-editor-actions .btn,.student-bulk-actions .btn{white-space:normal;overflow-wrap:anywhere;}
 
-</style>
+
+    /* Read-only Admin Audit Log */
+    #panel-audit .audit-toolbar{display:grid;grid-template-columns:minmax(280px,1fr) 170px 190px auto;gap:8px;margin-bottom:10px}
+    #panel-audit .audit-summary{font-size:11px;color:#64748b;font-weight:700;margin:0 0 8px}
+    #panel-audit table{min-width:1120px}
+    #panel-audit td{height:32px;line-height:1.2;padding-top:4px;padding-bottom:4px}
+    #panel-audit .audit-main{font-weight:700;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #panel-audit .audit-sub{font-size:10px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+    #panel-audit .audit-action{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;background:#eef2ff;color:#3730a3}
+    #panel-audit .audit-action.delete{background:#fff1f2;color:#be123c}
+    #panel-audit .audit-action.update{background:#eff6ff;color:#1d4ed8}
+    #panel-audit .audit-action.create{background:#ecfdf5;color:#047857}
+    #panel-audit .audit-action.backfill{background:#fffbeb;color:#b45309}
+    #audit-detail{margin-top:10px;border:1px solid #dbe3ef;border-radius:6px;background:#f8fafc;padding:10px;display:none}
+    #audit-detail .audit-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+    #audit-detail pre{margin:0;max-height:360px;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:9px;font-size:10px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+    @media(max-width:900px){#panel-audit .audit-toolbar{grid-template-columns:1fr 1fr}#panel-audit .audit-toolbar .audit-search{grid-column:1/-1}}
+
+  </style>
 </head>
 <body>
   <div id="toast"></div>
@@ -789,6 +807,7 @@
       <button class="subtab-btn" data-panel="notices">알림 기록 | Notices</button>
       <button class="subtab-btn" data-panel="recovery">회복교육 기록 | Recovery</button>
       <button class="subtab-btn" data-panel="committee">위원회 기록 | Committee</button>
+      <button class="subtab-btn" data-panel="audit">감사 로그 | Audit Log</button>
     </div>
 
     <!-- Student Data Search -->
@@ -1010,6 +1029,23 @@
         </div>
       </div>
     </div>
+
+    <!-- Audit Log -->
+    <div id="panel-audit" class="panel">
+      <div class="card">
+        <div class="card-title"><span>감사 로그 | Audit Log</span><span style="font-size:11px;color:#64748b;font-weight:500;">읽기 전용 | Read Only</span></div>
+        <div class="notice">관리자 DB 수정, 삭제, Cleanup, 학생 완전 삭제 등 감사 로그가 기록된 작업을 확인합니다. 최근 기록부터 표시됩니다.<br>Review recorded administrative changes and destructive actions. Newest records appear first.</div>
+        <div class="audit-toolbar">
+          <input id="audit-search" class="edit-input audit-search" placeholder="사용자, 이메일, 학생 Key, DB Key, 메모 검색 | Search user, email, student key, DB key, note" oninput="renderAuditLog()">
+          <select id="audit-action-filter" class="edit-input" onchange="renderAuditLog()"><option value="">전체 작업 | All Actions</option><option value="delete">삭제 | Delete</option><option value="update">수정 | Update</option><option value="create">생성 | Create</option><option value="backfill">일괄 보완 | Backfill</option></select>
+          <select id="audit-source-filter" class="edit-input" onchange="renderAuditLog()"><option value="">전체 출처 | All Sources</option></select>
+          <button class="btn btn-secondary" onclick="clearAuditFilters()">필터 초기화 | Reset</button>
+        </div>
+        <div id="audit-summary" class="audit-summary">감사 로그를 불러오는 중입니다. | Loading audit logs...</div>
+        <div class="tbl-wrap"><table><thead><tr><th style="width:145px">시간 | Time</th><th style="width:190px">사용자 | User</th><th style="width:95px">작업 | Action</th><th style="width:210px">출처 | Source</th><th style="width:160px">컬렉션 | Collection</th><th>기록 / 대상 | Record / Target</th></tr></thead><tbody id="audit-tbody"><tr><td colspan="6">불러오는 중... | Loading...</td></tr></tbody></table></div>
+        <div id="audit-detail"></div>
+      </div>
+    </div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -1035,6 +1071,8 @@
     let cycleRows = [];
     let studentRows = [];
     let adminTeacherRows = [];
+    let auditRows = [];
+    let selectedAuditKey = '';
     let studentDataLastQuery = '';
     let _entrySnap = '', _noticeSnap = '', _recoverySnap = '';
     let _entryOrig = {}, _noticeOrig = {}, _recoveryOrig = {}, _committeeOrig = {};
@@ -1767,12 +1805,16 @@
     }
 
     function openPanel(name){
+      const valid=['entries','student-data','notices','recovery','committee','audit'];
+      const target=valid.includes(String(name||''))?String(name):'entries';
       document.querySelectorAll('.subtab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.panel === name);
+        btn.classList.toggle('active', btn.dataset.panel === target);
       });
       document.querySelectorAll('.panel').forEach(panel => {
-        panel.classList.toggle('active', panel.id === 'panel-' + name);
+        panel.classList.toggle('active', panel.id === 'panel-' + target);
       });
+      history.replaceState(null,'','#'+target);
+      if(target==='audit') renderAuditLog();
     }
 
     document.addEventListener('click', (e) => {
@@ -1780,6 +1822,8 @@
       if (!btn) return;
       openPanel(btn.dataset.panel);
     });
+    window.addEventListener('hashchange',()=>openPanel((location.hash||'#entries').slice(1)));
+    if(location.hash) setTimeout(()=>openPanel(location.hash.slice(1)),0);
 
     // ── 컬럼 리사이즈 ──
     let _resizeState = null;
@@ -1938,16 +1982,66 @@
       }
     }
 
+
+    function auditEsc(value){ return esc(String(value===null||value===undefined?'':value)); }
+    function auditTimeText(value){
+      const raw=String(value||'').trim();
+      if(!raw) return '-';
+      const dt=new Date(raw);
+      return Number.isNaN(dt.getTime()) ? raw : dt.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    }
+    function auditSearchText(row){
+      return [row.key,row.timestamp,row.action,row.collection,row.recordKey,row.source,row.actorName,row.actorEmail,row.note,
+        Array.isArray(row.studentKeys)?row.studentKeys.join(' '):row.studentKeys,
+        Array.isArray(row.deletedTargets)?row.deletedTargets.join(' '):row.deletedTargets,
+        row.targetCount,row.collectionCounts?JSON.stringify(row.collectionCounts):'',row.changedFields?JSON.stringify(row.changedFields):''
+      ].map(v=>String(v||'').toLowerCase()).join(' ');
+    }
+    function populateAuditSourceFilter(){
+      const select=document.getElementById('audit-source-filter'); if(!select) return;
+      const current=select.value;
+      const sources=Array.from(new Set((auditRows||[]).map(r=>String(r.source||'').trim()).filter(Boolean))).sort();
+      select.innerHTML='<option value="">전체 출처 | All Sources</option>'+sources.map(source=>`<option value="${auditEsc(source)}">${auditEsc(source)}</option>`).join('');
+      if(sources.includes(current)) select.value=current;
+    }
+    function clearAuditFilters(){
+      const q=document.getElementById('audit-search'),a=document.getElementById('audit-action-filter'),s=document.getElementById('audit-source-filter');
+      if(q)q.value='';if(a)a.value='';if(s)s.value='';selectedAuditKey='';
+      const detail=document.getElementById('audit-detail');if(detail)detail.style.display='none';renderAuditLog();
+    }
+    function renderAuditLog(){
+      const tbody=document.getElementById('audit-tbody'); if(!tbody) return;
+      const q=String(document.getElementById('audit-search')?.value||'').trim().toLowerCase();
+      const action=String(document.getElementById('audit-action-filter')?.value||'').trim().toLowerCase();
+      const source=String(document.getElementById('audit-source-filter')?.value||'').trim();
+      const rows=(auditRows||[]).filter(row=>(!action||String(row.action||'').toLowerCase()===action)&&(!source||String(row.source||'')===source)&&(!q||auditSearchText(row).includes(q)));
+      const summary=document.getElementById('audit-summary');if(summary)summary.textContent=`${rows.length} / ${(auditRows||[]).length} logs`;
+      if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#64748b;padding:18px">표시할 감사 로그가 없습니다. | No audit logs found.</td></tr>';return;}
+      tbody.innerHTML=rows.map(row=>{
+        const actionText=String(row.action||'-'),actionClass=['delete','update','create','backfill'].includes(actionText.toLowerCase())?actionText.toLowerCase():'';
+        const actorMain=row.actorName||row.actorEmail||'-',actorSub=row.actorEmail&&row.actorEmail!==row.actorName?row.actorEmail:'';
+        const targetCount=Number(row.targetCount||0),targetMain=row.recordKey||row.key||'-';
+        const targetSub=targetCount?`${targetCount} target(s)`:((row.studentKeys&&row.studentKeys.length)?row.studentKeys.join(', '):'');
+        return `<tr style="cursor:pointer" onclick="selectAuditLog('${auditEsc(row.key)}')"><td><div class="audit-main">${auditEsc(auditTimeText(row.timestamp))}</div></td><td><div class="audit-main">${auditEsc(actorMain)}</div>${actorSub?`<div class="audit-sub">${auditEsc(actorSub)}</div>`:''}</td><td><span class="audit-action ${auditEsc(actionClass)}">${auditEsc(actionText)}</span></td><td><div class="audit-main">${auditEsc(row.source||'-')}</div></td><td><div class="audit-main">${auditEsc(row.collection||'-')}</div></td><td><div class="audit-main">${auditEsc(targetMain)}</div>${targetSub?`<div class="audit-sub">${auditEsc(targetSub)}</div>`:''}</td></tr>`;
+      }).join('');
+    }
+    function selectAuditLog(key){
+      selectedAuditKey=String(key||'');const row=(auditRows||[]).find(r=>String(r.key)===selectedAuditKey);const detail=document.getElementById('audit-detail');if(!row||!detail)return;
+      detail.style.display='block';
+      detail.innerHTML=`<div class="audit-detail-head"><div><b>${auditEsc(row.action||'Audit')}</b> · ${auditEsc(row.source||'-')}<div class="audit-sub">${auditEsc(auditTimeText(row.timestamp))} · ${auditEsc(row.actorName||row.actorEmail||'-')}</div></div><button class="btn btn-secondary small-btn" onclick="document.getElementById('audit-detail').style.display='none'">닫기 | Close</button></div><pre>${auditEsc(JSON.stringify(row,null,2))}</pre>`;
+    }
+
     async function loadAllData(){
       try{
-        const [entriesSnap, noticesSnap, recoverySnap, committeeAdminSnap, cycleSnap, studentsSnap, teachersSnap] = await Promise.all([
+        const [entriesSnap, noticesSnap, recoverySnap, committeeAdminSnap, cycleSnap, studentsSnap, teachersSnap, auditSnap] = await Promise.all([
           db.ref('detentionEntries').once('value'),
           db.ref('detentionNotices').once('value'),
           db.ref('recoveryEntries').once('value'),
           db.ref('committeeRecords').once('value'),
           db.ref('studentCycleState').once('value'),
           db.ref('students').once('value'),
-          db.ref('teachers').once('value').catch(err => { console.warn('[teachers load failed]', err); return null; })
+          db.ref('teachers').once('value').catch(err => { console.warn('[teachers load failed]', err); return null; }),
+          db.ref('adminAuditLogs').once('value')
         ]);
 
         adminTeacherRows = Object.entries((teachersSnap && teachersSnap.val()) || {}).map(([key, value]) => ({
@@ -1981,6 +2075,8 @@
           key, ...(value || {})
         })).sort((a,b) => String(a.key || '').localeCompare(String(b.key || '')));
 
+        auditRows = Object.entries((auditSnap && auditSnap.val()) || {}).map(([key, value]) => ({key, ...(value || {})})).sort((a,b) => String(b.timestamp||'').localeCompare(String(a.timestamp||'')));
+
         _entryOrig=_origMap(entryRows);
         _noticeOrig=_origMap(noticeRows);
         _recoveryOrig=_origMap(recoveryRows);
@@ -2005,6 +2101,8 @@
         renderNoticeBulkAssignees();
         renderRecoveryTable();
         renderCommitteeTable();
+        populateAuditSourceFilter();
+        renderAuditLog();
         renderStudentIndex();
         renderStudentDataSearch(true);
         toast('데이터를 불러왔습니다. | Data loaded.', 'ok');

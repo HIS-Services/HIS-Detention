@@ -4661,11 +4661,13 @@
           const totalWeight = overall>=21?'800':'500';
           const bg = i%2===0?'#fff':'#f7faff';
           return `<tr style="background:${bg}">
-            <td style="overflow:hidden;white-space:nowrap">
-              <div style="display:flex;align-items:baseline;gap:6px;min-width:0">
-                <span style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}</span>
-                ${s.englishName ? `<span style="font-size:10.5px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName)}</span>` : ''}
-                ${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="color:#b45309;font-size:9.5px;white-space:nowrap">명단없음</span>' : ''}
+            <td style="overflow:hidden">
+              <div style="display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.15">
+                <div style="display:flex;align-items:center;gap:5px;min-width:0">
+                  <span style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}</span>
+                  ${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="color:#b45309;font-size:9px;white-space:nowrap">명단없음</span>' : ''}
+                </div>
+                ${s.englishName ? `<span style="font-size:10px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${esc(s.englishName)}</span>` : ''}
               </div>
             </td>
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
