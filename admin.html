@@ -1775,7 +1775,7 @@
       if(!visible.length){selectedStudentIndex=-1;tb.innerHTML='<tr><td colspan="3" class="empty">조건에 맞는 학생 데이터가 없습니다.</td></tr>';renderStudentDetail();return;}
       if(!visible.some(({idx})=>idx===selectedStudentIndex)){selectedStudentIndex=visible[0].idx;}
       tb.innerHTML=visible.map(({r,idx})=>`<tr class="admin-list-row ${idx===selectedStudentIndex?'selected':''}" onclick="selectStudent(${idx})">
-        <td><div class="student-name-line"><span class="admin-primary">${esc(r.name||'(이름 없음)')}</span>${r.englishName?` <span style="font-size:11px;color:var(--sb)">${esc(r.englishName)}</span>`:''}</div></td>
+        <td><div class="student-name-line" style="display:flex;flex-direction:column;line-height:1.15"><span class="admin-primary">${esc(r.name||'(이름 없음)')}</span>${r.englishName?`<span style="font-size:10px;color:var(--sb);margin-top:2px">${esc(r.englishName)}</span>`:''}</div></td>
         <td>${esc(r.className||'-')}</td><td>${studentEmailStatusHtml(r)}</td></tr>`).join('');
       renderStudentDetail();
     }
@@ -1789,7 +1789,7 @@
       label.textContent=issues.length?`확인 필요 ${issues.length}`:'이메일 정상';
       const issueText=issues.map(issue=>issue.label).join(', ');
       box.innerHTML=`
-       <div class="student-detail-identity"><div class="student-detail-name">${esc(r.name||'신규 학생')}${r.englishName?` <span style="font-weight:600">${esc(r.englishName)}</span>`:''} · ${esc(r.className||'학반 미지정')}</div><div class="student-detail-meta">${issues.length?`${esc(issueText)} · 이메일 정보 확인 필요`:'대표메일 정상 · 담임교사 연결됨 · 저장 상태 확인 가능'}</div></div>
+       <div class="student-detail-identity"><div class="student-detail-name"><span style="display:inline-flex;flex-direction:column;line-height:1.15;vertical-align:middle"><span>${esc(r.name||'신규 학생')}</span>${r.englishName?`<span style="font-size:11px;font-weight:600;color:var(--sb);margin-top:2px">${esc(r.englishName)}</span>`:''}</span> · ${esc(r.className||'학반 미지정')}</div><div class="student-detail-meta">${issues.length?`${esc(issueText)} · 이메일 정보 확인 필요`:'대표메일 정상 · 담임교사 연결됨 · 저장 상태 확인 가능'}</div></div>
        ${issues.length?`<div class="student-detail-warning">${esc(issueText)}. 알림 발송 전에 이메일 정보를 확인하세요. | Please verify email information before sending notices.</div>`:''}
        <div class="admin-form-section"><div class="admin-form-title">학생 정보 | Student</div><div class="admin-form-grid">
         <div><label class="label">학생 이름 | Name</label><input class="edit-input" value="${esc(r.name||'')}" oninput="updateStudentField(${selectedStudentIndex},'name',this.value)" onblur="renderStudents()"></div>

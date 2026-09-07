@@ -1289,6 +1289,14 @@
     .tbl-wrap td .btn,.tbl-wrap td button.btn{box-sizing:border-box;max-width:100%;}
     .btn-xs{padding:4px 6px !important;font-size:10.5px !important;line-height:1.15 !important;}
 
+
+/* Student names: Korean first line, English second line */
+.student-name-stack{display:inline-flex;flex-direction:column;min-width:0;line-height:1.12;vertical-align:middle;max-width:100%}
+.student-name-stack .student-name-ko{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.student-name-stack .student-name-en{font-size:10px;font-weight:500;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;margin-top:2px}
+.search-header-stack{display:flex;flex-direction:column;align-items:inherit;justify-content:center;line-height:1.08}
+.search-header-stack .header-en{font-size:9.5px;font-weight:600;color:var(--sb);margin-top:2px}
+
 </style>
 
 <style>
@@ -2615,6 +2623,7 @@
     }
 
     function sName(k,e){k=String(k||'').trim();e=String(e||'').trim();return e?k+' '+e:k;}
+    function studentNameLines(k,e){k=String(k||'').trim();e=String(e||'').trim();return '<span class="student-name-stack"><span class="student-name-ko">'+esc(k||'-')+'</span>'+(e?'<span class="student-name-en">'+esc(e)+'</span>':'')+'</span>'; }
     function findActiveNotice(sKey,lvl){const yr=getCurrentYear();const hit=Object.entries(noticeEntries||{}).filter(([,v])=>String(v.studentKey||'')===String(sKey)&&isRecordInLevel(v,lvl)&&!v.completedAt&&isCurrentYearRecord(v,yr)).sort((a,b)=>String(b[1].createdAt||'').localeCompare(String(a[1].createdAt||'')));return hit.length?{key:hit[0][0],notice:hit[0][1]}:null;}
     function findLatestCompletedNotice(sKey,lvl){const yr=getCurrentYear();const hit=Object.entries(noticeEntries||{}).filter(([,v])=>String(v.studentKey||'')===String(sKey)&&isRecordInLevel(v,lvl)&&!!v.completedAt&&isCurrentYearRecord(v,yr)).sort((a,b)=>String(b[1].completedAt||'').localeCompare(String(a[1].completedAt||'')));return hit.length?{key:hit[0][0],notice:hit[0][1]}:null;}
     function getViolationCount(sKey,vId){
@@ -4072,12 +4081,12 @@
       const rows=pageData.rows.map((r,rowIndex)=>{
         const expanded=expandedLookupDetentionKey===r.key;
         const stripeClass=rowIndex%2===0?'lookup-row-odd':'lookup-row-even';
-        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td class="nowrap">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')}</td><td><span class="cell-name cell-ellipsis">${esc(sName(r.studentName||'',r.englishName||''))}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis" title="${esc(r.violation||r.category||'-')}">${esc(r.violation||r.category||'-')}</span></td><td class="tc"><b>${esc(String(r.totalPoints??r.manualPoints??0))}</b></td><td><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></td><td><span class="cell-ellipsis" title="${esc(r.memo||'-')}">${esc(r.memo||'-')}</span></td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.confirmedBy||r.teacherName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('detention',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
+        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td class="nowrap">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')}</td><td><span class="cell-name cell-ellipsis">${studentNameLines(r.studentName||'',r.englishName||'')}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis" title="${esc(r.violation||r.category||'-')}">${esc(r.violation||r.category||'-')}</span></td><td class="tc"><b>${esc(String(r.totalPoints??r.manualPoints??0))}</b></td><td><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></td><td><span class="cell-ellipsis" title="${esc(r.memo||'-')}">${esc(r.memo||'-')}</span></td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.confirmedBy||r.teacherName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('detention',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
       }).join('');
       document.getElementById('all-records-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">검색 결과가 없습니다. | No records found.</td></tr>';
       document.getElementById('all-records-mobile').innerHTML=pageData.rows.map(r=>{
         const expanded=expandedLookupDetentionKey===r.key;
-        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${esc(sName(r.studentName||'',r.englishName||''))} · ${esc(r.className||'-')}</span><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></div><div class="lookup-mobile-card-body">${esc(r.violation||r.category||'-')}</div><div class="lookup-mobile-card-meta">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')} · ${esc(String(r.totalPoints??r.manualPoints??0))}점 · ${esc(r.teacherName||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('detention',r)}</div></div>`;
+        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${studentNameLines(r.studentName||'',r.englishName||'')} · ${esc(r.className||'-')}</span><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></div><div class="lookup-mobile-card-body">${esc(r.violation||r.category||'-')}</div><div class="lookup-mobile-card-meta">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')} · ${esc(String(r.totalPoints??r.manualPoints??0))}점 · ${esc(r.teacherName||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('detention',r)}</div></div>`;
       }).join('')||'<div class="empty">검색 결과가 없습니다. | No records found.</div>';
     }
     function recoveryState(r){ if(r.completedAt) return 'done'; if(r.startedAt||r.assignedAt||r.createdAt) return 'active'; return 'not_started'; }
@@ -4102,12 +4111,12 @@
       const rows=pageData.rows.map((r,rowIndex)=>{
         const expanded=expandedLookupRecoveryKey===r.key;
         const stripeClass=rowIndex%2===0?'lookup-row-odd':'lookup-row-even';
-        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td><span class="cell-name cell-ellipsis">${esc(sName(r.studentName,r.englishName))}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis">${esc(r.typeLabel||'디텐션 전환')}</span></td><td><span class="cell-ellipsis" title="${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</span></td><td>${esc(String(r.assignedAt||r.createdAt||'').slice(0,10)||'-')}</td><td><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></td><td>${esc(String(r.completedAt||'').slice(0,10)||'-')}</td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.staffName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('recovery',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
+        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td><span class="cell-name cell-ellipsis">${studentNameLines(r.studentName,r.englishName)}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis">${esc(r.typeLabel||'디텐션 전환')}</span></td><td><span class="cell-ellipsis" title="${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</span></td><td>${esc(String(r.assignedAt||r.createdAt||'').slice(0,10)||'-')}</td><td><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></td><td>${esc(String(r.completedAt||'').slice(0,10)||'-')}</td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.staffName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('recovery',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
       }).join('');
       document.getElementById('all-recovery-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">회복교육 기록이 없습니다. | No recovery records found.</td></tr>';
       document.getElementById('all-recovery-mobile').innerHTML=pageData.rows.map(r=>{
         const expanded=expandedLookupRecoveryKey===r.key;
-        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${esc(sName(r.studentName,r.englishName))} · ${esc(r.className||'-')}</span><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></div><div class="lookup-mobile-card-body">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</div><div class="lookup-mobile-card-meta">담당 | Staff ${esc(r.staffName||'-')} · 완료 | Completed ${esc(String(r.completedAt||'').slice(0,10)||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('recovery',r)}</div></div>`;
+        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${studentNameLines(r.studentName,r.englishName)} · ${esc(r.className||'-')}</span><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></div><div class="lookup-mobile-card-body">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</div><div class="lookup-mobile-card-meta">담당 | Staff ${esc(r.staffName||'-')} · 완료 | Completed ${esc(String(r.completedAt||'').slice(0,10)||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('recovery',r)}</div></div>`;
       }).join('')||'<div class="empty">회복교육 기록이 없습니다. | No recovery records found.</div>';
     }
 
@@ -4154,7 +4163,7 @@
           const canReject  = canManage && (String(r.status||'임시저장')==='임시저장'||String(r.status||'')==='확정');
           return `
             <tr class="summary-row" onclick="toggleConfirmRow('${esc(r.key)}')">
-              <td class="nowrap">${esc(sName(r.studentName||'',r.englishName||''))}</td>
+              <td class="nowrap">${studentNameLines(r.studentName||'',r.englishName||'')}</td>
               <td class="nowrap tc">${esc(r.className||'-')}</td>
               <td class="nowrap">${esc(r.category||'')}</td>
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
@@ -4205,7 +4214,7 @@
 
           return `
             <tr class="summary-row" onclick="toggleConfirmRow('${esc(r.key)}')">
-              <td class="nowrap">${esc(sName(r.studentName||'',r.englishName||''))}</td>
+              <td class="nowrap">${studentNameLines(r.studentName||'',r.englishName||'')}</td>
               <td class="nowrap tc">${esc(r.className||'-')}</td>
               <td class="nowrap">${esc(r.category||'')}</td>
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
@@ -4686,10 +4695,10 @@
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 6px;text-align:left;width:46%;white-space:nowrap">학생 | Student</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%;white-space:nowrap">잔여 | Rem.</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%;white-space:nowrap">누적 | Total</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%;white-space:nowrap">보기 | View</th>
+                <th style="font-size:11px;padding:4px 6px;text-align:left;width:46%"><span class="search-header-stack"><span>학생</span><span class="header-en">Student</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%"><span class="search-header-stack"><span>잔여</span><span class="header-en">Rem.</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:17%"><span class="search-header-stack"><span>누적</span><span class="header-en">Total</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>보기</span><span class="header-en">View</span></span></th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
@@ -5481,7 +5490,7 @@
       panel.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div>
-            <div style="font-size:17px;font-weight:800;color:var(--nv)">${esc(s.name||'')} <span style="font-weight:400;font-size:14px;color:var(--sb)">${esc(s.englishName||'')}</span></div>
+            <div style="font-size:17px;font-weight:800;color:var(--nv);line-height:1.15"><div>${esc(s.name||'')}</div>${s.englishName?`<div style="font-weight:500;font-size:12px;color:var(--sb);margin-top:3px">${esc(s.englishName)}</div>`:''}</div>
             <div style="font-size:12px;color:var(--sb);margin-top:2px">${esc(s.className||'')} · ${esc(s.selfEmail||'-')}</div>
             ${s.homeroomTeacherEmail?`<div style="font-size:11px;color:var(--sb)">담임: ${esc(s.homeroomTeacherEmail)}</div>`:''}
           </div>
@@ -5934,7 +5943,7 @@
           const expanded = expandedRecoveryKeys[level].has(s.key);
           return `
             <tr class="summary-row" onclick="toggleRecoveryRow('${level}','${esc(s.key)}')">
-              <td class="nowrap">${esc(sName(s.name,s.englishName))}</td>
+              <td class="nowrap">${studentNameLines(s.name,s.englishName)}</td>
               <td class="nowrap tc">${esc(s.className || '')}</td>
               <td class="nowrap tc">${s.currentTotal}</td>
               <td class="nowrap tc">${s.overallTotal}</td>
@@ -5996,7 +6005,7 @@
           const profile = getRecordStudentProfile(r);
           rows.push(
             '<tr class="summary-row" style="cursor:pointer;">'+
-            '<td class="nowrap">'+esc(sName(profile.name,profile.englishName))+'</td>'+
+            '<td class="nowrap">'+studentNameLines(profile.name,profile.englishName)+'</td>'+
             '<td class="nowrap">'+esc(profile.className||'')+'</td>'+
             '<td><span class="cell-reason-preview">'+esc(reasonPreview)+'</span></td>'+
             '<td class="nowrap tc">-'+esc(String(r.recoveryPoints||0))+'</td>'+
