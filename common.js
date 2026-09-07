@@ -453,6 +453,22 @@ function readFileText(file, enc = 'utf-8') {
     } else if (currentPoints > 0) {
       phase = 'residual';
     }
+
+    const committeeStatus = hasPendingCommittee ? 'pending' : (needsCommittee ? 'eligible' : 'none');
+    const state = {
+      phase,
+      cyclePoints: currentPoints,
+      overallPoints: yearRawPoints,
+      currentPoints,
+      yearRawPoints,
+      recoveryPoints: recoveredTotal,
+      currentYear: curYear,
+      committeeStatus,
+      committeeThreshold: 12,
+      updatedAt: new Date().toISOString(),
+      updatedBy: options.updatedBy || 'system_recalculate'
+    };
+
     return {
       state,
       meta: {
