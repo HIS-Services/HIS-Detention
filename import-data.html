@@ -9,10 +9,10 @@
 body{font-family:'Noto Sans KR',sans-serif;background:#eef1f9;color:#111827;font-size:14px}
 .topbar{background:linear-gradient(120deg,#0f1f5c,#1b2f7a);padding:12px 16px;display:flex;align-items:center;gap:12px;color:#fff}
 .topbar h1{font-size:16px;font-weight:800}
-.content{max-width:1100px;margin:0 auto;padding:16px}
+.content{max-width:1580px;width:calc(100% - 28px);margin:0 auto;padding:16px}
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 8px rgba(15,31,92,.06)}
 .card-title{font-size:15px;font-weight:800;color:#0f1f5c;margin-bottom:12px}
-.btn{padding:8px 14px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:13px}
+.btn{padding:8px 13px;min-height:36px;line-height:1.25;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap}
 .btn-primary{background:linear-gradient(135deg,#0f1f5c,#1b2f7a);color:#fff}
 .btn-secondary{background:#e9edf5;color:#111827}
 .btn-danger{background:#dc2626;color:#fff}
@@ -41,6 +41,32 @@ tr:hover td{background:#edf3ff}
 .prog-bar{background:linear-gradient(135deg,#0f1f5c,#1b2f7a);height:100%;width:0;transition:.2s;border-radius:999px}
 .log{background:#f8f9fc;border:1px solid #d8dded;border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;font-size:11px;font-family:monospace;color:#374151}
 .notice{padding:10px 12px;border-radius:8px;background:#fffbeb;border:1px solid #fcd34d;color:#6b4f10;font-size:13px;margin-bottom:10px}
+@media(max-width:768px){.content{width:100%}}
+
+    /* 2026-08 bilingual control fit pass */
+    .admin-center-actions, .settings-action-row, .teacher-account-actions, .filter-bar{flex-wrap:wrap;}
+    .admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{white-space:nowrap;min-width:max-content;}
+    @media(max-width:760px){.admin-center-actions .btn, .teacher-account-actions .btn, .filter-bar .btn, button.small-btn{min-width:0;white-space:normal;}}
+
+  
+    /* 2026-08 balanced bilingual density pass */
+    .admin-center-actions,.settings-action-row,.filter-bar,.inline-actions{gap:6px}
+    .admin-center-nav{gap:4px}
+    .admin-center-nav a{padding-top:7px;padding-bottom:7px}
+    .settings-grid{gap:10px}
+    .settings-section{padding:10px 12px}
+    .admin-form-section{margin-bottom:10px}
+
+  
+    /* 2026-09 bilingual button fit */
+    .admin-center-actions .btn,.teacher-account-actions .btn,.filter-bar .btn,button.small-btn{min-width:0 !important;max-width:100%;}
+    .btn{padding:7px 10px;font-size:12px;line-height:1.15;box-sizing:border-box;}
+
+
+    /* 2026-09 shared table alignment */
+    table th, table td{vertical-align:middle;}
+    .student-name-stack{justify-content:center;text-align:left;}
+
 </style>
 </head>
 <body>
@@ -76,7 +102,7 @@ tr:hover td{background:#edf3ff}
     <div class="stats" id="statsGrid"></div>
 
     <div class="row">
-      <button class="btn btn-secondary" onclick="showMapping()">컬럼 매핑 보기</button>
+      <button class="btn btn-secondary" onclick="showMapping()">컬럼 매핑 보기 | View Column Mapping</button>
       <span id="mapNote" style="font-size:12px;color:#5b6888"></span>
     </div>
 
@@ -89,7 +115,7 @@ tr:hover td{background:#edf3ff}
 
     <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
       <button class="btn btn-primary" id="importBtn" onclick="startImport()">Firebase에 업로드 시작</button>
-      <button class="btn btn-secondary" onclick="resetAll()">다시 선택</button>
+      <button class="btn btn-secondary" onclick="resetAll()">다시 선택 | Choose Again</button>
       <span id="importNote" style="font-size:12px;color:#5b6888"></span>
     </div>
   </div>

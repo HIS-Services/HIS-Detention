@@ -20,11 +20,49 @@ window.db = db;
 const firebaseAuth = (typeof firebase.auth === 'function') ? firebase.auth() : null;
 window.firebaseAuth = firebaseAuth;
 let _firebaseAuthPromise = null;
+let _firebaseAuthStatePromise = null;
+
+// HIS uses browser-session authentication:
+// - refresh/navigation in the same browser session stays signed in
+// - Firebase auth persistence is cleared when the browser session ends
+// - explicit HIS Logout also signs Firebase out immediately
+const _firebaseSessionPersistencePromise = firebaseAuth
+  ? firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => {
+      console.error('Firebase session persistence setup failed:', err);
+      throw err;
+    })
+  : Promise.reject(new Error('Firebase Auth SDK가 로드되지 않았습니다.'));
+
+window.firebaseSessionPersistenceReady = _firebaseSessionPersistencePromise;
+
+async function waitForFirebaseAuthState() {
+  if (!firebaseAuth) return null;
+  try {
+    await _firebaseSessionPersistencePromise;
+  } catch (_) {
+    return null;
+  }
+  if (_firebaseAuthStatePromise) return _firebaseAuthStatePromise;
+  _firebaseAuthStatePromise = new Promise((resolve) => {
+    let unsubscribe = null;
+    unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
+      resolve(user && !user.isAnonymous ? user : null);
+    }, err => {
+      console.error('Firebase auth state restore failed:', err);
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
+      resolve(null);
+    });
+  });
+  return _firebaseAuthStatePromise;
+}
+window.waitForFirebaseAuthState = waitForFirebaseAuthState;
 
 async function ensureFirebaseAuth() {
   if (!firebaseAuth) {
     throw new Error('Firebase Auth SDK가 로드되지 않았습니다. firebase-auth-compat.js를 확인하세요.');
   }
+  await _firebaseSessionPersistencePromise;
   if (firebaseAuth.currentUser && !firebaseAuth.currentUser.isAnonymous) return firebaseAuth.currentUser;
   if (_firebaseAuthPromise) return _firebaseAuthPromise;
 
@@ -37,9 +75,10 @@ async function ensureFirebaseAuth() {
       reject(new Error('학교 Google 로그인이 필요합니다.'));
     };
 
-    const unsubscribe = firebaseAuth.onAuthStateChanged(user => {
+    let unsubscribe = null;
+    unsubscribe = firebaseAuth.onAuthStateChanged(user => {
       if (settled) return;
-      try { unsubscribe(); } catch (_) {}
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
       if (user && !user.isAnonymous) {
         settled = true;
         resolve(user);
@@ -48,7 +87,7 @@ async function ensureFirebaseAuth() {
       finishReject();
     }, err => {
       console.error('Firebase auth state failed:', err);
-      try { unsubscribe(); } catch (_) {}
+      try { if (unsubscribe) unsubscribe(); } catch (_) {}
       finishReject();
     });
   });
@@ -301,13 +340,19 @@ function readFileText(file, enc = 'utf-8') {
     const yearRawPoints = confirmedEntries.reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0);
 
     // 현재 학년도 + 같은 학년군의 회복교육 차감점수입니다.
-    const recoveredTotal = hisValues(recovery)
+    const studentRecoveryArr = hisValues(recovery)
       .filter(r =>
         String((r || {}).studentKey || '') === sk &&
         hisRecordLevel(r, lv) === lv &&
         hisIsCurrentYearRecord(r, curYear)
-      )
+      );
+    const recoveredTotal = studentRecoveryArr
       .reduce((sum, r) => sum + Number((r || {}).recoveryPoints || 0), 0);
+    const latestRecoveryCompletedAt = studentRecoveryArr
+      .map(r => String((r || {}).completedAt || ''))
+      .filter(Boolean)
+      .sort()
+      .pop() || '';
 
     const currentPoints = Math.max(0, yearRawPoints - recoveredTotal);
 
@@ -350,40 +395,64 @@ function readFileText(file, enc = 'utf-8') {
     const hasPendingCommittee = !!pendingCommitteeEntry;
     const needsCommittee = currentPoints >= 12 && !hasPendingCommittee && !committeeCoversLatestEntry;
 
+    // Notice-cycle baseline:
+    // An active Notice absorbs additional detention points until completion.
+    // One completed Notice creates exactly one Recovery obligation.
+    // A later Notice is due only after 3+ NEW raw points accumulate after the
+    // previous Notice completion baseline. Recovery deduction remains manual.
+    const noticeRecordsThisYear = hisEntries(notices)
+      .filter(([, v]) =>
+        String((v || {}).studentKey || '') === sk &&
+        hisRecordLevel(v, lv) === lv &&
+        hisIsCurrentYearRecord(v, curYear)
+      );
+    const completedNoticeRows = noticeRecordsThisYear
+      .filter(([, v]) => !!(v || {}).completedAt)
+      .sort((a, b) => String((a[1] || {}).completedAt || '').localeCompare(String((b[1] || {}).completedAt || '')));
+    const completedNoticeCount = completedNoticeRows.length;
+    const activeNoticeCount = noticeRecordsThisYear.filter(([, v]) => !(v || {}).completedAt).length;
+
+    const lastCompletedNoticeRow = completedNoticeRows.length ? completedNoticeRows[completedNoticeRows.length - 1] : null;
+    const lastCompletedNoticeRecord = lastCompletedNoticeRow ? (lastCompletedNoticeRow[1] || {}) : null;
+    const lastNoticeCompletedAt = lastCompletedNoticeRecord ? String(lastCompletedNoticeRecord.completedAt || '') : '';
+    const reconstructedNoticeBaseline = lastNoticeCompletedAt
+      ? confirmedEntries
+          .filter(([, r]) => hisLatestEntryDate(r) <= lastNoticeCompletedAt)
+          .reduce((sum, [, r]) => sum + Number((r || {}).totalPoints || 0), 0)
+      : 0;
+    const lastNoticeRawPointBaseline = lastCompletedNoticeRecord
+      ? Number(lastCompletedNoticeRecord.rawPointsAtCompletion ?? reconstructedNoticeBaseline)
+      : 0;
+    const newRawPointsSinceLastNotice = Math.max(0, yearRawPoints - lastNoticeRawPointBaseline);
+
+    const noticeDue = !activeNotice && (
+      completedNoticeCount === 0 ? yearRawPoints >= 3 : newRawPointsSinceLastNotice >= 3
+    );
+
+    const completedRecoveryCount = studentRecoveryArr.filter(r => !!(r || {}).completedAt).length;
+    const noticeRecoveryPendingCount = Math.max(0, completedNoticeCount - completedRecoveryCount);
+    const committeeRecoveryPending = !!latestCommitteeCompletedAt &&
+      currentPoints >= 3 &&
+      (!latestRecoveryCompletedAt || latestRecoveryCompletedAt < latestCommitteeCompletedAt);
+    const recoveryPendingCount = noticeRecoveryPendingCount + (committeeRecoveryPending ? 1 : 0);
+    const recoveryPending = recoveryPendingCount > 0 && currentPoints > 0;
+
+    const latestRecoveryBaselineAt = [lastNoticeCompletedAt, latestCommitteeCompletedAt].filter(Boolean).sort().pop() || '';
+
     let phase = 'clean';
     if (hasPendingCommittee) {
       phase = 'committee_pending';
-    } else if (committeeCoversLatestEntry && currentPoints >= 3) {
-      // 위원회 완료 후에는 같은 위반 묶음을 다시 알림으로 보내지 않고 회복교육 단계로 보냅니다.
-      phase = 'in_recovery';
     } else if (activeNotice) {
       phase = (activeNotice.notice.parentMailAt || activeNotice.notice.studentTeacherMailAt) ? 'notice_active' : 'notice_needed';
-    } else if (lastCompletedNotice && currentPoints >= 3) {
-      const latestEntryAt = confirmedEntries.length ? hisLatestEntryDate(confirmedEntries[0][1]) : '';
-      const lastNoticeAt = String(lastCompletedNotice.notice.completedAt || '');
-      phase = latestEntryAt > lastNoticeAt ? 'notice_needed' : 'in_recovery';
-    } else if (lastCompletedNotice && currentPoints > 0) {
-      phase = 'residual';
-    } else if (currentPoints >= 3) {
+    } else if (noticeDue) {
       phase = 'notice_needed';
+    } else if (recoveryPending) {
+      phase = 'in_recovery';
+    } else if (committeeCoversLatestEntry && currentPoints >= 3) {
+      phase = 'in_recovery';
+    } else if (currentPoints > 0) {
+      phase = 'residual';
     }
-
-    const committeeStatus = hasPendingCommittee ? 'pending' : (needsCommittee ? 'eligible' : 'none');
-
-    const state = {
-      phase,
-      cyclePoints: currentPoints,
-      overallPoints: yearRawPoints,
-      currentPoints,
-      yearRawPoints,
-      recoveryPoints: recoveredTotal,
-      currentYear: curYear,
-      committeeStatus,
-      committeeThreshold: 12,
-      updatedAt: new Date().toISOString(),
-      updatedBy: options.updatedBy || 'system_recalculate'
-    };
-
     return {
       state,
       meta: {
@@ -395,6 +464,16 @@ function readFileText(file, enc = 'utf-8') {
         needsCommittee,
         latestCommitteeCompletedAt,
         committeeCoversLatestEntry,
+        latestRecoveryCompletedAt,
+        latestRecoveryBaselineAt,
+        completedRecoveryCount,
+        completedNoticeCount,
+        activeNoticeCount,
+      lastNoticeRawPointBaseline,
+      newRawPointsSinceLastNotice,
+        noticeDue,
+        recoveryPendingCount,
+        recoveryPending,
         // 구버전 호출부 호환용 별칭
         hasActiveReferral: false,
         hasManualReferralPending: hasPendingCommittee,

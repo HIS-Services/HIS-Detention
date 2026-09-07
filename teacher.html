@@ -147,13 +147,14 @@
     .recent-entry-datetime{font-size:12px;color:var(--sb);line-height:1.4}
     .recent-empty{border:1px dashed var(--bd);border-radius:12px;padding:18px 12px;text-align:center;font-size:13px;color:var(--sb);background:#fff}
 
-    .status-confirmed,.status-pending,.status-rejected{
+    .status-confirmed,.status-pending,.status-rejected,.status-cancelled{
       padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
       display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1.2;min-width:96px
     }
     .status-confirmed{background:#e8f8ee;color:#15803D}
     .status-pending{background:#eef3ff;color:#1B2F7A}
     .status-rejected{background:#fde8e8;color:#DC2626}
+    .status-cancelled{background:#eef1f5;color:#596579}
 
     .tbl-wrap table{width:100%;border-collapse:separate;border-spacing:0}
     .tbl-wrap th,.tbl-wrap td{font-size:12px;padding:7px 8px;vertical-align:top;line-height:1.35}
@@ -392,7 +393,9 @@
     .points-note{grid-column:1/-1;margin-top:-4px;padding:7px 9px;border-radius:8px;background:#f7f9fc;color:var(--sb);font-size:11px;line-height:1.45}
     @media(max-width:980px){.teacher-nav-groups{grid-template-columns:1fr}.teacher-user-main span{max-width:140px}}
       .committee-readonly-control:disabled{opacity:.55;cursor:not-allowed;background:#f3f5f9;color:#64748b;}
-    .committee-action-group{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;}
+    .committee-action-group{display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%;}
+    #discipline-active-tbody td:last-child{padding-left:6px !important;padding-right:6px !important;overflow:visible !important;}
+    #discipline-active-tbody .committee-action-btn{min-width:118px;max-width:100%;white-space:normal;line-height:1.15;padding:5px 7px;}
     .btn-exception{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
     .btn-exception:hover:not(:disabled){background:#ffedd5;}
   
@@ -803,7 +806,524 @@
       .standard-points{font-size:12px}
     }
 
+
+/* Bilingual layout spacing: gives Korean + English labels room without making the UI oversized. */
+    .teacher-shell{max-width:1580px;margin:0 auto;padding:0 4px}
+    .teacher-actions{gap:8px;row-gap:7px}
+    .teacher-actions .btn,.teacher-actions a.btn{min-height:34px;padding:6px 12px!important;display:inline-flex;align-items:center;justify-content:center;line-height:1.2}
+    .teacher-top-stats{margin-right:2px}
+    .tab-btn,.lookup-search-btn,.btn-mail,.btn-xs{box-sizing:border-box}
+    @media(min-width:1100px){
+      .teacher-actions .btn,.teacher-actions a.btn{font-size:12px!important}
+    }
+    @media(max-width:980px){
+      .teacher-shell{align-items:flex-start}
+      .teacher-actions{width:100%;justify-content:flex-start}
+    }
+
+    /* 2026-08 bilingual roster fit pass */
+    .student-overview-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      align-items:start;
+    }
+    .student-overview-grid > div{min-width:0;}
+    .student-overview-grid table{width:100%;table-layout:fixed;}
+    .student-overview-grid th,
+    .student-overview-grid td{overflow:hidden;}
+    .student-overview-grid th{
+      line-height:1.2;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      vertical-align:middle;
+    }
+    .student-overview-grid .student-view-btn{
+      min-width:66px;
+      padding:4px 5px;
+      font-size:10.5px;
+      line-height:1.2;
+      white-space:nowrap;
+      max-width:none;
+    }
+    #tab-students .filter-bar{
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    #tab-students .filter-bar .btn{min-width:max-content;}
+    .teacher-actions .btn,
+    .teacher-actions a.btn{
+      min-width:max-content;
+      padding-left:10px !important;
+      padding-right:10px !important;
+    }
+    .teacher-nav-buttons .tab-btn{
+      min-width:max-content;
+      white-space:nowrap;
+    }
+    .lookup-search-btn{
+      min-width:118px;
+      padding:0 14px;
+      white-space:nowrap;
+    }
+    @media(max-width:1180px){
+      .student-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media(max-width:760px){
+      .student-overview-grid{grid-template-columns:1fr;}
+      .student-overview-grid .student-view-btn{min-width:68px;}
+    }
+
+
+    /* 2026-08 balanced density + bilingual recovery pass */
+    .teacher-nav-groups{gap:6px;margin-bottom:7px}
+    .teacher-nav-group{padding:8px 9px}
+    .teacher-nav-buttons{gap:5px}
+    .teacher-nav-buttons .tab-btn{padding:7px 10px;font-size:13px}
+    .student-overview-grid{gap:10px}
+    #student-overview-view{padding:10px !important}
+    .student-overview-grid > div{border-radius:7px !important}
+    .student-overview-grid th{font-size:11.2px !important;padding:5px 5px !important}
+    .student-overview-grid td{font-size:12.5px !important;padding-top:5px !important;padding-bottom:5px !important}
+    .student-overview-grid td:nth-child(2){font-size:12px !important}
+    .student-overview-grid td:nth-child(3){font-size:13.5px !important}
+    .student-overview-grid .student-view-btn{min-width:66px;padding:4px 5px;font-size:10.8px}
+    .section-title-row{margin-top:8px;margin-bottom:6px}
+    .section-title-row.notice-divider{margin-top:12px}
+    .section-btn-group{gap:5px}
+    .btn-xs{padding:5px 8px;min-height:30px;font-size:11.5px}
+    .lookup-page-head{margin-bottom:8px}
+    .lookup-filter-card{padding:10px}
+    .lookup-result-head{margin-bottom:6px}
+    #tab-confirm .card{padding-top:9px}
+    #tab-confirm .notice{margin-bottom:8px}
+    #tab-confirm .edit-input{min-height:36px}
+    #tab-recovery-ms .card,#tab-recovery-hs .card{padding:10px 12px}
+    #tab-recovery-ms .notice,#tab-recovery-hs .notice{margin-bottom:7px}
+    #recovery-ms-active-tbody td:last-child,
+    #recovery-hs-active-tbody td:last-child{padding-left:8px !important;padding-right:8px !important;overflow:visible !important;}
+    #recovery-ms-active-tbody td:last-child .btn,
+    #recovery-hs-active-tbody td:last-child .btn{min-width:132px;white-space:nowrap;padding-left:10px !important;padding-right:10px !important;}
+    #tab-recovery-ms th,#tab-recovery-hs th{line-height:1.15;white-space:normal}
+    #tab-recovery-ms .th-en,#tab-recovery-hs .th-en{display:block;font-size:9.5px;font-weight:600;margin-top:1px;line-height:1.05}
+    .admin-note-input{font-size:12.5px}
+
+  
+    /* Compact Confirm/Reject controls without changing table/data behavior */
+    .confirm-action-compact{
+      padding:4px 7px !important;
+      min-height:26px !important;
+      font-size:11px !important;
+      line-height:1.1 !important;
+      white-space:nowrap;
+    }
+
+    /* Confirm > Pending: aligned columns with Action controls given priority */
+    #confirm-pending-tbody{ }
+    table:has(#confirm-pending-tbody){
+      width:100%;
+      table-layout:fixed;
+    }
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-pending-tbody) td{
+      box-sizing:border-box;
+      vertical-align:middle;
+    }
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:12%;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:6%;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9%;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:22%;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:5%;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:8%;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:9%;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){width:13%;}
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:16%;}
+
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(6){
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell{
+      overflow:visible;
+      padding-left:3px;
+      padding-right:3px;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell > div{
+      display:flex !important;
+      flex-direction:row !important;
+      justify-content:center !important;
+      align-items:center !important;
+      flex-wrap:nowrap !important;
+      gap:4px !important;
+      width:100%;
+      white-space:nowrap;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-compact{
+      flex:0 0 auto;
+      width:auto !important;
+      min-width:0 !important;
+      padding:5px 6px !important;
+      font-size:12px !important;
+      line-height:1.1 !important;
+      white-space:nowrap !important;
+    }
+
+    /* Final Pending table fit/alignment pass */
+    table:has(#confirm-pending-tbody){
+      width:100% !important;
+      table-layout:fixed !important;
+    }
+
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-pending-tbody) td{
+      text-align:center !important;
+      vertical-align:middle !important;
+    }
+
+    /* Give the two action buttons enough room; trim descriptive columns instead. */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:12% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:6% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:20% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:8% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){width:13% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:18% !important;}
+
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(6){
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+    }
+
+    /* Admin note must stay inside its own column. */
+    table:has(#confirm-pending-tbody) td:nth-child(8){
+      overflow:hidden !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+    }
+    table:has(#confirm-pending-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Action buttons: compact enough to fit, but always fully visible. */
+    table:has(#confirm-pending-tbody) .confirm-action-cell{
+      overflow:hidden !important;
+      padding:4px !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-cell > div{
+      width:100% !important;
+      display:flex !important;
+      flex-direction:row !important;
+      justify-content:center !important;
+      align-items:center !important;
+      flex-wrap:nowrap !important;
+      gap:4px !important;
+      overflow:hidden !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-action-compact{
+      flex:0 0 auto !important;
+      width:auto !important;
+      min-width:0 !important;
+      max-width:none !important;
+      padding:4px 5px !important;
+      font-size:11px !important;
+      line-height:1.05 !important;
+      white-space:nowrap !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Pending table column tuning */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1){width:13% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2){width:4.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){width:21.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5){width:4% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6){width:6.5% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){width:10% !important;}
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8){
+      width:13.5% !important;
+      padding-left:8px !important;
+    }
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){width:18% !important;}
+
+    /* Left-align descriptive columns */
+    table:has(#confirm-pending-tbody) th:nth-child(1),
+    table:has(#confirm-pending-tbody) td:nth-child(1),
+    table:has(#confirm-pending-tbody) th:nth-child(3),
+    table:has(#confirm-pending-tbody) td:nth-child(3),
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4){
+      text-align:left !important;
+    }
+
+    /* Keep the compact numeric/status/action columns centered */
+    table:has(#confirm-pending-tbody) th:nth-child(2),
+    table:has(#confirm-pending-tbody) td:nth-child(2),
+    table:has(#confirm-pending-tbody) th:nth-child(5),
+    table:has(#confirm-pending-tbody) td:nth-child(5),
+    table:has(#confirm-pending-tbody) th:nth-child(6),
+    table:has(#confirm-pending-tbody) td:nth-child(6),
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7),
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8),
+    table:has(#confirm-pending-tbody) th:nth-child(9),
+    table:has(#confirm-pending-tbody) td:nth-child(9){
+      text-align:center !important;
+    }
+
+    /* Slight breathing room between Status and Admin Note */
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7){
+      padding-right:8px !important;
+    }
+
+    /* Status cell: show only the badge; suppress any stray separator/text nodes. */
+    table:has(#confirm-pending-tbody) .confirm-status-cell,
+    table:has(#confirm-processed-tbody) .confirm-status-cell{
+      font-size:0 !important;
+      text-align:center !important;
+      overflow:hidden !important;
+      white-space:nowrap !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-status-cell > span,
+    table:has(#confirm-processed-tbody) .confirm-status-cell > span{
+      font-size:12px !important;
+    }
+
+    /* Processed Records uses the same grid as Pending so columns align vertically. */
+    table:has(#confirm-processed-tbody){
+      width:100% !important;
+      table-layout:fixed !important;
+    }
+    table:has(#confirm-processed-tbody) th,
+    table:has(#confirm-processed-tbody) td{
+      box-sizing:border-box !important;
+      vertical-align:middle !important;
+      text-align:center !important;
+    }
+
+    table:has(#confirm-processed-tbody) th:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(1){width:13% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(2),
+    table:has(#confirm-processed-tbody) td:nth-child(2){width:4.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(3){width:9% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){width:21.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(5),
+    table:has(#confirm-processed-tbody) td:nth-child(5){width:4% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(6),
+    table:has(#confirm-processed-tbody) td:nth-child(6){width:6.5% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){width:10% !important;}
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      width:13.5% !important;
+      padding-left:8px !important;
+    }
+    table:has(#confirm-processed-tbody) th:nth-child(9),
+    table:has(#confirm-processed-tbody) td:nth-child(9){width:18% !important;}
+
+    /* Descriptive columns align left, matching Pending. */
+    table:has(#confirm-processed-tbody) th:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(1),
+    table:has(#confirm-processed-tbody) th:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(3),
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){
+      text-align:left !important;
+    }
+
+    /* Compact columns stay centered. */
+    table:has(#confirm-processed-tbody) th:nth-child(2),
+    table:has(#confirm-processed-tbody) td:nth-child(2),
+    table:has(#confirm-processed-tbody) th:nth-child(5),
+    table:has(#confirm-processed-tbody) td:nth-child(5),
+    table:has(#confirm-processed-tbody) th:nth-child(6),
+    table:has(#confirm-processed-tbody) td:nth-child(6),
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7),
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8),
+    table:has(#confirm-processed-tbody) th:nth-child(9),
+    table:has(#confirm-processed-tbody) td:nth-child(9){
+      text-align:center !important;
+    }
+
+    /* Same Status → Admin Note breathing room as Pending. */
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){
+      padding-right:8px !important;
+    }
+
+    /* Less important text truncates rather than shifting the grid. */
+    table:has(#confirm-processed-tbody) td:nth-child(1),
+    table:has(#confirm-processed-tbody) td:nth-child(3),
+    table:has(#confirm-processed-tbody) td:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(6){
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+    }
+
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      overflow:hidden !important;
+      padding-right:4px !important;
+    }
+    table:has(#confirm-processed-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Confirm tables: final spacing refinement */
+    table:has(#confirm-pending-tbody) th,
+    table:has(#confirm-processed-tbody) th{
+      text-align:center !important;
+      vertical-align:middle !important;
+    }
+
+    /* Slightly narrower Violation and Admin Note; more room for Status. */
+    table:has(#confirm-pending-tbody) th:nth-child(4),
+    table:has(#confirm-pending-tbody) td:nth-child(4),
+    table:has(#confirm-processed-tbody) th:nth-child(4),
+    table:has(#confirm-processed-tbody) td:nth-child(4){
+      width:20% !important;
+    }
+
+    table:has(#confirm-pending-tbody) th:nth-child(7),
+    table:has(#confirm-pending-tbody) td:nth-child(7),
+    table:has(#confirm-processed-tbody) th:nth-child(7),
+    table:has(#confirm-processed-tbody) td:nth-child(7){
+      width:12.5% !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+      overflow:visible !important;
+    }
+
+    table:has(#confirm-pending-tbody) th:nth-child(8),
+    table:has(#confirm-pending-tbody) td:nth-child(8),
+    table:has(#confirm-processed-tbody) th:nth-child(8),
+    table:has(#confirm-processed-tbody) td:nth-child(8){
+      width:11.5% !important;
+      padding-left:4px !important;
+      padding-right:4px !important;
+    }
+
+    /* Smaller Admin Note control in both width feel and height. */
+    table:has(#confirm-pending-tbody) td:nth-child(8) input,
+    table:has(#confirm-processed-tbody) td:nth-child(8) input{
+      width:100% !important;
+      max-width:100% !important;
+      height:30px !important;
+      min-height:30px !important;
+      padding:4px 6px !important;
+      font-size:12px !important;
+      box-sizing:border-box !important;
+    }
+
+    /* Status badges must remain fully visible. */
+    table:has(#confirm-pending-tbody) .confirm-status-cell,
+    table:has(#confirm-processed-tbody) .confirm-status-cell{
+      overflow:visible !important;
+      white-space:nowrap !important;
+    }
+    table:has(#confirm-pending-tbody) .confirm-status-cell > span,
+    table:has(#confirm-processed-tbody) .confirm-status-cell > span{
+      display:inline-block !important;
+      max-width:none !important;
+      white-space:nowrap !important;
+    }
+
+    /* Recovery Active table spacing */
+    #tab-recovery-ms table:has(#recovery-ms-active-tbody) td:last-child, #tab-recovery-hs table:has(#recovery-hs-active-tbody) td:last-child{white-space:nowrap;overflow:visible;padding-left:4px;padding-right:4px;}
+    #tab-recovery-ms table:has(#recovery-ms-active-tbody) td:last-child button, #tab-recovery-hs table:has(#recovery-hs-active-tbody) td:last-child button{white-space:nowrap;width:auto !important;max-width:none !important;min-width:0 !important;}
+
+
+    /* 2026-09 bilingual button fit */
+    .teacher-actions .btn,.teacher-actions a.btn,.teacher-nav-buttons .tab-btn,#tab-students .filter-bar .btn{min-width:0 !important;max-width:100%;}
+    .teacher-actions,.teacher-nav-buttons,.section-btn-group,.mini-actions{min-width:0;flex-wrap:wrap;}
+    .tbl-wrap td .btn,.tbl-wrap td button.btn{box-sizing:border-box;max-width:100%;}
+    .btn-xs{padding:4px 6px !important;font-size:10.5px !important;line-height:1.15 !important;}
+
+
+/* Student names: Korean first line, English second line */
+.student-name-stack{display:inline-flex;flex-direction:column;min-width:0;line-height:1.12;vertical-align:middle;max-width:100%}
+.student-name-stack .student-name-ko{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.student-name-stack .student-name-en{font-size:10px;font-weight:500;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;margin-top:2px}
+.search-header-stack{display:flex;flex-direction:column;align-items:inherit;justify-content:center;line-height:1.08}
+.search-header-stack .header-en{font-size:9.5px;font-weight:600;color:var(--sb);margin-top:2px}
+
+
+    /* 2026-09 row/header alignment pass */
+    table th, table td{vertical-align:middle;}
+    .student-name-stack{justify-content:center;text-align:left;}
+    .search-header-stack{display:flex;flex-direction:column;justify-content:center;align-items:center;line-height:1.08;}
+    .search-header-stack.search-student-header{align-items:flex-start;text-align:left;}
+    .search-header-stack .header-en{display:block;margin-top:2px;font-size:9.5px;font-weight:600;}
+
+  </style>
+
+<style>
+/* Active Committee Cases: reserve enough room for Committee, Note, and bilingual Action buttons. */
+#tab-discipline table:has(#discipline-active-tbody){table-layout:fixed;width:100%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(1){width:16%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(2){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(3){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(4){width:7%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(5){width:6%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(6){width:8%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(7){width:14%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(8){width:13%;}
+#tab-discipline table:has(#discipline-active-tbody) th:nth-child(9){width:22%;}
+#discipline-active-tbody td:nth-child(7) select,
+#discipline-active-tbody td:nth-child(8) input,
+#discipline-active-tbody td:nth-child(8) textarea{width:100%;max-width:100%;box-sizing:border-box;}
 </style>
+
 </head>
 <body>
   <div id="toast"></div>
@@ -820,9 +1340,9 @@
           <span class="teacher-top-stat">미확정 <b id="pending-count">0</b>건</span>
           <span class="teacher-top-stat">전체 <b id="total-count">0</b>건</span>
         </div>
-        <a id="admin-center-link" href="admin.html#home" class="btn btn-secondary" style="display:none;font-size:12px;padding:5px 10px;text-decoration:none;align-items:center;">관리자센터</a>
-        <button class="btn btn-secondary" onclick="refreshData()" style="font-size:12px;padding:5px 10px;">새로고침</button>
-        <button class="btn btn-danger" onclick="logoutTeacher()" style="font-size:12px;padding:5px 10px;">로그아웃</button>
+        <a id="admin-center-link" href="admin.html#home" class="btn btn-secondary" style="display:none;font-size:12px;padding:5px 10px;text-decoration:none;align-items:center;">관리자센터 | Admin</a>
+        <button class="btn btn-secondary" onclick="refreshData()" style="font-size:12px;padding:5px 10px;">새로고침 | Refresh</button>
+        <button class="btn btn-danger" onclick="logoutTeacher()" style="font-size:12px;padding:5px 10px;">로그아웃 | Logout</button>
       </div>
     </div>
   </div>
@@ -842,17 +1362,17 @@
       <div style="margin-bottom:12px;">
         <div style="font-size:12px;color:var(--sb);margin-bottom:4px;">위원회 종류 | Committee Type</div>
         <select id="modal-committee-type" class="edit-input">
-          <option value="manual_referral">위원회 (수동)</option>
-          <option value="manual_edu">위원회 (수동)</option>
+          <option value="manual_referral">위원회 (수동) | Committee (Manual)</option>
+          <option value="manual_edu">위원회 (수동) | Committee (Manual)</option>
         </select>
       </div>
       <div style="margin-bottom:16px;">
         <div style="font-size:12px;color:var(--sb);margin-bottom:4px;">회부 사유 | Reason</div>
-        <textarea id="modal-committee-reason" class="edit-input" rows="3" placeholder="회부 사유를 입력해 주세요." style="resize:vertical;"></textarea>
+        <textarea id="modal-committee-reason" class="edit-input" rows="3" placeholder="회부 사유를 입력해 주세요. | Enter the referral reason." style="resize:vertical;"></textarea>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="closeManualCommittee()">취소</button>
-        <button class="btn btn-primary" onclick="submitManualCommittee()">회부 확정</button>
+        <button class="btn btn-secondary" onclick="closeManualCommittee()">취소 | Cancel</button>
+        <button class="btn btn-primary" onclick="submitManualCommittee()">회부 확정 | Confirm Referral</button>
       </div>
     </div>
   </div>
@@ -962,6 +1482,33 @@
             </div>
           </div>
 
+          <div class="entry-section">
+            <div class="entry-section-title">장소 <span class="entry-title-en">Location</span></div>
+            <div class="entry-section-note">장소를 선택하세요. 교실인 경우 수업을 입력하세요. | Select a location. If Classroom, enter the class.</div>
+            <div class="entry-basic-grid">
+              <div>
+                <label class="label" for="entry-location">장소 | Location</label>
+                <select id="entry-location" class="edit-input" onchange="updateEntryLocationFields()">
+                  <option value="">장소 선택 | Select location</option>
+                  <option value="classroom">교실 | Classroom</option>
+                  <option value="hallway">복도 | Hallway</option>
+                  <option value="outdoor">운동장/야외 | Playground/Outdoor</option>
+                  <option value="cafeteria">급식실 | Cafeteria</option>
+                  <option value="library">도서관 | Library</option>
+                  <option value="other">기타 | Other</option>
+                </select>
+              </div>
+              <div id="entry-location-class-wrap" style="display:none">
+                <label class="label" for="entry-location-class">수업 | Class</label>
+                <input id="entry-location-class" class="edit-input" maxlength="80" placeholder="수업명 입력 | Enter class">
+              </div>
+              <div id="entry-location-other-wrap" style="display:none">
+                <label class="label" for="entry-location-other">기타 | Other</label>
+                <input id="entry-location-other" class="edit-input" maxlength="80" placeholder="장소 입력 | Enter location">
+              </div>
+            </div>
+          </div>
+
           <div class="entry-section entry-bottom-grid">
             <div>
               <div class="entry-section-title">메모 <span class="entry-title-en">Memo</span><span class="entry-section-help">선택사항 · 최대 300자 | Optional · Up to 300 characters</span></div>
@@ -974,7 +1521,7 @@
                   <label class="label" for="entry-teacher">교사 | Teacher</label>
                   <input id="entry-teacher" class="edit-input" list="entry-teacher-list" placeholder="교사 검색 | Search teacher" oninput="syncEntryTeacher()">
                   <datalist id="entry-teacher-list"></datalist>
-                  <div class="small" id="entry-teacher-hint" style="display:none">Admin/Master만 변경 가능 | Editable by Admin/Master</div>
+                  <div class="small" id="entry-teacher-hint" style="display:none"></div>
                 </div>
                 <div>
                   <label class="label" for="entry-date">날짜 | Date</label>
@@ -992,7 +1539,7 @@
 
         <aside class="entry-recent-card" aria-labelledby="recent-entry-title">
           <div class="entry-card-head">
-            <div id="recent-entry-title" class="entry-card-title" style="font-size:16px;">최근 입력 내역 <small>Recent Entries</small></div>
+            <div id="recent-entry-title" class="entry-card-title" style="font-size:16px;">최근 대기 입력 <small>Recent Pending Entries</small></div>
             <span id="recent-entry-scope" class="small" style="font-weight:700;color:#5b657a;"></span>
           </div>
           <div id="recent-entry-list" class="recent-entry-list"></div>
@@ -1002,7 +1549,7 @@
 
       <nav class="mobile-entry-shortcuts" aria-label="모바일 바로가기">
         <button type="button" onclick="activateTeacherTab('all')"><span>⌕</span>조회</button>
-        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육</button>
+        <button type="button" onclick="activateTeacherTab('recovery-view')"><span>▣</span>회복교육 | Recovery</button>
         <button type="button" onclick="activateTeacherTab('notify')"><span>♢</span>알림</button>
         <button type="button" onclick="activateTeacherTab('discipline')"><span>♙</span>위원회</button>
       </nav>
@@ -1119,8 +1666,8 @@
       <div class="card">
         <div class="card-title">디텐션 확정 | Confirm Detention</div>
         <div class="notice">
-          <div>디텐션 확정 권한은 대기·확정·반려 기록을 조회하고 수정·처리할 수 있습니다.</div>
-          <div>Users with Detention Confirm permission can review, edit, confirm, or reject records.</div>
+          <div>디텐션 확정 권한은 대기·확정·반려·취소 기록을 조회하고 필요한 기록을 처리할 수 있습니다.</div>
+          <div>Users with Detention Confirm permission can review pending, confirmed, rejected, and cancelled records and process eligible records.</div>
         </div>
 
         <div class="filter-bar" style="margin-top:10px;">
@@ -1129,6 +1676,7 @@
             <option value="임시저장">대기 | Pending</option>
             <option value="확정">확정 | Confirmed</option>
             <option value="반려">반려 | Rejected</option>
+            <option value="취소">취소 | Cancelled</option>
           </select>
           <input id="confirm-search" class="edit-input flex1" placeholder="학생명/영문명/구분/위반행위 검색 | Search student/English/category/violation">
         </div>
@@ -1136,8 +1684,8 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">대기 | Pending</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setConfirmExpanded(false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
@@ -1160,7 +1708,7 @@
         </div>
 
         <div class="card-title" style="margin-top:16px;">
-          확정 / 반려 | Confirmed / Rejected
+          처리 기록 | Processed Records
         </div>
         <div class="tbl-wrap">
           <table style="table-layout:fixed;">
@@ -1256,22 +1804,22 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">진행 중 | Active</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('ms', false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:6%;">학반</th>
-                <th class="nowrap tc" style="width:6%;">잔여</th>
-                <th class="nowrap tc" style="width:6%;">누적</th>
-                <th style="width:28%;">위반 행위</th>
-                <th class="nowrap tc" style="width:12%;">알림완료</th>
-                <th class="nowrap tc" style="width:10%;">완료점수</th>
-                <th class="nowrap tc" style="width:10%;">처리</th>
+                <th class="nowrap" style="width:14%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
+                <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
+                <th style="width:24%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
+                <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:23%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-active-tbody"></tbody>
@@ -1283,14 +1831,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:7%;">학반</th>
-                <th style="width:30%;">위반 행위</th>
-                <th class="nowrap tc" style="width:9%;">회복점수</th>
-                <th class="nowrap tc" style="width:9%;">잔여점수</th>
-                <th class="nowrap tc" style="width:9%;">누적디텐션점수</th>
-                <th class="nowrap" style="width:12%;">완료시간</th>
-                <th class="nowrap tc" style="width:8%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:7%;">학반<span class="th-en">Class</span></th>
+                <th style="width:30%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:9%;">회복점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:9%;">잔여점수<span class="th-en">Remaining Points</span></th>
+                <th class="nowrap tc" style="width:9%;">누적디텐션점수<span class="th-en">Total Detention Points</span></th>
+                <th class="nowrap" style="width:12%;">완료시간<span class="th-en">Completed</span></th>
+                <th class="nowrap tc" style="width:8%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-ms-done-tbody"></tbody>
@@ -1312,22 +1860,22 @@
         <div class="section-title-row" style="margin-top:6px;">
           <span class="stitle">진행 중 | Active</span>
           <div class="section-btn-group">
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', false)">전체 접기</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setRecoveryExpanded('hs', false)">전체 접기 | Collapse All</button>
           </div>
         </div>
         <div class="tbl-wrap">
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:6%;">학반</th>
-                <th class="nowrap tc" style="width:6%;">잔여</th>
-                <th class="nowrap tc" style="width:6%;">누적</th>
-                <th style="width:28%;">위반 행위</th>
-                <th class="nowrap tc" style="width:12%;">알림완료</th>
-                <th class="nowrap tc" style="width:10%;">완료점수</th>
-                <th class="nowrap tc" style="width:10%;">처리</th>
+                <th class="nowrap" style="width:14%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:5%;">학반<span class="th-en">Class</span></th>
+                <th class="nowrap tc" style="width:6%;">잔여<span class="th-en">Remaining</span></th>
+                <th class="nowrap tc" style="width:6%;">누적<span class="th-en">Total</span></th>
+                <th style="width:24%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:12%;">알림완료<span class="th-en">Notice Completed</span></th>
+                <th class="nowrap tc" style="width:10%;">완료점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:23%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-active-tbody"></tbody>
@@ -1339,14 +1887,14 @@
           <table style="table-layout:fixed;">
             <thead>
               <tr>
-                <th class="nowrap" style="width:22%;">학생</th>
-                <th class="nowrap tc" style="width:7%;">학반</th>
-                <th style="width:30%;">위반 행위</th>
-                <th class="nowrap tc" style="width:9%;">회복점수</th>
-                <th class="nowrap tc" style="width:9%;">잔여점수</th>
-                <th class="nowrap tc" style="width:9%;">누적디텐션점수</th>
-                <th class="nowrap" style="width:12%;">완료시간</th>
-                <th class="nowrap tc" style="width:8%;">처리</th>
+                <th class="nowrap" style="width:22%;">학생<span class="th-en">Student</span></th>
+                <th class="nowrap tc" style="width:7%;">학반<span class="th-en">Class</span></th>
+                <th style="width:30%;">위반 행위<span class="th-en">Violation</span></th>
+                <th class="nowrap tc" style="width:9%;">회복점수<span class="th-en">Recovery Points</span></th>
+                <th class="nowrap tc" style="width:9%;">잔여점수<span class="th-en">Remaining Points</span></th>
+                <th class="nowrap tc" style="width:9%;">누적디텐션점수<span class="th-en">Total Detention Points</span></th>
+                <th class="nowrap" style="width:12%;">완료시간<span class="th-en">Completed</span></th>
+                <th class="nowrap tc" style="width:8%;">처리<span class="th-en">Action</span></th>
               </tr>
             </thead>
             <tbody id="recovery-hs-done-tbody"></tbody>
@@ -1370,14 +1918,14 @@
               <div id="student-mgmt-suggestions" class="entry-autocomplete-menu" role="listbox" hidden></div>
             </div>
             <select id="student-mgmt-level" class="edit-input" style="width:100px;font-size:12px" onchange="refreshStudentLookup()">
-              <option value="">전체 학년</option>
-              <option value="ms">중등 (7-9)</option>
-              <option value="hs">고등 (10-12)</option>
+              <option value="">전체 학년 | All Grades</option>
+              <option value="ms">중등 (7-9) | Middle School</option>
+              <option value="hs">고등 (10-12) | High School</option>
             </select>
             <select id="student-mgmt-class" class="edit-input" style="width:80px;font-size:12px" onchange="refreshStudentLookup()">
-              <option value="">전체 반</option>
+              <option value="">전체 반 | All Classes</option>
             </select>
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="resetStudentOverview()">조회하기</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="resetStudentOverview()">조회하기 | Search</button>
           </div>
         </div>
 
@@ -1386,7 +1934,7 @@
           <div id="student-roster-warning" class="notice" style="display:none;margin:0 0 10px 0;">
             학생 명단 DB가 비어 있어 기록 데이터 기준으로 학생을 표시하고 있습니다. | The student roster DB is empty, so students are shown from records.
           </div>
-          <div id="student-class-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+          <div id="student-class-grid" class="student-overview-grid"></div>
         </div>
 
         <!-- 상세 뷰 (보기 클릭 시) -->
@@ -1673,7 +2221,104 @@
 
     function getTeacherRoles(teacherData){
       const data = teacherData || {};
-      return Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
+      let roles = Array.from(new Set(normalizeRoles(data.roles).concat(normalizeRoles(data.role))));
+      const designations = roles.filter(role => role === 'director' || role === 'team_leader');
+
+      // Admin/Master override operational permissions, while Director/Team Leader
+      // remain because they identify notification recipients.
+      if (roles.includes('admin')) return ['admin', ...designations];
+      if (roles.includes('master')) return ['master', ...designations];
+
+      const nonDefault = roles.filter(role => role !== 'default');
+      return nonDefault.length ? nonDefault : ['default'];
+    }
+
+    function syncCurrentTeacherRolesFromFirebase(){
+      if(!teacher || !teacher.email || !teachers) return false;
+      const email = String(teacher.email || '').trim().toLowerCase();
+      if(!email) return false;
+
+      const match = Object.values(teachers || {}).find(t =>
+        String((t && t.email) || '').trim().toLowerCase() === email
+      );
+      if(!match) return false;
+
+      const freshRoles = getTeacherRoles(match);
+      const previous = JSON.stringify([...teacherRoles].sort());
+      teacherRoles = freshRoles;
+      teacher = {
+        ...teacher,
+        name: String(match.name || teacher.name || '').trim(),
+        email,
+        homeroom: String(match.homeroom || ''),
+        roles: freshRoles,
+        active: match.active !== false
+      };
+
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('his_teacher') || '{}') || {};
+        sessionStorage.setItem('his_teacher', JSON.stringify({
+          ...stored,
+          name: teacher.name,
+          email: teacher.email,
+          homeroom: teacher.homeroom,
+          roles: freshRoles,
+          active: teacher.active
+        }));
+      } catch (_) {}
+
+      permissions = null;
+      buildPermissions();
+
+      const adminCenterLink = document.getElementById('admin-center-link');
+      if(adminCenterLink) adminCenterLink.style.display = getPermissions().admin.center ? 'inline-flex' : 'none';
+
+      const info = document.getElementById('teacher-info');
+      if(info){
+        info.innerHTML = `
+          <span class="teacher-user-main"><strong>${esc(teacher.name || '사용자')}</strong><span>${esc(teacher.email || '')}</span></span>
+          <span class="teacher-role-chip">${esc(rolesLabel(freshRoles))}</span>
+          ${teacher.homeroom ? `<span class="teacher-room-chip">담당 ${esc(teacher.homeroom)}</span>` : ''}
+        `;
+      }
+
+      setupRoleVisibility();
+      return previous !== JSON.stringify([...freshRoles].sort());
+    }
+
+    let _currentTeacherRoleRef = null;
+    function setupCurrentTeacherRoleRealtimeSync(){
+      if(!teacher || !teacher.email || !db) return;
+      const key = String(teacher.email || '').trim().toLowerCase().replace(/\./g, '_');
+      if(!key) return;
+
+      if(_currentTeacherRoleRef){
+        try{ _currentTeacherRoleRef.off('value'); }catch(_){}
+      }
+
+      _currentTeacherRoleRef = db.ref('teachers/' + key);
+      _currentTeacherRoleRef.on('value', snap => {
+        const fresh = snap.val();
+        if(!fresh) return;
+
+        teachers[key] = fresh;
+        const changed = syncCurrentTeacherRolesFromFirebase();
+
+        // If the account is disabled, stop the session immediately.
+        if(fresh.active === false){
+          toast('이 교사 계정은 비활성화되었습니다.\nThis teacher account has been disabled.', 'err');
+          setTimeout(() => logoutTeacher(), 300);
+          return;
+        }
+
+        if(changed){
+          // Re-render permission-sensitive sections against the new Firebase roles.
+          renderConfirmTable();
+          renderNotifyTables();
+          renderRecoveryTables();
+          renderDisciplineTab();
+        }
+      }, err => console.warn('Teacher role realtime sync failed:', err));
     }
 
     function isAdminRole(){ return teacherRoles.includes('admin'); }
@@ -1735,10 +2380,22 @@
       if(studentKey && lvl){ await recalculateStudentState(String(studentKey), lvl); }
     }
     function normalizeTeacherName(value){ return String(value || '').trim().toLowerCase(); }
+    function normalizeTeacherEmail(value){ return String(value || '').trim().toLowerCase(); }
     function canCancelDraftDetention(record){
       const status = String((record && record.status) || '임시저장');
-      const own = normalizeTeacherName(record && record.teacherName) === normalizeTeacherName(teacher && teacher.name);
-      return status === '임시저장' && (getPermissions().detention.editAny || own);
+      if(status !== '임시저장') return false;
+
+      // Entry cancellation is intentionally stricter than normal detention editing:
+      // only the original submitting teacher or an Admin may cancel the entry.
+      const recordEmail = normalizeTeacherEmail(record && record.teacherEmail);
+      const currentEmail = normalizeTeacherEmail(teacher && teacher.email);
+      const ownByEmail = !!recordEmail && !!currentEmail && recordEmail === currentEmail;
+
+      // Older records may not contain teacherEmail, so retain a name fallback.
+      const ownByName = !recordEmail &&
+        normalizeTeacherName(record && record.teacherName) === normalizeTeacherName(teacher && teacher.name);
+
+      return isAdminRole() || ownByEmail || ownByName;
     }
     /* ---------- 3) 점수 / 상태 표시 헬퍼 ---------- */
     function inferPointsAfterConfirmCancel(record){
@@ -1757,8 +2414,10 @@
     }
 
     function statusBadge(status){
-      if (status === '확정') return '<span class="status-confirmed">확정 | Confirmed</span>';
-      if (status === '반려') return '<span class="status-rejected">반려 | Rejected</span>';
+      const s = String(status || '임시저장');
+      if (s === '확정') return '<span class="status-confirmed">확정 | Confirmed</span>';
+      if (s === '반려') return '<span class="status-rejected">반려 | Rejected</span>';
+      if (s === '취소') return '<span class="status-cancelled">취소 | Cancelled</span>';
       return '<span class="status-pending">대기 | Pending</span>';
     }
 
@@ -1766,12 +2425,60 @@
       if (status === '임시저장') return 0;
       if (status === '반려') return 1;
       if (status === '확정') return 2;
+      if (status === '취소') return 3;
       return 9;
     }
 
     function rolesLabel(roles){
-      const list = normalizeRoles(roles);
-      return list.length ? list.join(', ') : '권한 없음 | No Roles';
+      let list = normalizeRoles(roles);
+
+      // Admin/Master override operational roles. Director/Team Leader remain
+      // visible because they are staff/email designations.
+      const designationLabels = [];
+      if (list.includes('director')) designationLabels.push('Director');
+      if (list.includes('team_leader')) designationLabels.push('Team Leader');
+      if (list.includes('admin')) return ['Admin', ...designationLabels].join(' · ');
+      if (list.includes('master')) return ['Master', ...designationLabels].join(' · ');
+
+      // Default is only meaningful when it is the teacher's sole permission.
+      const nonDefault = list.filter(role => role !== 'default');
+      list = nonDefault.length ? nonDefault : ['default'];
+
+      // committee_edit already includes committee_view, so avoid a redundant label.
+      if (list.includes('committee_edit')) {
+        list = list.filter(role => role !== 'committee_view');
+      }
+
+      const labels = {
+        default: 'Default',
+        confirm: 'Detention Confirm',
+        ms_notice: 'MS Notice',
+        hs_notice: 'HS Notice',
+        ms_restore: 'MS Recovery',
+        hs_restore: 'HS Recovery',
+        committee_view: 'Committee View',
+        committee_edit: 'Committee Edit',
+        director: 'Director',
+        team_leader: 'Team Leader'
+      };
+
+      const order = [
+        'confirm',
+        'ms_notice','hs_notice',
+        'ms_restore','hs_restore',
+        'committee_edit','committee_view',
+        'director','team_leader',
+        'default'
+      ];
+
+      return list
+        .slice()
+        .sort((a,b) => {
+          const ai = order.indexOf(a), bi = order.indexOf(b);
+          return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+        })
+        .map(role => labels[role] || role.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()))
+        .join(' · ');
     }
 
     function setStandardSaveStatus(text){
@@ -1799,7 +2506,6 @@
     }
 
     function getCurrentYear(){
-      if (typeof window.hisCurrentYear === 'function') return String(window.hisCurrentYear());
       return String(new Date().getFullYear());
     }
 
@@ -1925,6 +2631,7 @@
     }
 
     function sName(k,e){k=String(k||'').trim();e=String(e||'').trim();return e?k+' '+e:k;}
+    function studentNameLines(k,e){k=String(k||'').trim();e=String(e||'').trim();return '<span class="student-name-stack"><span class="student-name-ko">'+esc(k||'-')+'</span>'+(e?'<span class="student-name-en">'+esc(e)+'</span>':'')+'</span>'; }
     function findActiveNotice(sKey,lvl){const yr=getCurrentYear();const hit=Object.entries(noticeEntries||{}).filter(([,v])=>String(v.studentKey||'')===String(sKey)&&isRecordInLevel(v,lvl)&&!v.completedAt&&isCurrentYearRecord(v,yr)).sort((a,b)=>String(b[1].createdAt||'').localeCompare(String(a[1].createdAt||'')));return hit.length?{key:hit[0][0],notice:hit[0][1]}:null;}
     function findLatestCompletedNotice(sKey,lvl){const yr=getCurrentYear();const hit=Object.entries(noticeEntries||{}).filter(([,v])=>String(v.studentKey||'')===String(sKey)&&isRecordInLevel(v,lvl)&&!!v.completedAt&&isCurrentYearRecord(v,yr)).sort((a,b)=>String(b[1].completedAt||'').localeCompare(String(a[1].completedAt||'')));return hit.length?{key:hit[0][0],notice:hit[0][1]}:null;}
     function getViolationCount(sKey,vId){
@@ -2139,25 +2846,33 @@
       return getStudentCatalog().filter(s=>getSchoolLevel(s.className)===level).map(s=>{
         const state = getCycleState(s.key, level);
         const recoveryPhases=['in_recovery','edu_in_recovery','edu_committee'];
-        if(!recoveryPhases.includes(state.phase)) return null;
-        const completedNoticeObj=findLatestCompletedNotice(s.key,level);
-        // 위원회 완료 경로로 in_recovery에 진입한 학생은 가정통지 기록이 없을 수 있음.
-        // 통지가 없으면 완료된 위원회 기록을 기준(noticedAt 대체)으로 사용하고, 둘 다 없을 때만 제외.
-        let committeeBaseline=null;
-        if(!completedNoticeObj){
-          const doneCommittees=Object.values(committeeEntries||{})
-            .filter(c=>String((c||{}).studentKey||'')===String(s.key)&&!!(c||{}).completedAt&&isCurrentYearRecord(c,getCurrentYear()))
-            .sort((a,b)=>String((b||{}).completedAt||'').localeCompare(String((a||{}).completedAt||'')));
-          committeeBaseline=doneCommittees.length?doneCommittees[0]:null;
-          if(!committeeBaseline) return null;
-        }
+        const hasPendingRecovery = Number(state.recoveryPendingCount || 0) > 0 || state.recoveryPending === true;
+        if(!recoveryPhases.includes(state.phase) && !hasPendingRecovery) return null;
+        const completedNoticeRows=Object.entries(noticeEntries||{})
+          .filter(([,v])=>String(v.studentKey||'')===String(s.key)&&isRecordInLevel(v,level)&&!!v.completedAt&&isCurrentYearRecord(v,getCurrentYear()))
+          .sort((a,b)=>String(a[1].completedAt||'').localeCompare(String(b[1].completedAt||'')));
+        const completedRecoveryRows=Object.entries(recoveryEntries||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(r=>String(r.studentKey||'')===String(s.key)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,getCurrentYear()))
+          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
+        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
+        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
+        const doneCommitteeEntries=Object.entries(committeeEntries||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(s.key)&&!!c.completedAt&&isCurrentYearRecord(c,getCurrentYear()))
+          .sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+        const committeeBaseline=doneCommitteeEntries.length?doneCommitteeEntries[0]:null;
+        const noticeAt=completedNoticeObj?String(completedNoticeObj.notice.completedAt||''):'';
+        const committeeAt=committeeBaseline?String(committeeBaseline.completedAt||''):'';
+        const useCommittee=!!committeeBaseline && (!completedNoticeObj || committeeAt > noticeAt);
+        if(!completedNoticeObj && !committeeBaseline) return null;
         const currentTotal=getStudentCurrentTotal(s.key),overallTotal=getStudentOverallTotal(s.key),reasons=buildCycleReasonTextWithPoints(s.key);
-        // getStudentPoints: cycleState 캐시 우선, 없으면 직접 계산
         const _pts = getStudentPoints(s.key, level);
         const verifiedCurrent = _pts.current, verifiedOverall = _pts.overall;
         const recoveryList=Object.entries(recoveryEntries||{}).map(([key,value])=>({key,...value})).filter(r=>String(r.studentKey||'')===String(s.key)&&isRecordInLevel(r,level)&&!!r.completedAt).sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
-        const noticedAt = completedNoticeObj ? (completedNoticeObj.notice.completedAt || '') : String((committeeBaseline||{}).completedAt||'');
-        return{...s,state,currentTotal:verifiedCurrent,overallTotal:verifiedOverall,reasons,recoveryList,completedRecoveryCount:recoveryList.length,completedNotice:completedNoticeObj?completedNoticeObj.notice:{completedAt:noticedAt,viaCommittee:true},noticedAt};
+        const noticedAt = useCommittee ? committeeAt : noticeAt;
+        const recoveryBaseline = useCommittee ? {type:'committee',key:committeeBaseline.key,completedAt:committeeAt} : {type:'notice',key:completedNoticeObj.key,completedAt:noticeAt};
+        return{...s,state,currentTotal:verifiedCurrent,overallTotal:verifiedOverall,reasons,recoveryList,completedRecoveryCount:recoveryList.length,completedNotice:useCommittee?{completedAt:committeeAt,viaCommittee:true}:completedNoticeObj.notice,noticedAt,recoveryBaseline};
       }).filter(Boolean).sort((a,b)=>String(b.noticedAt||'').localeCompare(String(a.noticedAt||'')));
     }
 
@@ -2245,8 +2960,8 @@
       const start = (safePage - 1) * PAGE_SIZE + 1;
       const end = Math.min(total, safePage * PAGE_SIZE);
       box.innerHTML = `
-        <button class="btn btn-secondary btn-xs" onclick="${call(1)}" ${safePage<=1?'disabled':''}>처음</button>
-        <button class="btn btn-secondary btn-xs" onclick="${call(safePage-1)}" ${safePage<=1?'disabled':''}>이전</button>
+        <button class="btn btn-secondary btn-xs" onclick="${call(1)}" ${safePage<=1?'disabled':''}>처음 | First</button>
+        <button class="btn btn-secondary btn-xs" onclick="${call(safePage-1)}" ${safePage<=1?'disabled':''}>이전 | Previous</button>
         <span class="pager-info">${start}-${end} / 총 ${total}건 · ${safePage}/${totalPages}</span>
         <button class="btn btn-secondary btn-xs" onclick="${call(safePage+1)}" ${safePage>=totalPages?'disabled':''}>다음</button>
         <button class="btn btn-secondary btn-xs" onclick="${call(totalPages)}" ${safePage>=totalPages?'disabled':''}>끝</button>
@@ -2319,7 +3034,13 @@
         _rtListeners.push({ ref, fn });
       };
 
-      // 4개 핵심 컬렉션 실시간 감시
+      // 교사 명단도 실시간 감시: 역할/이메일 변경이 Notice 수신자에 즉시 반영됩니다.
+      watch('teachers', snap => {
+        teachers = snap.val() || {};
+        syncCurrentTeacherRolesFromFirebase();
+      });
+
+      // 핵심 기록 컬렉션 실시간 감시
       watch(DETENTION_DB_PATH, snap => {
         const raw = snap.val() || {};
         entries = {};
@@ -2343,6 +3064,64 @@
       });
     }
 
+    async function syncCurrentTeacherGoogleAuthMetadata(){
+      try{
+        const user = window.firebaseAuth && window.firebaseAuth.currentUser ? window.firebaseAuth.currentUser : null;
+        if(!user || !user.uid || !user.email || !user.emailVerified || !teacher || !teacher.email) return false;
+
+        const authEmail = String(user.email || '').trim().toLowerCase();
+        const teacherEmail = String(teacher.email || '').trim().toLowerCase();
+        if(!authEmail || authEmail !== teacherEmail || !authEmail.endsWith('@his.sc.kr')) return false;
+
+        const teacherKey = authEmail.replace(/\./g, '_');
+        const ref = db.ref('teachers/' + teacherKey);
+        const snap = await ref.once('value');
+        const current = snap.val() || {};
+        if(String(current.email || '').trim().toLowerCase() !== authEmail || current.active === false) return false;
+
+        const needsUpdate =
+          String(current.authUid || '') !== String(user.uid) ||
+          String(current.authEmail || '').trim().toLowerCase() !== authEmail ||
+          current.authEmailVerified !== true ||
+          String(current.loginProvider || '').toLowerCase() !== 'google' ||
+          !String(current.lastGoogleLoginAt || '').trim();
+
+        if(needsUpdate){
+          const now = new Date().toISOString();
+          await Promise.all([
+            ref.child('loginProvider').set('google'),
+            ref.child('authUid').set(user.uid),
+            ref.child('authEmail').set(authEmail),
+            ref.child('authEmailVerified').set(true),
+            ref.child('lastGoogleLoginAt').set(now)
+          ]);
+        }
+
+        // Keep the UID index healthy as well. Failure here should not block the page.
+        try{
+          const roles = getTeacherRoles(current);
+          const isAdmin = roles.includes('admin');
+          const isMaster = roles.includes('master');
+          await db.ref('teacherAuthIndex/' + user.uid).set({
+            teacherKey,
+            email: authEmail,
+            active: current.active !== false,
+            isAdmin,
+            isMaster,
+            isAuditManager: isAdmin || isMaster,
+            linkedAt: String(current.lastGoogleLoginAt || new Date().toISOString()),
+            updatedAt: new Date().toISOString()
+          });
+        }catch(indexError){
+          console.warn('teacherAuthIndex self-heal failed:', indexError);
+        }
+        return true;
+      }catch(e){
+        console.warn('Teacher Google auth metadata self-heal failed:', e);
+        return false;
+      }
+    }
+
     async function init(){
       teacher = requireTeacherSession();
       if (!teacher) return;
@@ -2352,6 +3131,7 @@
           throw new Error('Firebase 인증 초기화 함수가 없습니다. common.js를 확인하세요.');
         }
         await window.ensureFirebaseAuth();
+        await syncCurrentTeacherGoogleAuthMetadata();
       } catch (e) {
         console.error(e);
         toast('Firebase 인증에 실패했습니다. 익명 로그인을 확인하세요. | Firebase authentication failed.', 'err');
@@ -3107,8 +3887,7 @@
           db.ref(RECOVERY_DB_PATH).once('value'),
           db.ref(NOTICE_DB_PATH).once('value'),
           db.ref(COMMITTEE_DB_PATH).once('value'),
-          db.ref(CYCLE_STATE_PATH).once('value'),
-          db.ref('adminConfig').once('value')
+          db.ref(CYCLE_STATE_PATH).once('value')
         ]);
         const standardsPromise = Promise.allSettled([
           db.ref(DETENTION_STANDARD_PATH).once('value'),
@@ -3116,15 +3895,13 @@
         ]);
 
         const [coreSnaps, standardResults] = await Promise.all([corePromise, standardsPromise]);
-        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap, adminConfigSnap] = coreSnaps;
-        const adminConfig = adminConfigSnap ? (adminConfigSnap.val() || {}) : {};
-        if (typeof window.setHisConfiguredAcademicYear === 'function') {
-          window.setHisConfiguredAcademicYear(adminConfig.academicYear || '');
-        }
+        const [teacherSnap, studentSnap, entrySnap, recoverySnap, noticeSnap, committeeSnap, cycleSnap] = coreSnaps;
         const standardResult = standardResults[0];
         const metaResult = standardResults[1];
 
         teachers = teacherSnap.val() || {};
+        syncCurrentTeacherRolesFromFirebase();
+        setupCurrentTeacherRoleRealtimeSync();
         students = studentSnap.val() || {};
         const rawEntries = entrySnap.val() || {};
         entries = {};
@@ -3195,20 +3972,32 @@
     function renderRecentEntries(){
       const box = document.getElementById('recent-entry-list');
       const scope = document.getElementById('recent-entry-scope');
+      const adminView = isAdminRole();
+
       if(scope){
-        scope.textContent = hasFullWorkRole()
-          ? '전체 교사 최신 10건 | All teachers'
-          : `${String((teacher && teacher.name) || '').trim()} 입력 최신 10건 | My entries`;
+        scope.textContent = adminView
+          ? '전체 교사 대기 최신 10건 | All teachers · Pending'
+          : `${String((teacher && teacher.name) || '').trim()} 대기 최신 10건 | My pending entries`;
       }
-      const normalizeTeacherName = value => String(value || '').trim().toLowerCase();
+
+      const currentTeacherEmail = normalizeTeacherEmail(teacher && teacher.email);
       const currentTeacherName = normalizeTeacherName(teacher && teacher.name);
+
       const list = Object.entries(entries || {}).map(([key, value]) => ({ key, ...(value || {}) }))
-        .filter(r => hasFullWorkRole() || normalizeTeacherName(r.teacherName) === currentTeacherName)
+        // This panel is specifically for entries that can still be cancelled.
+        .filter(r => String(r.status || '임시저장') === '임시저장')
+        // Admins can see/cancel any pending entry. Everyone else sees only their own.
+        .filter(r => {
+          if(adminView) return true;
+          const recordEmail = normalizeTeacherEmail(r.teacherEmail);
+          if(recordEmail && currentTeacherEmail) return recordEmail === currentTeacherEmail;
+          return normalizeTeacherName(r.teacherName) === currentTeacherName;
+        })
         .sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
         .slice(0, 10);
 
       if (!list.length){
-        box.innerHTML = `<div class="recent-empty">기록이 없습니다. | No records found.</div>`;
+        box.innerHTML = `<div class="recent-empty">대기 중인 입력이 없습니다. | No pending entries.</div>`;
         return;
       }
 
@@ -3220,16 +4009,17 @@
               <div class="recent-entry-meta">
                 <span class="recent-chip">${esc(r.className || '-')}</span>
                 <span class="recent-chip">${esc(r.category || '')}</span>
+                ${r.location ? `<span class="recent-chip">${esc(locationLabel(r))}</span>` : ''}
                 ${r.isReferral ? '<span class="recent-chip" style="background:#fde8e8;color:#7f1d1d;font-weight:700;">위원회 회부</span>' : ''}
               </div>
               <div class="recent-entry-violation">${esc(r.violation || '')}</div>
-              <button type="button" class="recent-entry-expand" onclick="this.closest('.recent-entry-item').classList.toggle('expanded');this.textContent=this.closest('.recent-entry-item').classList.contains('expanded')?'접기':'전체 보기'">전체 보기</button>
+              <button type="button" class="recent-entry-expand" onclick="this.closest('.recent-entry-item').classList.toggle('expanded');this.textContent=this.closest('.recent-entry-item').classList.contains('expanded')?'접기':'전체 보기'">전체 보기 | View All</button>
             </div>
             <div class="recent-entry-side">
               <div class="recent-entry-points">${esc(String(r.totalPoints || 0))}점</div>
               <div>${statusBadge(r.status || '임시저장')}</div>
               <div class="recent-entry-datetime">${fmt(r.createdAt)}</div>
-              ${canCancelDraftDetention(r) ? `<button class="btn btn-danger btn-xs" style="margin-top:6px" onclick="cancelDraftDetention('${esc(r.key)}')">입력 취소</button>` : ''}
+              ${canCancelDraftDetention(r) ? `<button class="btn btn-danger btn-xs" style="margin-top:6px" onclick="cancelDraftDetention('${esc(r.key)}')">입력 취소 | Cancel Entry</button>` : ''}
             </div>
           </div>
         </div>
@@ -3275,6 +4065,7 @@
         detailItem('점수 | Points',String(r.totalPoints??r.manualPoints??r.autoPoints??0)),
         detailItem('입력 교사 | Entered by',r.teacherName||'-'),
         detailItem('처리자 | Handled by',r.confirmedBy||r.rejectedBy||r.cancelledBy||'-'),
+        detailItem('장소 | Location',locationLabel(r)),
         detailItem('위반 항목 | Violation',r.violation||'-',true),
         detailItem('메모 | Memo',r.memo||'-',true),
         detailItem('관리자 노트 | Admin note',r.adminNote||'-',true)
@@ -3307,12 +4098,12 @@
       const rows=pageData.rows.map((r,rowIndex)=>{
         const expanded=expandedLookupDetentionKey===r.key;
         const stripeClass=rowIndex%2===0?'lookup-row-odd':'lookup-row-even';
-        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td class="nowrap">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')}</td><td><span class="cell-name cell-ellipsis">${esc(sName(r.studentName||'',r.englishName||''))}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis" title="${esc(r.violation||r.category||'-')}">${esc(r.violation||r.category||'-')}</span></td><td class="tc"><b>${esc(String(r.totalPoints??r.manualPoints??0))}</b></td><td><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></td><td><span class="cell-ellipsis" title="${esc(r.memo||'-')}">${esc(r.memo||'-')}</span></td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.confirmedBy||r.teacherName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('detention',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
+        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td class="nowrap">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')}</td><td><span class="cell-name cell-ellipsis">${studentNameLines(r.studentName||'',r.englishName||'')}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis" title="${esc(r.violation||r.category||'-')}">${esc(r.violation||r.category||'-')}</span></td><td class="tc"><b>${esc(String(r.totalPoints??r.manualPoints??0))}</b></td><td><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></td><td><span class="cell-ellipsis" title="${esc(r.memo||'-')}">${esc(r.memo||'-')}</span></td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.confirmedBy||r.teacherName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('detention',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
       }).join('');
       document.getElementById('all-records-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">검색 결과가 없습니다. | No records found.</td></tr>';
       document.getElementById('all-records-mobile').innerHTML=pageData.rows.map(r=>{
         const expanded=expandedLookupDetentionKey===r.key;
-        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${esc(sName(r.studentName||'',r.englishName||''))} · ${esc(r.className||'-')}</span><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></div><div class="lookup-mobile-card-body">${esc(r.violation||r.category||'-')}</div><div class="lookup-mobile-card-meta">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')} · ${esc(String(r.totalPoints??r.manualPoints??0))}점 · ${esc(r.teacherName||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('detention',r)}</div></div>`;
+        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('detention',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('detention',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${studentNameLines(r.studentName||'',r.englishName||'')} · ${esc(r.className||'-')}</span><span class="lookup-status ${recordStatusClass(r.status)}">${esc(recordStatusBilingual(r.status))}</span></div><div class="lookup-mobile-card-body">${esc(r.violation||r.category||'-')}</div><div class="lookup-mobile-card-meta">${esc(String(r.createdAt||r.confirmedAt||'').slice(0,10)||'-')} · ${esc(String(r.totalPoints??r.manualPoints??0))}점 · ${esc(r.teacherName||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('detention',r)}</div></div>`;
       }).join('')||'<div class="empty">검색 결과가 없습니다. | No records found.</div>';
     }
     function recoveryState(r){ if(r.completedAt) return 'done'; if(r.startedAt||r.assignedAt||r.createdAt) return 'active'; return 'not_started'; }
@@ -3337,12 +4128,12 @@
       const rows=pageData.rows.map((r,rowIndex)=>{
         const expanded=expandedLookupRecoveryKey===r.key;
         const stripeClass=rowIndex%2===0?'lookup-row-odd':'lookup-row-even';
-        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td><span class="cell-name cell-ellipsis">${esc(sName(r.studentName,r.englishName))}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis">${esc(r.typeLabel||'디텐션 전환')}</span></td><td><span class="cell-ellipsis" title="${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</span></td><td>${esc(String(r.assignedAt||r.createdAt||'').slice(0,10)||'-')}</td><td><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></td><td>${esc(String(r.completedAt||'').slice(0,10)||'-')}</td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.staffName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('recovery',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
+        return `<tr class="lookup-main-row ${stripeClass} ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}" title="${expanded?'상세 접기 | Collapse details':'상세 펼치기 | Expand details'}"><td><span class="cell-name cell-ellipsis">${studentNameLines(r.studentName,r.englishName)}</span></td><td class="cell-class">${esc(r.className||'-')}</td><td><span class="cell-ellipsis">${esc(r.typeLabel||'디텐션 전환')}</span></td><td><span class="cell-ellipsis" title="${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</span></td><td>${esc(String(r.assignedAt||r.createdAt||'').slice(0,10)||'-')}</td><td><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></td><td>${esc(String(r.completedAt||'').slice(0,10)||'-')}</td><td><div class="lookup-expand-cell"><span class="cell-ellipsis">${esc(r.staffName||'-')}</span><span class="lookup-expand-toggle" aria-hidden="true">${expanded?'▴':'▾'}</span></div></td></tr><tr class="lookup-inline-row ${stripeClass} ${expanded?'show':''}"><td colspan="8"><div class="lookup-inline-panel">${buildLookupDetail('recovery',r)}<div class="lookup-row-guide">같은 행을 다시 누르면 상세 내용이 접힙니다. | Click the row again to collapse.</div></div></td></tr>`;
       }).join('');
       document.getElementById('all-recovery-tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">회복교육 기록이 없습니다. | No recovery records found.</td></tr>';
       document.getElementById('all-recovery-mobile').innerHTML=pageData.rows.map(r=>{
         const expanded=expandedLookupRecoveryKey===r.key;
-        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${esc(sName(r.studentName,r.englishName))} · ${esc(r.className||'-')}</span><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></div><div class="lookup-mobile-card-body">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</div><div class="lookup-mobile-card-meta">담당 | Staff ${esc(r.staffName||'-')} · 완료 | Completed ${esc(String(r.completedAt||'').slice(0,10)||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('recovery',r)}</div></div>`;
+        return `<div class="lookup-mobile-card ${expanded?'expanded':''}" tabindex="0" data-key="${esc(r.key)}" aria-expanded="${expanded?'true':'false'}" onclick="toggleLookupDetail('recovery',this.dataset.key)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleLookupDetail('recovery',this.dataset.key)}"><div class="lookup-mobile-card-top"><span>${studentNameLines(r.studentName,r.englishName)} · ${esc(r.className||'-')}</span><span class="lookup-status ${recoveryState(r)==='done'?'done':'pending'}">${label(r)}</span></div><div class="lookup-mobile-card-body">${esc(r.reasonsSnapshot||r.violationSnapshot||'-')}</div><div class="lookup-mobile-card-meta">담당 | Staff ${esc(r.staffName||'-')} · 완료 | Completed ${esc(String(r.completedAt||'').slice(0,10)||'-')} · ${expanded?'상세 접기 | Collapse':'상세 펼치기 | Expand'}</div><div class="lookup-mobile-detail" onclick="event.stopPropagation()">${buildLookupDetail('recovery',r)}</div></div>`;
       }).join('')||'<div class="empty">회복교육 기록이 없습니다. | No recovery records found.</div>';
     }
 
@@ -3374,7 +4165,7 @@
           return `<td style="min-width:130px;max-width:200px"><span class="cell-reason-preview">${esc(r.adminNote||'-')}</span></td>`;
         }
         return `<td onclick="event.stopPropagation()" style="min-width:130px;max-width:200px">
-          <input class="edit-input admin-note-input" style="width:100%" value="${esc(r.adminNote||'')}" placeholder="관리자 노트"
+          <input class="edit-input admin-note-input" style="width:100%" value="${esc(r.adminNote||'')}" placeholder="관리자 노트 | Admin Note"
             oninput="entries['${esc(r.key)}'].adminNote=this.value"
             onblur="saveAdminNote('${esc(r.key)}',this.value)">
         </td>`;
@@ -3389,18 +4180,18 @@
           const canReject  = canManage && (String(r.status||'임시저장')==='임시저장'||String(r.status||'')==='확정');
           return `
             <tr class="summary-row" onclick="toggleConfirmRow('${esc(r.key)}')">
-              <td class="nowrap">${esc(sName(r.studentName||'',r.englishName||''))}</td>
+              <td class="nowrap">${studentNameLines(r.studentName||'',r.englishName||'')}</td>
               <td class="nowrap tc">${esc(r.className||'-')}</td>
               <td class="nowrap">${esc(r.category||'')}</td>
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
               <td class="nowrap tc">${esc(String(r.totalPoints||0))}</td>
               <td class="nowrap">${esc(r.teacherName||'')}</td>
-              <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
+              <td class="nowrap tc confirm-status-cell">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
-              <td class="nowrap tc" onclick="event.stopPropagation()" style="min-width:150px">
-                <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
-                  ${canConfirm?`<button class="btn btn-primary btn-xs" onclick="confirmDetention('${esc(r.key)}')">확정</button>`:''}
-                  ${canReject ?`<button class="btn btn-danger btn-xs"  onclick="rejectDetention('${esc(r.key)}')">반려</button>`:''}
+              <td class="nowrap tc confirm-action-cell" onclick="event.stopPropagation()">
+                <div style="display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:nowrap;white-space:nowrap">
+                  ${canConfirm?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
+                  ${canReject ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
                   ${!canManage?'-':''}
                 </div>
               </td>
@@ -3408,9 +4199,10 @@
             <tr class="detail-row ${expanded?'show':''}">
               <td colspan="9"><div class="detail-box">
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
+                <div class="detail-section"><div class="detail-title">장소 | Location</div><div class="detail-content">${esc(locationLabel(r))}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
-                <div class="detail-section"><div class="detail-title">처리 정보</div><div class="detail-content">작성: ${fmt(r.createdAt)}\n확정: ${fmt(r.confirmedAt)}\n반려: ${fmt(r.rejectedAt)}\n노트: ${esc(r.adminNote||'-')}</div></div>
-                ${canCancelDraftDetention(r)?`<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="event.stopPropagation();cancelDraftDetention('${esc(r.key)}')">입력취소</button></div>`:''}
+                <div class="detail-section"><div class="detail-title">처리 정보 | Processing Info</div><div class="detail-content">작성 | Created: ${fmt(r.createdAt)}\n확정 | Confirmed: ${fmt(r.confirmedAt)}\n반려 | Rejected: ${fmt(r.rejectedAt)}\n노트 | Note: ${esc(r.adminNote||'-')}</div></div>
+                ${canCancelDraftDetention(r)?`<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="event.stopPropagation();cancelDraftDetention('${esc(r.key)}')">입력취소 | Cancel Entry</button></div>`:''}
               </div></td>
             </tr>`;
         }).join('');
@@ -3422,8 +4214,12 @@
         const canEditDate = canEditRecordDate(); // admin 전용, master 제외
         return arr.map(r => {
           const expanded     = expandedConfirmKeys.has(r.key);
-          const canReject    = canManage && String(r.status||'')==='확정';
-          const canCommittee = canManage && String(r.status||'')==='확정';
+          const recordStatus = String(r.status || '임시저장');
+          const canReject    = canManage && recordStatus === '확정';
+          const canConfirmRejected = canManage && recordStatus === '반려';
+          const canCommittee = canManage && recordStatus === '확정';
+          const canUndoProcessing = canManage && (recordStatus === '확정' || recordStatus === '반려');
+          const isCancelled  = recordStatus === '취소';
           const isReferral   = r.isReferral===true||r.isReferral==='true';
 
           // admin 전용 날짜 편집 인풋 생성
@@ -3435,13 +4231,13 @@
 
           return `
             <tr class="summary-row" onclick="toggleConfirmRow('${esc(r.key)}')">
-              <td class="nowrap">${esc(sName(r.studentName||'',r.englishName||''))}</td>
+              <td class="nowrap">${studentNameLines(r.studentName||'',r.englishName||'')}</td>
               <td class="nowrap tc">${esc(r.className||'-')}</td>
               <td class="nowrap">${esc(r.category||'')}</td>
               <td><span class="cell-reason-preview">${esc(String(r.violation||'').split('\n')[0])}</span></td>
               <td class="nowrap tc">${esc(String(r.totalPoints||0))}${isReferral?'<br><span style="color:var(--rd);font-size:10px;font-weight:700;">위원회</span>':''}</td>
               <td class="nowrap">${esc(r.teacherName||'')}</td>
-              <td class="nowrap">${statusBadge(r.status||'임시저장')}</td>
+              <td class="nowrap tc confirm-status-cell">${statusBadge(r.status||'임시저장')}</td>
               ${noteTd(r)}
               <td class="nowrap tc" style="min-width:36px">
                 <span style="font-size:11px;color:var(--sb)">${expanded?'▲':'▼'}</span>
@@ -3450,22 +4246,34 @@
             <tr class="detail-row ${expanded?'show':''}">
               <td colspan="9"><div class="detail-box">
                 <div class="detail-section"><div class="detail-title">위반행위 | Violation</div><div class="detail-content">${esc(r.violation||'')}</div></div>
+                <div class="detail-section"><div class="detail-title">장소 | Location</div><div class="detail-content">${esc(locationLabel(r))}</div></div>
                 <div class="detail-section"><div class="detail-title">메모 | Memo</div><div class="detail-content">${esc(r.memo||'-')}</div></div>
                 <div class="detail-section">
-                  <div class="detail-title">처리 정보${canEditDate?' <span style="font-size:10px;color:var(--sb);font-weight:400">(admin: 날짜 편집 가능)</span>':''}</div>
+                  <div class="detail-title">처리 정보 | Processing Info${canEditDate?' <span style="font-size:10px;color:var(--sb);font-weight:400">(Admin: dates editable)</span>':''}</div>
                   <div class="detail-content" style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center;white-space:normal">
-                    <span style="color:var(--sb)">작성:</span>${entryDateInput(r.createdAt,   'createdAt',   '')}
-                    <span style="color:var(--sb)">확정:</span>${entryDateInput(r.confirmedAt,'confirmedAt','')}
-                    <span style="color:var(--sb)">반려:</span>${entryDateInput(r.rejectedAt, 'rejectedAt', '')}
-                    <span style="color:var(--sb)">노트:</span><span>${esc(r.adminNote||'-')}</span>
+                    <span style="color:var(--sb)">작성 | Created:</span>${entryDateInput(r.createdAt, 'createdAt', '')}
+                    ${recordStatus === '확정' ? `
+                      <span style="color:var(--sb)">확정일 | Confirmed:</span>${entryDateInput(r.confirmedAt, 'confirmedAt', '')}
+                      <span style="color:var(--sb)">확정자 | Confirmed by:</span><span>${esc(r.confirmedBy || '-')}${r.confirmedByEmail ? ' ('+esc(r.confirmedByEmail)+')' : ''}</span>
+                    ` : ''}
+                    ${recordStatus === '반려' ? `
+                      <span style="color:var(--sb)">반려일 | Rejected:</span>${entryDateInput(r.rejectedAt, 'rejectedAt', '')}
+                      <span style="color:var(--sb)">반려자 | Rejected by:</span><span>${esc(r.rejectedBy || '-')}${r.rejectedByEmail ? ' ('+esc(r.rejectedByEmail)+')' : ''}</span>
+                    ` : ''}
+                    ${recordStatus === '취소' ? `
+                      <span style="color:var(--sb)">취소일 | Cancelled:</span>${entryDateInput(r.cancelledAt, 'cancelledAt', '')}
+                      <span style="color:var(--sb)">취소자 | Cancelled by:</span><span>${esc(r.cancelledBy || '-')}${r.cancelledByEmail ? ' ('+esc(r.cancelledByEmail)+')' : ''}</span>
+                    ` : ''}
+                    <span style="color:var(--sb)">노트 | Note:</span><span>${esc(r.adminNote||'-')}</span>
                   </div>
                 </div>
-                ${(canReject||canCommittee||canManage)?`
+                ${(canReject||canConfirmRejected||canCommittee||canUndoProcessing)?`
                 <div class="detail-section"><div class="detail-title">처리 | Actions</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-                    ${canReject   ?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려</button>`:''}
-                    ${canManage   ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${String(r.status||'')==='확정'?'확정취소':'반려취소'}</button>`:''}
-                    ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동</button>`:''}
+                    ${canConfirmRejected ?`<button class="btn btn-primary btn-xs confirm-action-compact" onclick="event.stopPropagation();confirmDetention('${esc(r.key)}')">확정 | Confirm</button>`:''}
+                    ${canReject   ?`<button class="btn btn-danger btn-xs confirm-action-compact" onclick="event.stopPropagation();rejectDetention('${esc(r.key)}')">반려 | Reject</button>`:''}
+                    ${canUndoProcessing ?`<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelDetentionProcessing('${esc(r.key)}')">${recordStatus==='확정'?'확정취소 | Undo Confirm':'반려취소 | Undo Reject'}</button>`:''}
+                    ${canCommittee?`<button class="btn btn-xs" style="background:#fef9e8;color:#5a3e00;border:1px solid #f0c040" onclick="event.stopPropagation();openManualCommittee('${esc(r.key)}','${esc(r.studentKey||'')}','${esc(r.studentName||'')}')">위원회 수동 | Manual Committee</button>`:''}
                   </div>
                 </div>`:''}
               </div></td>
@@ -3527,6 +4335,24 @@
        'discipline-active-tbody','discipline-done-tbody'
       ].forEach(stripeTable);
     }
+    async function cancelNoticeMailStatus(noticeKey, field){
+      noticeKey=String(noticeKey||'').trim();
+      if(!noticeKey || !['parentMailAt','studentTeacherMailAt'].includes(field)){
+        return toast('알림 기록을 찾을 수 없습니다. | Notice record not found.','err');
+      }
+      const isParent=field==='parentMailAt';
+      const label=isParent?'학부모 알림 | Parent notice':'학생·교사 알림 | Student/Teacher notice';
+      if(!confirm(`${label}의 발송 완료 상태를 취소하고 미발송 상태로 되돌립니다.\n\nCancel the sent status and return this email to pending?`)) return;
+      try{
+        await db.ref('detentionNotices/'+noticeKey+'/'+field).remove();
+        toast(`${label} 상태를 취소했습니다. | Sent status cancelled.`,'ok');
+      }catch(e){
+        console.error('Cancel notice mail status failed:',e);
+        toast('메일 상태 취소에 실패했습니다. | Failed to cancel email status.','err');
+      }
+    }
+
+
 
     async function updateNoticeDateField(noticeKey, field, dateValue){
       if(!noticeKey) return toast('noticeKey 없음', 'err');
@@ -3710,7 +4536,7 @@
       if(!sel) return;
       const classes = [...new Set(getStudentCatalog().map(s=>String(s.className||'').trim()).filter(Boolean))]
         .sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
-      sel.innerHTML = '<option value="">전체 반</option>' + classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      sel.innerHTML = '<option value="">전체 반 | All Classes</option>' + classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
     }
 
 
@@ -3847,7 +4673,7 @@
       const sortedClasses = Object.keys(classMap).sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
 
       if(!sortedClasses.length){
-        grid.innerHTML='<div class="empty" style="padding:24px;grid-column:1/-1">학생이 없습니다.</div>';
+        grid.innerHTML='<div class="empty" style="padding:24px;grid-column:1/-1">학생이 없습니다. | No students found.</div>';
         return;
       }
 
@@ -3857,14 +4683,23 @@
           const _pts = getStudentPoints(s.key, getSchoolLevel(s.className||''));
           const current=_pts.current, overall=_pts.overall, recovered=overall-current;
           const ptColor = current>=9?'var(--rd)':current>=6?'#b45309':current>=3?'#1d4ed8':'#9ca3af';
+          const totalColor = overall>=31?'var(--rd)':overall>=21?'#1d4ed8':'var(--sb)';
+          const totalWeight = overall>=21?'800':'500';
           const bg = i%2===0?'#fff':'#f7faff';
           return `<tr style="background:${bg}">
-            <td style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="margin-left:4px;color:#b45309;font-size:10px">명단없음</span>' : ''}</td>
-            <td style="font-size:11px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.englishName||'')}</td>
+            <td style="overflow:hidden">
+              <div style="display:flex;flex-direction:column;justify-content:center;min-width:0;line-height:1.15">
+                <div style="display:flex;align-items:center;gap:5px;min-width:0">
+                  <span style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name||'')}</span>
+                  ${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="color:#b45309;font-size:9px;white-space:nowrap">명단없음</span>' : ''}
+                </div>
+                ${s.englishName ? `<span style="font-size:10px;color:var(--sb);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${esc(s.englishName)}</span>` : ''}
+              </div>
+            </td>
             <td style="text-align:center;font-weight:800;font-size:13px;color:${ptColor};white-space:nowrap">${current}</td>
-            <td style="text-align:center;font-size:11px;color:var(--sb);white-space:nowrap">${overall}</td>
-            <td style="text-align:center;padding:0 2px;white-space:nowrap">
-              <button class="btn-view" style="padding:1px 6px;font-size:11px;line-height:1.1;white-space:nowrap;min-width:34px" onclick="switchToSplitView('${esc(s.key)}')">보기</button>
+            <td style="text-align:center;font-size:11px;color:${totalColor};font-weight:${totalWeight};white-space:nowrap">${overall}</td>
+            <td style="text-align:center;padding:0 3px;white-space:nowrap">
+              <button class="btn-view student-view-btn" onclick="switchToSplitView('${esc(s.key)}')">보기 | View</button>
             </td>
           </tr>`;
         }).join('');
@@ -3872,16 +4707,15 @@
         return `<div style="background:#fff;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
           <div style="background:linear-gradient(120deg,var(--nv),var(--nv2));color:#fff;font-weight:800;font-size:13px;padding:6px 10px;display:flex;justify-content:space-between">
             <span>${esc(cls)}</span>
-            <span style="font-size:11px;opacity:.75;font-weight:500">${list.length}명</span>
+            <span style="font-size:11px;opacity:.82;font-weight:500;white-space:nowrap">${list.length}명 | ${list.length} students</span>
           </div>
           <table style="width:100%;border-collapse:collapse;table-layout:fixed">
             <thead>
               <tr style="background:#dce6f7">
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:34%">이름</th>
-                <th style="font-size:11px;padding:4px 8px;text-align:left;width:34%">영문명</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">잔여</th>
-                <th style="font-size:11px;padding:4px;text-align:center;width:10%">누적</th>
-                <th style="font-size:11px;padding:4px 2px;text-align:center;width:12%"></th>
+                <th style="font-size:11px;padding:4px 6px;text-align:left;width:40%"><span class="search-header-stack search-student-header"><span>학생</span><span class="header-en">Student</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>잔여</span><span class="header-en">Remaining</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>누적</span><span class="header-en">Total</span></span></th>
+                <th style="font-size:11px;padding:4px 2px;text-align:center;width:20%"><span class="search-header-stack"><span>보기</span><span class="header-en">View</span></span></th>
               </tr>
             </thead>
             <tbody style="border-bottom:1px solid #eef2ff">${rows}</tbody>
@@ -3933,7 +4767,7 @@
         backBtn.id = 'btn-back-overview';
         backBtn.className = 'btn btn-secondary';
         backBtn.style.cssText = 'font-size:12px;padding:5px 12px';
-        backBtn.textContent = '← 조회하기';
+        backBtn.textContent = '← 조회하기 | Search';
         backBtn.onclick = backToOverview;
         const header = document.querySelector('#tab-students .card > div:first-child');
         if(header) header.appendChild(backBtn);
@@ -3979,6 +4813,8 @@
           const _pts = getStudentPoints(s.key, level||getSchoolLevel(s.className||''));
           const currentTotal = _pts.current, overallTotal = _pts.overall;
           const ptColor = currentTotal>=9?'var(--rd)':currentTotal>=6?'#b45309':currentTotal>=3?'#1d4ed8':'#9ca3af';
+          const overallColor = overallTotal>=31?'var(--rd)':overallTotal>=21?'#1d4ed8':'#9ca3af';
+          const overallWeight = overallTotal>=21?'800':'500';
           return `<div class="student-list-row" data-skey="${skey}" onclick="selectStudentInPanel('${skey}')">
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.name||'')}${s.fromRecords ? '<span title="students 명단에는 없고 기록 DB에서만 발견된 학생입니다." style="margin-left:4px;color:#b45309;font-size:10px">명단없음</span>' : ''}</div>
@@ -3986,7 +4822,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
               <span style="font-size:12px;font-weight:700;color:${ptColor}">${currentTotal}</span>
-              <span style="font-size:10px;color:#9ca3af">/${overallTotal}</span>
+              <span style="font-size:10px;color:${overallColor};font-weight:${overallWeight}">/${overallTotal}</span>
               <button class="btn-det" data-skey="${skey}" onclick="event.stopPropagation();goToDetentionEntry('${skey}')">+</button>
             </div>
           </div>`;
@@ -4421,6 +5257,13 @@
       return record.createdAt || record.referredAt || record.completedAt || '';
     }
 
+    function getDistinctCommitteeCaseCount(records, studentKey){
+      const list=Array.isArray(records)?records:[]; const sk=String(studentKey||'').trim(); const completed=list.filter(r=>!!(r&&r.completedAt)); const seen=new Set();
+      completed.forEach(r=>{ const flow=getCommitteeRecordFlow(r); if(flow==='edu'){seen.add('edu:'+String(getRecordYear(r,getCurrentYear())));return;} const linked=getCommitteeRecordEntryKeys(r); if(linked.length) linked.forEach(k=>seen.add('referral:'+k)); else seen.add('referral-record:'+String(r.key||r.committeeKey||committeeRecordTime(r)||'unknown')); });
+      list.filter(r=>!(r&&r.completedAt)).forEach(r=>{ const flow=getCommitteeRecordFlow(r); if(flow==='edu'){const k='edu:'+String(getRecordYear(r,getCurrentYear()));if(!seen.has(k))seen.add(k);return;} const linked=getCommitteeRecordEntryKeys(r); if(linked.length){linked.forEach(k=>seen.add('referral:'+k));return;} const done=completed.some(c=>getCommitteeRecordFlow(c)==='referral'&&(!sk||getCommitteeRecordStudentKey(c)===sk)); if(!done)seen.add('referral-pending:'+String(r.key||r.committeeKey||committeeRecordTime(r)||'unknown')); });
+      return seen.size;
+    }
+
     function renderStudentDetail(studentKey){
       const panel = document.getElementById('student-detail-panel');
       const s = getStudentProfile(studentKey);
@@ -4480,6 +5323,10 @@
               <div class="detail-section">
                 <div class="detail-title">위반행위 | Violation</div>
                 <div class="detail-content">${esc(r.violation || '-')}</div>
+              </div>
+              <div class="detail-section">
+                <div class="detail-title">장소 | Location</div>
+                <div class="detail-content">${esc(locationLabel(r))}</div>
               </div>
               <div class="detail-section">
                 <div class="detail-title">메모 | Memo</div>
@@ -4609,7 +5456,7 @@
           title:r.violation||'-',
           left:`${String(r.totalPoints??0)}점`,
           right:recordStatusBilingual(r.status),
-          state:String(r.status||'')==='확정'?'confirmed':String(r.status||'')==='반려'?'rejected':'pending'
+          state:String(r.status||'')==='확정'?'confirmed':String(r.status||'')==='반려'?'rejected':String(r.status||'')==='취소'?'cancelled':'pending'
         });
       });
       noticeList.forEach(function(r, detailIndex){
@@ -4660,21 +5507,21 @@
       panel.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div>
-            <div style="font-size:17px;font-weight:800;color:var(--nv)">${esc(s.name||'')} <span style="font-weight:400;font-size:14px;color:var(--sb)">${esc(s.englishName||'')}</span></div>
+            <div style="font-size:17px;font-weight:800;color:var(--nv);line-height:1.15"><div>${esc(s.name||'')}</div>${s.englishName?`<div style="font-weight:500;font-size:12px;color:var(--sb);margin-top:3px">${esc(s.englishName)}</div>`:''}</div>
             <div style="font-size:12px;color:var(--sb);margin-top:2px">${esc(s.className||'')} · ${esc(s.selfEmail||'-')}</div>
             ${s.homeroomTeacherEmail?`<div style="font-size:11px;color:var(--sb)">담임: ${esc(s.homeroomTeacherEmail)}</div>`:''}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(true)">전체 펼침</button>
-            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(false)">전체 접기</button>
-            <button class="btn-det" onclick="goToDetentionEntry('${esc(studentKey)}')">디텐션 입력</button>
-            ${hasFullWorkRole() && students[studentKey] ? `<button class="btn btn-danger btn-xs" style="background:#fff;color:var(--rd);border:1px solid #fca5a5" onclick="hideStudentFromList('${esc(studentKey)}')">학생 삭제</button>` : ''}
+            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(true)">전체 펼침 | Expand All</button>
+            <button class="btn btn-secondary btn-xs" onclick="setStudentDetailExpanded(false)">전체 접기 | Collapse All</button>
+            <button class="btn-det" onclick="goToDetentionEntry('${esc(studentKey)}')">디텐션 입력 | Add Detention</button>
+
           </div>
         </div>
 
         <!-- 집계 -->
         <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px">
-          ${[['디텐션 횟수 | Detention Count', 'var(--nv)', detList.filter(r=>r.status==='확정').length], ['누적디텐션점수 | Total Detention Points', 'var(--rd)', confirmedPts], ['회복교육횟수 | Restorative Education Count', '#2563eb', recList.length], ['회복점수 | Restorative Points', '#7c3aed', recoveredPts], ['잔여 디텐션점수 | Remaining Detention Points', 'var(--nv)', currentPts], ['위원회회부 | Committee Referral', '#b45309', committeeList.length]]
+          ${[['디텐션 횟수 | Detention Count', 'var(--nv)', detList.filter(r=>r.status==='확정').length], ['누적디텐션점수 | Total Detention Points', 'var(--rd)', confirmedPts], ['회복교육횟수 | Restorative Education Count', '#2563eb', recList.length], ['회복점수 | Restorative Points', '#7c3aed', recoveredPts], ['잔여 디텐션점수 | Remaining Detention Points', 'var(--nv)', currentPts], ['위원회회부 | Committee Referral', '#b45309', getDistinctCommitteeCaseCount(committeeList, studentKey)]]
             .map(([l,c,v])=>`<div style="background:#eef3ff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:10px;color:var(--sb)">${l}</div></div>`).join('')}
         </div>
 
@@ -4901,6 +5748,13 @@
 
       function activeDetailHtml(s, level){
         const notice = s.notice || {};
+        const activeNoticeKey = String(s.noticeDocKey || '');
+        const parentAction = notice.parentMailAt
+          ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span>${activeNoticeKey ? `<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(activeNoticeKey)}','parentMailAt')">학부모 알림 취소 | Cancel Parent</button>` : ''}`
+          : `<button class="btn-mail" onclick="event.stopPropagation();sendParentMail('${esc(s.key)}','${level}')">학부모 메일 | Parent Email</button>`;
+        const studentAction = notice.studentTeacherMailAt
+          ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span>${activeNoticeKey ? `<button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelNoticeMailStatus('${esc(activeNoticeKey)}','studentTeacherMailAt')">학생·교사 알림 취소 | Cancel Student/Teacher</button>` : ''}`
+          : `<button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMail('${esc(s.key)}','${level}')">학생·교사 메일 | Student/Teacher Email</button>`;
         return `<div class="notice-inline-panel">
           ${identityHtml(s, level)}
           <div class="notice-detail-grid">
@@ -4921,8 +5775,8 @@
               <div class="notice-detail-title">메일 처리 | Email Actions</div>
               <div class="notice-detail-content">메일 발송 여부와 시간을 확인한 뒤 필요한 알림을 보냅니다.<br>Check the status and send the required notice.</div>
               <div class="notice-detail-actions">
-                <button class="btn-mail" onclick="event.stopPropagation();sendParentMail('${esc(s.key)}','${level}')">학부모 메일 | Parent Email</button>
-                <button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMail('${esc(s.key)}','${level}')">학생·교사 메일 | Student/Teacher Email</button>
+                ${parentAction}
+                ${studentAction}
               </div>
             </div>
           </div>
@@ -4985,10 +5839,10 @@
           }
 
           const parentAction = notice.parentMailAt
-            ? `<span class="notice-mail-badge sent">발송 완료 | Sent</span>`
+            ? `<span class="notice-mail-badge sent">학부모 알림 완료 | Parent Sent</span>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendParentMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학부모 메일 | Parent Email</button>`;
           const studentAction = notice.studentTeacherMailAt
-            ? `<span class="notice-mail-badge sent">발송 완료 | Sent</span>`
+            ? `<span class="notice-mail-badge sent">학생·교사 알림 완료 | Student/Teacher Sent</span>`
             : `<button class="btn-mail" onclick="event.stopPropagation();sendStudentTeacherMailForDone('${esc(s.key)}','${level}','${doneMapKey}')">학생·교사 메일 | Student/Teacher Email</button>`;
 
           const dateEditSection = canEditDate ? `<div class="notice-detail-section full">
@@ -5106,7 +5960,7 @@
           const expanded = expandedRecoveryKeys[level].has(s.key);
           return `
             <tr class="summary-row" onclick="toggleRecoveryRow('${level}','${esc(s.key)}')">
-              <td class="nowrap">${esc(sName(s.name,s.englishName))}</td>
+              <td class="nowrap">${studentNameLines(s.name,s.englishName)}</td>
               <td class="nowrap tc">${esc(s.className || '')}</td>
               <td class="nowrap tc">${s.currentTotal}</td>
               <td class="nowrap tc">${s.overallTotal}</td>
@@ -5121,7 +5975,7 @@
               <td class="nowrap tc" onclick="event.stopPropagation()">
                 ${(s.state && s.state.committeeStatus === 'pending_referral')
                   ? '<button class="btn btn-xs" style="background:#fde8e8;color:#7f1d1d;border:1px solid #fca5a5;cursor:not-allowed;line-height:1.3;" disabled>위원회 회부<br>회복 일시정지</button>'
-                  : `<button class="btn btn-primary btn-xs" onclick="completeRecovery('${esc(s.key)}','${level}')">회복교육 완료</button>`
+                  : `<button class="btn btn-primary btn-xs" onclick="completeRecovery('${esc(s.key)}','${level}')">회복교육 완료 | Complete Recovery</button>`
                 }
               </td>
             </tr>
@@ -5168,7 +6022,7 @@
           const profile = getRecordStudentProfile(r);
           rows.push(
             '<tr class="summary-row" style="cursor:pointer;">'+
-            '<td class="nowrap">'+esc(sName(profile.name,profile.englishName))+'</td>'+
+            '<td class="nowrap">'+studentNameLines(profile.name,profile.englishName)+'</td>'+
             '<td class="nowrap">'+esc(profile.className||'')+'</td>'+
             '<td><span class="cell-reason-preview">'+esc(reasonPreview)+'</span></td>'+
             '<td class="nowrap tc">-'+esc(String(r.recoveryPoints||0))+'</td>'+
@@ -5181,7 +6035,7 @@
             '<div class="detail-title">위반 행위 | Violations</div>'+
             '<div class="detail-content">'+esc(reasonText)+'</div>'+
             '</div>'+(()=>{ const memos=getConfirmedEntriesForStudent(profile.key).filter(e=>e.memo||e.adminNote).map((e,i)=>'['+(i+1)+'] '+(e.memo?'메모: '+e.memo:'')+(e.memo&&e.adminNote?' / ':'')+(e.adminNote?'관리자: '+e.adminNote:'')).join('\n'); return memos?'<div class="detail-section"><div class="detail-title">메모 | Notes</div><div class="detail-content">'+esc(memos)+'</div></div>':''; })()+
-            (canManageRecoveryLevel(level)?'<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelRecoveryCompletion(\''+r.key+'\')">완료취소</button></div>':'')+
+            (canManageRecoveryLevel(level)?'<div class="detail-section"><div class="detail-title">취소 | Cancel</div><button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();cancelRecoveryCompletion(\''+r.key+'\')">완료취소 | Undo Completion</button></div>':'')+
             '</div></td></tr>'
           );
         });
@@ -5314,8 +6168,8 @@
           '<td class="tc" onclick="event.stopPropagation()">'+categorySelectHtml(token,category,pendingKey,c.type)+'</td>'+
           '<td class="wrap-cell" onclick="event.stopPropagation()">'+noteEditorHtml(token,c.pending,pendingKey,c.type)+'</td>'+
           '<td class="tc" onclick="event.stopPropagation()"><div class="committee-action-group">'+(c.pending
-            ? '<div style="width:100%;font-size:10px;color:var(--mut);margin-bottom:2px;">회부확정됨</div><button class="btn btn-primary committee-action-btn" '+(canManageCommittee()?'onclick="completeCommittee(\''+(c.type==='referral'?(c.pending.type||'referral'):(c.pending.type||'edu'))+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+esc(pendingKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>완료</button>'
-            : '<button class="btn btn-secondary committee-action-btn" '+(canManageCommittee()?'onclick="referCommitteeCase(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>회부확정</button><button class="btn btn-exception committee-action-btn" '+(canManageCommittee()?'onclick="exceptionToRecovery(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>예외→회복</button>')+'</div></td></tr>'+
+            ? '<div style="width:100%;font-size:10px;color:var(--mut);margin-bottom:2px;">회부확정됨</div><button class="btn btn-primary committee-action-btn" '+(canManageCommittee()?'onclick="completeCommittee(\''+(c.type==='referral'?(c.pending.type||'referral'):(c.pending.type||'edu'))+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+esc(pendingKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>완료 | Complete</button>'
+            : '<button class="btn btn-secondary committee-action-btn" '+(canManageCommittee()?'onclick="referCommitteeCase(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>회부확정 | Confirm Referral</button><button class="btn btn-exception committee-action-btn" '+(canManageCommittee()?'onclick="exceptionToRecovery(\''+c.type+'\',\''+esc(c.entryKey)+'\',\''+esc(c.studentKey)+'\',\''+token+'\')"':'disabled title="조회 전용 권한입니다"')+'>예외→회복 | Exception → Recovery</button>')+'</div></td></tr>'+
           '<tr class="committee-detail-row '+stripeClass+'" id="'+did+'"><td colspan="9"><div class="committee-inline-panel">'+identity+
             '<div class="committee-detail-grid">'+
               '<div class="detail-section"><div class="detail-title">위원회 사유 | Committee Reason</div><div class="detail-content">'+esc(c.reason||'-')+'</div></div>'+
@@ -5600,7 +6454,7 @@
           return '<b>'+esc(item.name)+'</b><span style="margin-left:3px;padding:1px 5px;background:#fef3cd;border-radius:4px;font-size:10px;">'+esc(label)+'</span>';
         }).join('  ');
         banner.classList.remove('expanded');
-        banner.innerHTML='<div class="committee-summary"><div class="committee-summary-main">⚠️ 위원회 처리 대기 <b>'+pending.length+'건</b> · '+items+'</div><button type="button" class="committee-summary-toggle" onclick="toggleCommitteeBanner()">펼치기</button></div>';
+        banner.innerHTML='<div class="committee-summary"><div class="committee-summary-main">⚠️ 위원회 처리 대기 <b>'+pending.length+'건</b> · '+items+'</div><button type="button" class="committee-summary-toggle" onclick="toggleCommitteeBanner()">펼치기 | Expand</button></div>';
       } else {
         banner.style.display='none';
         banner.classList.remove('expanded');
@@ -5680,6 +6534,43 @@
       }catch(e){ console.error(e); toast('처리 취소 실패', 'err'); }
     }
 
+    function updateEntryLocationFields(){
+      const location = String((document.getElementById('entry-location') || {}).value || '');
+      const classWrap = document.getElementById('entry-location-class-wrap');
+      const otherWrap = document.getElementById('entry-location-other-wrap');
+      const classInput = document.getElementById('entry-location-class');
+      const otherInput = document.getElementById('entry-location-other');
+
+      if(classWrap) classWrap.style.display = location === 'classroom' ? '' : 'none';
+      if(otherWrap) otherWrap.style.display = location === 'other' ? '' : 'none';
+
+      if(classInput){
+        classInput.required = location === 'classroom';
+        if(location !== 'classroom') classInput.value = '';
+      }
+      if(otherInput && location !== 'other') otherInput.value = '';
+    }
+
+    function locationLabel(record){
+      const r = record || {};
+      const code = String(r.location || '');
+      const labels = {
+        classroom:'교실 | Classroom',
+        hallway:'복도 | Hallway',
+        outdoor:'운동장/야외 | Playground/Outdoor',
+        cafeteria:'급식실 | Cafeteria',
+        library:'도서관 | Library',
+        other:'기타 | Other'
+      };
+      let label = labels[code] || '';
+      if(code === 'classroom' && String(r.locationClass || '').trim()){
+        label += ` — ${String(r.locationClass).trim()}`;
+      } else if(code === 'other' && String(r.locationOther || '').trim()){
+        label += ` — ${String(r.locationOther).trim()}`;
+      }
+      return label || '-';
+    }
+
     /* ---------- 6) 저장 / 확정 / 반려 / 메일 / 완료 처리 ---------- */
     async function saveDetention(){
       if(!teacher || !teacher.email) return toast('로그인 사용자 정보를 확인할 수 없습니다.', 'err');
@@ -5691,6 +6582,9 @@
       const autoPointsRaw = String(_std ? (_std.autoPoints || '') : '').trim();
       const manualPoints = Number(document.getElementById('manual-points').value || 0);
       const memo = (document.getElementById('memo').value || '').trim();
+      const location = String((document.getElementById('entry-location') || {}).value || '').trim();
+      const locationClass = String((document.getElementById('entry-location-class') || {}).value || '').trim();
+      const locationOther = String((document.getElementById('entry-location-other') || {}).value || '').trim();
 
       // 교사/날짜 (admin·master만 변경 가능)
       const canEditTeacher = hasFullWorkRole();
@@ -5705,6 +6599,16 @@
       if (!studentKey || !students[studentKey]){
         alert('학생을 선택해 주세요.\nPlease select a student.');
         return toast('학생을 선택해 주세요.', 'err');
+      }
+      if (!location){
+        alert('장소를 선택해 주세요.\nPlease select a location.');
+        document.getElementById('entry-location').focus();
+        return toast('장소를 선택해 주세요. | Please select a location.', 'err');
+      }
+      if (location === 'classroom' && !locationClass){
+        alert('교실을 선택한 경우 수업을 입력해 주세요.\nPlease enter the class when Classroom is selected.');
+        document.getElementById('entry-location-class').focus();
+        return toast('수업을 입력해 주세요. | Please enter the class.', 'err');
       }
       // 범위형만 직접 입력이 필요합니다. 고정형·회차 선택형은 자동 산정합니다.
       const apRaw = autoPointsRaw.replace(/\s*—.*$/, '').trim();
@@ -5762,6 +6666,9 @@
         autoPoints: autoPointsRaw,
         manualPoints: finalManualPoints,
         totalPoints: finalManualPoints,
+        location,
+        locationClass: location === 'classroom' ? locationClass : '',
+        locationOther: location === 'other' ? locationOther : '',
         memo,
         teacherName: entryTeacher,
         teacherEmail: entryTeacherEmail,
@@ -5817,15 +6724,34 @@
         ).length;
         const isReferral = hasCommitteeNote && prevConfirmedCount >= 1;
 
+        // 확정 시점의 학생 연락처를 기록에 스냅샷으로 저장합니다.
+        // 현재 학생 명단을 기준으로 하되, 명단에 값이 없으면 기존 기록 값을 유지합니다.
+        const rosterStudent = students[String(record.studentKey || '')] || {};
+        const confirmedAt = new Date().toISOString();
+        const snapshotParentEmail = String(
+          getParentNoticeMailTo(rosterStudent) || record.parentEmail || ''
+        ).trim();
+        const snapshotStudentEmail = String(
+          rosterStudent.selfEmail || rosterStudent.studentEmail || record.studentEmail || ''
+        ).trim();
+        const snapshotHomeroomEmail = String(
+          rosterStudent.homeroomTeacherEmail || rosterStudent.homeroomEmail || record.homeroomEmail || ''
+        ).trim();
+
         // isReferral이면 점수 0으로 처리 (위원회 회부)
         const updatePayload = {
           status:'확정',
           adminNote:String(record.adminNote || ''),
-          confirmedAt:new Date().toISOString(),
+          confirmedAt,
           confirmedBy:teacher.name || '',
           confirmedByEmail:teacher.email || '',
           isReferral: isReferral,
-          violationId: computedViolationId
+          violationId: computedViolationId,
+          parentEmail: snapshotParentEmail,
+          studentEmail: snapshotStudentEmail,
+          homeroomEmail: snapshotHomeroomEmail,
+          contactSnapshotAt: confirmedAt,
+          contactSnapshotSource: 'student-roster-at-confirmation'
         };
         if (isReferral) {
           updatePayload.totalPoints = 0;
@@ -5964,8 +6890,13 @@
     }
 
     function getNoticeCycleKey(studentKey, level){
-      const latestDate = String(getLatestConfirmedAt(studentKey) || '').slice(0,10).replace(/\D/g,'') || 'nodate';
-      return ['notice', safeDbKey(studentKey), safeDbKey(level), getCurrentYear(), latestDate].join('_');
+      const yr = getCurrentYear();
+      const existingCount = Object.values(noticeEntries || {}).filter(v =>
+        String((v || {}).studentKey || '') === String(studentKey) &&
+        isRecordInLevel(v, level) &&
+        isCurrentYearRecord(v, yr)
+      ).length;
+      return ['notice', safeDbKey(studentKey), safeDbKey(level), yr, 'cycle', String(existingCount + 1)].join('_');
     }
 
     async function upsertNoticeEntry(studentKey, level, fields, fixedNoticeKey){
@@ -6142,7 +7073,9 @@
       const lockKey = 'student_teacher_mail_' + studentKey + '_' + level;
       const student={key:studentKey,...(students[studentKey]||{})};
       const re2=level==='ms'?getTeacherEmailsByRole('ms_restore'):getTeacherEmailsByRole('hs_restore');
-      const to=[student.selfEmail,student.homeroomTeacherEmail,...re2].filter(Boolean).join(',');
+      const directorEmails=getTeacherEmailsByRole('director');
+      const teamLeaderEmails=getTeacherEmailsByRole('team_leader');
+      const to=[...new Set([student.selfEmail,student.homeroomTeacherEmail,...re2,...directorEmails,...teamLeaderEmails].filter(Boolean))].join(',');
       if(!to) return toast('학생/교사 이메일이 없습니다.','err');
       if (_noticeInProgress[lockKey]) return toast('처리 중입니다. 잠시 후 다시 시도해 주세요.', 'warn');
       _noticeInProgress[lockKey] = true;
@@ -6169,11 +7102,16 @@
     async function completeNotice(studentKey,level){
       if(!canManageNoticeLevel(level)) return toast('알림 완료 처리 권한이 없습니다.', 'err');
       try{
+        const curYear=getCurrentYear();
+        const rawPointsAtCompletion=Object.values(entries||{})
+          .filter(r=>String((r||{}).studentKey||'')===String(studentKey)&&String((r||{}).status||'')==='확정'&&isCurrentYearRecord(r,curYear))
+          .reduce((sum,r)=>sum+Number((r||{}).totalPoints||0),0);
         await upsertNoticeEntry(studentKey, level, {
           completedAt:new Date().toISOString(),
           completedBy:teacher.name||'',
           completedByEmail:teacher.email||'',
-          cycleViolationsSnapshot:buildNoticeReasonText(studentKey)
+          cycleViolationsSnapshot:buildNoticeReasonText(studentKey),
+          rawPointsAtCompletion
         });
         toast('알림 완료가 저장되었습니다.','ok');
         const sLevel2 = getSchoolLevel((students[String(studentKey||'')] || {}).className||'');
@@ -6186,21 +7124,21 @@
       if(!canManageRecoveryLevel(level)) return toast('해당 회복교육 처리 권한이 없습니다.', 'err');
       const student = students[studentKey];
       if (!student) return;
-
-      // 중복 클릭 방지
-      const lockKey = 'recovery_' + studentKey;
-      if (_noticeInProgress[lockKey]) return toast('처리 중입니다. 잠시 후 다시 시도해 주세요.', 'warn');
-      _noticeInProgress[lockKey] = true;
-
+      const rpInput=document.getElementById('rp-'+studentKey); const rawInput=rpInput?String(rpInput.value||'').trim():'3'; const requestedPoints=Number(rawInput);
+      if(!Number.isFinite(requestedPoints)||requestedPoints<1||!Number.isInteger(requestedPoints)) return toast('회복점수는 1 이상의 정수로 입력해 주세요.\nEnter recovery points as a whole number of 1 or more.','err');
+      const lockKey='recovery_'+studentKey; if(_noticeInProgress[lockKey]) return toast('처리 중입니다. 잠시 후 다시 시도해 주세요.','warn'); _noticeInProgress[lockKey]=true;
+      const actionButton=rpInput&&rpInput.closest('tr')?rpInput.closest('tr').querySelector('button[onclick*="completeRecovery"]'):null; const originalButtonText=actionButton?actionButton.textContent:''; if(actionButton){actionButton.disabled=true;actionButton.textContent='저장 중... | Saving...';}
       try{
         // 레이스 컨디션 방지: DB에서 최신 데이터를 직접 읽어 점수 계산
-        const [freshEntrySnap, freshRecoverySnap] = await Promise.all([
+        const [freshEntrySnap, freshRecoverySnap, freshNoticeSnap] = await Promise.all([
           db.ref(DETENTION_DB_PATH).once('value'),
-          db.ref(RECOVERY_DB_PATH).once('value')
+          db.ref(RECOVERY_DB_PATH).once('value'),
+          db.ref(NOTICE_DB_PATH).once('value')
         ]);
 
         const freshEntries = freshEntrySnap.val() || {};
         const freshRecovery = freshRecoverySnap.val() || {};
+        const freshNotices = freshNoticeSnap.val() || {};
 
         const curYear = getCurrentYear();
         const overallTotal = Object.values(freshEntries)
@@ -6212,19 +7150,13 @@
           .reduce((s, r) => s + Number(r.totalPoints || 0), 0);
 
         const recoveryTotal = Object.values(freshRecovery)
-          .filter(r =>
-            String(r.studentKey||'') === String(studentKey) &&
-            String(r.level||'') === String(level||'') &&
-            isCurrentYearRecord(r, curYear)
-          )
+          .filter(r => String(getRecordStudentKey(r)||'') === String(studentKey) && isRecordInLevel(r, level) && isCurrentYearRecord(r, curYear))
           .reduce((s, r) => s + Number(r.recoveryPoints || 0), 0);
 
         const currentTotalBefore = Math.max(0, overallTotal - recoveryTotal);
 
-        // 완료점수: 입력값 우선, 없으면 기본 3점 (최대 currentTotalBefore)
-        const rpInput = document.getElementById('rp-' + studentKey);
-        const inputPts = rpInput ? Math.max(1, parseInt(rpInput.value)||3) : 3;
-        const recoveryPoints = Math.min(inputPts, Math.max(currentTotalBefore, 0));
+        if(requestedPoints > currentTotalBefore) return toast('입력한 회복점수가 현재 잔여점수보다 큽니다.\nRecovery points cannot exceed the remaining points.','err');
+        const recoveryPoints = requestedPoints;
 
         if (recoveryPoints <= 0){
           return toast('회복할 점수가 없습니다.\nNo points left to recover.', 'err');
@@ -6250,15 +7182,21 @@
           completedAt: new Date().toISOString()
         };
 
-        const completedNoticeObj = findLatestCompletedNotice(studentKey, level);
-        const noticeKeyForRecovery = completedNoticeObj ? completedNoticeObj.key : 'no_notice';
-        const recoveryKey = ['recovery', safeDbKey(studentKey), safeDbKey(level), curYear, safeDbKey(noticeKeyForRecovery), String(currentTotalBefore), String(recoveryTotal)].join('_');
-        const txResult = await db.ref(RECOVERY_DB_PATH + '/' + recoveryKey).transaction(current => current || payload);
-        if(!txResult || txResult.committed === false){
-          toast('이미 저장된 회복교육 기록입니다.\nThis restorative education record is already saved.', 'warn');
-        } else {
-          toast('회복교육 완료가 저장되었습니다.\nRestorative Education completion saved.', 'ok');
-        }
+        const completedNoticeRows=Object.entries(freshNotices||{})
+          .filter(([,v])=>String((v||{}).studentKey||'')===String(studentKey)&&isRecordInLevel(v,level)&&!!(v||{}).completedAt&&isCurrentYearRecord(v,curYear))
+          .sort((a,b)=>String((a[1]||{}).completedAt||'').localeCompare(String((b[1]||{}).completedAt||'')));
+        const completedRecoveryRows=Object.entries(freshRecovery||{})
+          .map(([key,value])=>({key,...(value||{})}))
+          .filter(r=>String(getRecordStudentKey(r)||'')===String(studentKey)&&isRecordInLevel(r,level)&&!!r.completedAt&&isCurrentYearRecord(r,curYear))
+          .sort((a,b)=>String(a.completedAt||'').localeCompare(String(b.completedAt||'')));
+        const unresolvedNoticeRow=completedNoticeRows[Math.min(completedRecoveryRows.length, completedNoticeRows.length-1)]||null;
+        const completedNoticeObj=unresolvedNoticeRow?{key:unresolvedNoticeRow[0],notice:unresolvedNoticeRow[1]}:null;
+        const doneCommitteeEntries=Object.entries(committeeEntries||{}).map(([key,value])=>({key,...(value||{})})).filter(c=>String(getCommitteeRecordStudentKey(c)||'')===String(studentKey)&&!!c.completedAt&&isCurrentYearRecord(c,curYear)).sort((a,b)=>String(b.completedAt||'').localeCompare(String(a.completedAt||'')));
+        const latestCommittee=doneCommitteeEntries.length?doneCommitteeEntries[0]:null; const noticeAt=completedNoticeObj?String(completedNoticeObj.notice.completedAt||''):''; const committeeAt=latestCommittee?String(latestCommittee.completedAt||''):''; const useCommitteeBaseline=!!latestCommittee&&(!completedNoticeObj||committeeAt>noticeAt);
+        const sourceKey=useCommitteeBaseline?('committee_'+latestCommittee.key):(completedNoticeObj?('notice_'+completedNoticeObj.key):'no_source');
+        const recoveryKey=['recovery',safeDbKey(studentKey),safeDbKey(level),curYear,safeDbKey(sourceKey),String(currentTotalBefore),String(recoveryTotal)].join('_'); payload.sourceType=useCommitteeBaseline?'committee':(completedNoticeObj?'notice':'unknown'); payload.sourceKey=useCommitteeBaseline?latestCommittee.key:(completedNoticeObj?completedNoticeObj.key:'');
+        const recoveryRef=db.ref(RECOVERY_DB_PATH+'/'+recoveryKey); const beforeSnap=await recoveryRef.once('value'); if(beforeSnap.exists()){toast('같은 상태의 회복교육 기록이 이미 있습니다. 새로고침 후 다시 확인해 주세요.\nA recovery record for this same state already exists. Refresh and check the record.','warn');await loadData();return;}
+        const txResult=await recoveryRef.transaction(current=>current||payload); if(!txResult||txResult.committed===false){toast('회복교육 기록 저장이 완료되지 않았습니다. 다시 시도해 주세요.\nRecovery was not saved. Please try again.','err');return;} toast('회복교육 완료가 저장되었습니다.\nRestorative Education completion saved.','ok');
         // recalculateStudentState: 위원회 상태 보존하면서 회복교육 처리
         try{ await recalculateStudentState(studentKey, level); }catch(e){ console.error(e); }
         loadData();
@@ -6267,6 +7205,7 @@
         toast('회복교육 저장 실패\nFailed to save recovery.', 'err');
       }finally{
         delete _noticeInProgress[lockKey];
+        if(actionButton){ actionButton.disabled=false; actionButton.textContent=originalButtonText; }
       }
     }
 
@@ -6324,6 +7263,10 @@
       renderViolationOptions();
       document.getElementById('manual-points').value = 0;
       updateManualPointsMode();
+      document.getElementById('entry-location').value = '';
+      document.getElementById('entry-location-class').value = '';
+      document.getElementById('entry-location-other').value = '';
+      updateEntryLocationFields();
       document.getElementById('memo').value = '';
       // 교사/날짜 초기화
       document.getElementById('entry-teacher').value = teacher.name || '';
@@ -6334,3 +7277,8 @@
   </script>
 </body>
 </html>
+<style>
+#discipline-active-tbody select.committee-readonly-control,
+#discipline-active-tbody input.committee-note-input,
+#discipline-active-tbody textarea.committee-note-input{max-width:100%;box-sizing:border-box;}
+</style>
