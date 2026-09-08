@@ -115,7 +115,7 @@
 
     const sortedRecoveries = recoveries.slice().sort((a,b)=>eventTime(a.record).localeCompare(eventTime(b.record)));
 
-    // Explicit links first.
+    // Explicit links first. A source can only be completed once.
     sortedRecoveries.forEach(rec => {
       const t = s(rec.record.sourceType).toLowerCase();
       const k = s(rec.record.sourceKey);
@@ -130,8 +130,8 @@
       }
     });
 
-    // Legacy/unlinked records: deterministic FIFO pairing to earliest unresolved completed source
-    // that existed by the time the Recovery was completed. This is preview-only inference and is flagged.
+    // Legacy/unlinked records: deterministic FIFO pairing to the earliest unresolved
+    // completed source that existed by the time the Recovery was completed.
     sortedRecoveries.forEach(rec => {
       if (recoveryInfo.some(x => x.recovery.key === rec.key)) return;
       const rt = eventTime(rec.record);
@@ -148,6 +148,41 @@
     });
 
     return { assigned, recoveryInfo, warnings };
+  }
+
+  // Recovery deductions are a ledger, not a bank of negative points.
+  // Each completed Recovery can deduct only points that actually existed at that moment.
+  // This means an excessive/duplicate old Recovery can NEVER make the hidden balance negative
+  // and can never consume detention points that are added later.
+  function calculateRecoveryLedger(confirmedEntries, recoveryInfo){
+    const valid = recoveryInfo.filter(x=>x.valid).slice().sort((a,b)=>eventTime(a.recovery.record).localeCompare(eventTime(b.recovery.record)));
+    let deducted = 0;
+    let latestZeroAt = '';
+    const rows = [];
+
+    valid.forEach(info=>{
+      const at = eventTime(info.recovery.record);
+      const rawAtTime = confirmedEntries
+        .filter(e=>!at || confirmedTime(e.record) <= at)
+        .reduce((sum,e)=>sum+n(e.record.totalPoints),0);
+      const available = Math.max(0, rawAtTime - deducted);
+      const requested = Math.max(0, n(info.recovery.record.recoveryPoints));
+      const effective = Math.min(requested, available);
+      deducted += effective;
+      if (effective > 0 && Math.max(0, rawAtTime - deducted) === 0) latestZeroAt = at || latestZeroAt;
+      rows.push({
+        recoveryKey:info.recovery.key,
+        source:info.source,
+        requestedPoints:requested,
+        effectivePoints:effective,
+        rawPointsAtTime:rawAtTime,
+        availableBefore:available,
+        completedAt:at,
+        inferred:info.inferred
+      });
+    });
+
+    return { effectiveRecoveredPoints:deducted, latestZeroAt, rows };
   }
 
   function analyzeStudent(studentKey, level, data, options){
@@ -188,12 +223,13 @@
       .filter(([,r]) => s((r||{}).studentKey) === sk && recordLevel(r, lv) === lv && recordYear(r, year) === year && !!s((r||{}).completedAt))
       .map(([key,record])=>({key,record:record||{}}));
     const links = inferRecoveryLinks(completedSources, recoveryRecords);
-    const effectiveRecoveries = links.recoveryInfo.filter(x=>x.valid);
-    const effectiveRecoveredPoints = effectiveRecoveries.reduce((sum,x)=>sum+n(x.recovery.record.recoveryPoints),0);
-    const storedRecoveredPoints = recoveryRecords.reduce((sum,x)=>sum+n(x.record.recoveryPoints),0);
+    const recoveryLedger = calculateRecoveryLedger(confirmedEntries, links.recoveryInfo);
+    const effectiveRecoveredPoints = recoveryLedger.effectiveRecoveredPoints;
+    const storedRecoveredPoints = recoveryRecords.reduce((sum,x)=>sum+Math.max(0,n(x.record.recoveryPoints)),0);
+    // This subtraction is guaranteed non-negative by the recovery ledger itself; max() is
+    // retained only as a final invariant guard, not to hide negative stored balances.
     const currentPoints = Math.max(0, rawPoints - effectiveRecoveredPoints);
 
-    const completedEdu = completedCommittees.some(x=>x.flow==='edu');
     const pendingEdu = pendingCommittees.some(x=>x.flow==='edu');
 
     const referralConfirmed = confirmedEntries.filter(e=>bool(e.record.isReferral));
@@ -208,19 +244,38 @@
     }
     const uncoveredReferralEntries = referralConfirmed.filter(e=>!referralCovered(e));
     const referralDue = uncoveredReferralEntries.length > 0;
-    const eduDue = !completedEdu && !pendingEdu && (currentPoints >= EDU_CURRENT_THRESHOLD || rawPoints > EDU_OVERALL_THRESHOLD);
+
+    // A completed Education Committee covers only the entries that existed up to that
+    // completion. New qualifying points may create a later Committee cycle.
+    const completedEduRecords = completedCommittees.filter(x=>x.flow==='edu');
+    const latestEduCompletedAt = completedEduRecords.map(x=>s(x.record.completedAt)).filter(Boolean).sort().pop() || '';
+    const latestConfirmedAt = confirmedEntries.length ? confirmedTime(confirmedEntries[confirmedEntries.length-1].record) : '';
+    const eduCoversLatestEntry = !!latestEduCompletedAt && (!latestConfirmedAt || latestEduCompletedAt >= latestConfirmedAt);
+    const eduDue = !pendingEdu && !eduCoversLatestEntry && (currentPoints >= EDU_CURRENT_THRESHOLD || rawPoints > EDU_OVERALL_THRESHOLD);
     const committeeDue = pendingCommittees.length > 0 || referralDue || eduDue;
     const desiredCommitteeFlow = pendingCommittees.length ? pendingCommittees[0].flow : (referralDue ? 'referral' : (eduDue ? 'edu' : ''));
 
     const latestSource = completedSources.slice().sort((a,b)=>s(b.record.completedAt).localeCompare(s(a.record.completedAt)))[0] || null;
-    const baselineRaw = latestSource ? sourceBaselineRaw(latestSource, confirmedEntries) : 0;
+    // Clamp historical baselines to raw points that still exist after upstream cancellations.
+    const baselineRaw = latestSource ? Math.min(rawPoints, sourceBaselineRaw(latestSource, confirmedEntries)) : 0;
     const uncoveredRawPoints = latestSource ? Math.max(0, rawPoints - baselineRaw) : currentPoints;
 
     // Committee supersedes a Notice for the same currently-uncovered cycle.
     const noticeDue = !committeeDue && uncoveredRawPoints >= NOTICE_THRESHOLD;
     const desiredActiveNoticeCount = noticeDue ? 1 : 0;
 
-    const unresolvedSources = completedSources.filter(src=>!links.assigned.has(src.id));
+    // Sources explicitly completed by a Recovery are resolved. In addition, when a valid
+    // Recovery brought the student's balance to exactly zero, every older obligation that
+    // existed at that moment is satisfied as well. This prevents leftover Recoveries from
+    // reappearing later when new detention points are added.
+    const resolvedSourceIds = new Set(Array.from(links.assigned.keys()));
+    if (recoveryLedger.latestZeroAt) {
+      completedSources.forEach(src=>{
+        if (s(src.record.completedAt) <= recoveryLedger.latestZeroAt) resolvedSourceIds.add(src.id);
+      });
+    }
+    let unresolvedSources = completedSources.filter(src=>!resolvedSourceIds.has(src.id));
+    if (currentPoints === 0) unresolvedSources = [];
     const pendingRecoveryCount = unresolvedSources.length;
 
     const issues = [];
@@ -240,8 +295,11 @@
     }
     if (links.warnings.length) issues.push(...links.warnings);
     if (storedRecoveredPoints !== effectiveRecoveredPoints) {
-      issues.push('Some stored Recovery deductions are not attached to a currently valid completed workflow source.');
+      issues.push('Stored Recovery deductions exceed what is currently valid/effective; the unified ledger prevents negative point banking.');
     }
+    recoveryLedger.rows.filter(x=>x.requestedPoints>x.effectivePoints).forEach(x=>{
+      issues.push('Recovery '+x.recoveryKey+' requested '+x.requestedPoints+' point(s), but only '+x.effectivePoints+' could validly be deducted at that time.');
+    });
 
     const inferredLinks = links.recoveryInfo.filter(x=>x.inferred && x.valid).length;
     if (inferredLinks) issues.push(inferredLinks+' legacy Recovery link(s) were inferred for preview; migration should make these links explicit.');
@@ -277,6 +335,8 @@
         latestSource:latestSource ? {type:latestSource.type,key:latestSource.key,completedAt:s(latestSource.record.completedAt)} : null,
         pendingRecoverySources:unresolvedSources.map(src=>({type:src.type,key:src.key,flow:src.flow||'',completedAt:s(src.record.completedAt)})),
         recoveryLinks:links.recoveryInfo.map(x=>({recoveryKey:x.recovery.key,sourceType:x.source?x.source.type:'',sourceKey:x.source?x.source.key:'',inferred:x.inferred,valid:x.valid})),
+        recoveryLedger:recoveryLedger.rows.map(x=>({recoveryKey:x.recoveryKey,requestedPoints:x.requestedPoints,effectivePoints:x.effectivePoints,availableBefore:x.availableBefore,completedAt:x.completedAt})),
+        recoveryZeroedAt:recoveryLedger.latestZeroAt,
         uncoveredReferralEntryKeys:uncoveredReferralEntries.map(e=>e.key),
         activeNoticeKeys:activeNotices.map(x=>x.key),
         pendingCommitteeKeys:pendingCommittees.map(x=>x.key)
@@ -311,6 +371,6 @@
     constants:{NOTICE_THRESHOLD,EDU_CURRENT_THRESHOLD,EDU_OVERALL_THRESHOLD},
     analyzeStudent,
     analyzeAll,
-    _internals:{academicYearFromDate,recordYear,classLevel,recordLevel,committeeFlow,inferRecoveryLinks,sourceBaselineRaw}
+    _internals:{academicYearFromDate,recordYear,classLevel,recordLevel,committeeFlow,inferRecoveryLinks,sourceBaselineRaw,calculateRecoveryLedger}
   };
 });

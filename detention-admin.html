@@ -1910,56 +1910,152 @@
     function wpLog(text){workflowPreviewTempActions.push(text);}
     function wpRecords(coll,sk,lv){const obj=(workflowPreviewSimData&&workflowPreviewSimData[coll])||{};return Object.entries(obj).filter(([,r])=>String((r||{}).studentKey||'')===sk && (!lv||!r.schoolLevel||String(r.schoolLevel).toLowerCase()===lv)).map(([key,record])=>({key,record}));}
 
+    // Browser-memory reconciliation for the sandbox only. It materializes the ONE active
+    // Notice that the model says should exist and removes duplicate/obsolete active Notices.
+    // It NEVER calls Firebase; workflowPreviewSimData is a deep clone of the read-only snapshot.
+    function wpReconcileTempWorkflow(sk,lv){
+      if(!workflowPreviewSimData||!window.HISWorkflowPreview)return;
+      const st=wpStudent(sk),className=st.className||'',level=wpLevel(sk,lv),year=workflowPreviewAcademicYear();
+      const base={studentKey:sk,studentName:st.name||'',englishName:st.englishName||'',className,schoolLevel:level,year};
+      let r=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
+      let active=wpRecords('notices',sk,level).filter(x=>!x.record.completedAt).sort((a,b)=>String(a.record.createdAt||'').localeCompare(String(b.record.createdAt||'')));
+
+      if(r.desired.activeNoticeCount===0){
+        active.forEach(x=>delete workflowPreviewSimData.notices[x.key]);
+      }else{
+        if(!active.length){
+          const key=wpTempKey('auto_notice'),at=wpNow();
+          workflowPreviewSimData.notices[key]={...base,createdAt:at,__previewCreated:true,__previewAuto:true};
+          active=[{key,record:workflowPreviewSimData.notices[key]}];
+        }
+        // One unfinished Notice represents all currently-uncovered points. Keep one and
+        // consolidate every extra unfinished record in the simulation.
+        active.slice(1).forEach(x=>delete workflowPreviewSimData.notices[x.key]);
+      }
+    }
+
     function workflowPreviewSimAction(action,sk,lv,arg){
       if(!workflowPreviewSimData)return;
       const st=wpStudent(sk), className=st.className||'', level=wpLevel(sk,lv), year=workflowPreviewAcademicYear();
       const base={studentKey:sk,studentName:st.name||'',englishName:st.englishName||'',className,schoolLevel:level,year};
+      let changed=false;
+
       if(action==='addPoints'){
-        const pts=Math.max(1,Number(arg)||1), key=wpTempKey('detention'), at=wpNow();
-        workflowPreviewSimData.entries[key]={...base,status:'확정',totalPoints:pts,confirmedAt:at,createdAt:at,reason:'PREVIEW TEMP RECORD'};
-        wpLog('+'+pts+' detention points');
+        let pts=Number(arg);
+        if(!Number.isFinite(pts)){
+          const raw=prompt('Detention points | 디텐션 점수','1');
+          if(raw===null)return;
+          pts=Number(raw);
+        }
+        if(!Number.isInteger(pts)||pts<1)return alert('Detention points must be a whole number of 1 or more.');
+        const key=wpTempKey('detention'), at=wpNow();
+        workflowPreviewSimData.entries[key]={...base,status:'확정',totalPoints:pts,confirmedAt:at,createdAt:at,reason:'PREVIEW TEMP RECORD',__previewCreated:true};
+        wpLog('+'+pts+' detention points'); changed=true;
       }else if(action==='cancelLatestDetention'){
-        const arr=wpRecords('entries',sk).filter(x=>x.record.status==='확정').sort((a,b)=>String(b.record.confirmedAt||b.record.createdAt||'').localeCompare(String(a.record.confirmedAt||a.record.createdAt||'')));
-        if(!arr.length)return alert('No confirmed detention record to simulate canceling.');
-        delete workflowPreviewSimData.entries[arr[0].key]; wpLog('Canceled latest confirmed detention (simulation only)');
-      }else if(action==='materializeNotice'){
-        const r=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
-        if(!r.desired.noticeDue)return alert('Unified model does not currently require an active Notice.');
-        if(r.current.activeNoticeCount>0)return alert('An active Notice already exists in the simulation.');
-        const key=wpTempKey('notice'),at=wpNow(); workflowPreviewSimData.notices[key]={...base,createdAt:at}; wpLog('Created expected active Notice');
+        const arr=wpRecords('entries',sk).filter(x=>x.record.status==='확정'&&x.record.__previewCreated).sort((a,b)=>String(b.record.confirmedAt||b.record.createdAt||'').localeCompare(String(a.record.confirmedAt||a.record.createdAt||'')));
+        if(!arr.length)return alert('No simulated detention addition is available to cancel. Existing Firebase records are never altered by sandbox cancel buttons.');
+        delete workflowPreviewSimData.entries[arr[0].key]; wpLog('Canceled latest simulated detention'); changed=true;
       }else if(action==='completeNotice'){
+        wpReconcileTempWorkflow(sk,level);
         const arr=wpRecords('notices',sk,level).filter(x=>!x.record.completedAt).sort((a,b)=>String(a.record.createdAt||'').localeCompare(String(b.record.createdAt||'')));
-        if(!arr.length)return alert('No active Notice exists. Use Create Expected Notice first if the model says one is due.');
+        if(!arr.length)return alert('No active Notice exists under the unified model.');
         const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
-        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; wpLog('Completed active Notice');
+        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; arr[0].record.__previewCompleted=true;
+        wpLog('Completed active Notice'); changed=true;
       }else if(action==='cancelLatestNoticeCompletion'){
-        const arr=wpRecords('notices',sk,level).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
-        if(!arr.length)return alert('No completed Notice to simulate canceling.');
-        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; wpLog('Canceled latest Notice completion');
+        const arr=wpRecords('notices',sk,level).filter(x=>x.record.completedAt&&x.record.__previewCompleted).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No Notice completion from this preview session is available to cancel.');
+        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; delete arr[0].record.__previewCompleted;
+        wpLog('Canceled latest simulated Notice completion'); changed=true;
       }else if(action==='completeRecovery'){
         const r=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
+        if(r.currentPoints<=0)return alert('Remaining points are 0. Recovery cannot deduct any more points.');
         const src=(r.details.pendingRecoverySources||[])[0]; if(!src)return alert('No pending Recovery obligation exists.');
-        const raw=prompt('Recovery deduction points | 회복 차감 점수',String(Math.min(3,r.currentPoints||3))); if(raw===null)return;
+        const raw=prompt('Recovery deduction points | 회복 차감 점수',String(Math.min(3,r.currentPoints))); if(raw===null)return;
         const pts=Number(raw); if(!Number.isInteger(pts)||pts<1)return alert('Enter a positive whole number.');
-        const key=wpTempKey('recovery'),at=wpNow(); workflowPreviewSimData.recovery[key]={...base,completedAt:at,recoveryPoints:pts,sourceType:src.type,sourceKey:src.key}; wpLog('Completed Recovery -'+pts+' linked to '+src.type+':'+src.key);
+        if(pts>r.currentPoints)return alert('Recovery cannot deduct more than the current remaining points ('+r.currentPoints+').');
+        const key=wpTempKey('recovery'),at=wpNow();
+        workflowPreviewSimData.recovery[key]={...base,completedAt:at,recoveryPoints:pts,sourceType:src.type,sourceKey:src.key,__previewCreated:true,__previewCompleted:true};
+        wpLog('Completed Recovery -'+pts+' linked to '+src.type+':'+src.key); changed=true;
       }else if(action==='cancelLatestRecovery'){
-        const arr=wpRecords('recovery',sk,level).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
-        if(!arr.length)return alert('No completed Recovery to simulate canceling.');
-        delete workflowPreviewSimData.recovery[arr[0].key]; wpLog('Canceled latest Recovery completion');
+        const arr=wpRecords('recovery',sk,level).filter(x=>x.record.completedAt&&x.record.__previewCreated).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No Recovery completed during this preview session is available to cancel.');
+        delete workflowPreviewSimData.recovery[arr[0].key]; wpLog('Canceled latest simulated Recovery completion'); changed=true;
       }else if(action==='addCommittee'){
+        const current=window.HISWorkflowPreview.analyzeStudent(sk,level,workflowPreviewSimData,{year});
+        if(current.current.pendingCommitteeCount>0)return alert('A pending Committee already exists in the simulation.');
         const flow=arg==='referral'?'referral':'edu',key=wpTempKey('committee'),at=wpNow();
-        workflowPreviewSimData.committee[key]={...base,type:flow==='referral'?'referral':'edu',committeeCategory:flow,createdAt:at,referredAt:at}; wpLog('Created pending '+flow+' Committee');
+        workflowPreviewSimData.committee[key]={...base,type:flow==='referral'?'referral':'edu',committeeCategory:flow,createdAt:at,referredAt:at,__previewCreated:true};
+        wpLog('Created pending '+flow+' Committee'); changed=true;
       }else if(action==='completeCommittee'){
         const arr=wpRecords('committee',sk).filter(x=>!x.record.completedAt).sort((a,b)=>String(a.record.createdAt||a.record.referredAt||'').localeCompare(String(b.record.createdAt||b.record.referredAt||'')));
         if(!arr.length)return alert('No pending Committee record exists.');
         const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
-        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; wpLog('Completed pending Committee');
+        arr[0].record.completedAt=wpNow(); arr[0].record.rawPointsAtCompletion=raw; arr[0].record.__previewCompleted=true;
+        wpLog('Completed pending Committee'); changed=true;
       }else if(action==='cancelLatestCommittee'){
-        const arr=wpRecords('committee',sk).filter(x=>x.record.completedAt).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
-        if(!arr.length)return alert('No completed Committee to simulate canceling.');
-        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; wpLog('Canceled latest Committee completion');
+        const arr=wpRecords('committee',sk).filter(x=>x.record.completedAt&&x.record.__previewCompleted).sort((a,b)=>String(b.record.completedAt).localeCompare(String(a.record.completedAt)));
+        if(!arr.length)return alert('No Committee completion from this preview session is available to cancel.');
+        delete arr[0].record.completedAt; delete arr[0].record.rawPointsAtCompletion; delete arr[0].record.__previewCompleted;
+        wpLog('Canceled latest simulated Committee completion'); changed=true;
       }
+
+      if(changed){
+        wpReconcileTempWorkflow(sk,level);
+        workflowPreviewRecalculate(true);
+      }
+    }
+
+    function workflowPreviewTempRecordAction(action,collection,key,sk,lv){
+      if(!workflowPreviewSimData)return;
+      const bucket=workflowPreviewSimData[collection];
+      const rec=bucket&&bucket[key];
+      if(!rec||!rec.__previewCreated)return alert('Only temporary Preview records can be changed here. Firebase records are read-only.');
+      if(action==='delete'){
+        delete bucket[key];
+        wpLog('Canceled temp '+collection+' record '+key);
+      }else if(action==='cancelCompletion'){
+        if(!rec.completedAt)return alert('This temporary record is not completed.');
+        delete rec.completedAt; delete rec.rawPointsAtCompletion; delete rec.__previewCompleted;
+        wpLog('Canceled completion for temp '+collection+' record '+key);
+      }else if(action==='completeNotice'){
+        if(collection!=='notices'||rec.completedAt)return;
+        const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
+        rec.completedAt=wpNow(); rec.rawPointsAtCompletion=raw; rec.__previewCompleted=true;
+        wpLog('Completed temp Notice '+key);
+      }else if(action==='completeCommittee'){
+        if(collection!=='committee'||rec.completedAt)return;
+        const raw=wpRecords('entries',sk).filter(x=>x.record.status==='확정').reduce((sum,x)=>sum+(Number(x.record.totalPoints)||0),0);
+        rec.completedAt=wpNow(); rec.rawPointsAtCompletion=raw; rec.__previewCompleted=true;
+        wpLog('Completed temp Committee '+key);
+      }
+      wpReconcileTempWorkflow(sk,lv);
       workflowPreviewRecalculate(true);
+    }
+
+    function workflowPreviewTempRecordList(sk,lv){
+      if(!workflowPreviewSimData)return '<div style="color:#64748b">No temporary records.</div>';
+      const specs=[['entries','Detention'],['notices','Notice'],['recovery','Recovery'],['committee','Committee']];
+      const rows=[];
+      specs.forEach(([coll,label])=>{
+        wpRecords(coll,sk,lv).filter(x=>x.record.__previewCreated).forEach(x=>{
+          const r=x.record||{};
+          const when=r.completedAt||r.confirmedAt||r.createdAt||r.referredAt||'';
+          let detail='';
+          if(coll==='entries')detail='+'+(Number(r.totalPoints)||0)+' points';
+          else if(coll==='notices')detail=r.completedAt?'Completed':'Active';
+          else if(coll==='recovery')detail='-'+(Number(r.recoveryPoints)||0)+' points · '+(r.completedAt?'Completed':'Pending');
+          else detail=(r.committeeCategory||r.type||'Committee')+' · '+(r.completedAt?'Completed':'Pending');
+          let buttons='';
+          if(coll==='entries') buttons='<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'delete\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Cancel</button>';
+          if(coll==='notices') buttons=r.completedAt?'<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'cancelCompletion\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Cancel Completion</button>':'<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'completeNotice\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Complete</button>';
+          if(coll==='recovery') buttons='<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'delete\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Cancel Recovery</button>';
+          if(coll==='committee') buttons=r.completedAt?'<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'cancelCompletion\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Cancel Completion</button>':'<button class="btn btn-secondary" onclick="workflowPreviewTempRecordAction(\'completeCommittee\',\''+coll+'\',\''+esc(x.key)+'\',\''+esc(sk)+'\',\''+esc(lv)+'\')">Complete</button>';
+          rows.push('<tr><td><b>'+label+'</b></td><td>'+esc(detail)+'</td><td style="font-size:11px">'+esc(when?new Date(when).toLocaleString():'-')+'</td><td class="tc">'+buttons+'</td></tr>');
+        });
+      });
+      if(!rows.length)return '<div style="color:#64748b">No temporary records for this student yet.</div>';
+      return '<div style="overflow:auto"><table class="admin-table" style="min-width:620px"><thead><tr><th>Type</th><th>Record</th><th>Time</th><th>Action</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div>';
     }
 
     function renderWorkflowPreview(){
@@ -1993,11 +2089,11 @@
         '<div class="admin-form-section"><div class="admin-form-title">점수 계산 | Point Calculation</div><div class="detail-content">Raw confirmed: <b>'+r.rawPoints+'</b><br>Stored Recovery deductions: '+r.storedRecoveredPoints+'<br>Effective linked deductions: <b>'+r.effectiveRecoveredPoints+'</b><br>Current remaining: <b>'+r.currentPoints+'</b><br>Latest workflow baseline raw points: '+r.baselineRaw+'<br>New/uncovered points since baseline: <b>'+r.uncoveredRawPoints+'</b></div></div>'+
         '<div class="admin-form-section"><div class="admin-form-title">현재 → 새 모델 | Current → Unified Model</div><div class="detail-content">Active Notice: '+r.current.activeNoticeCount+' → <b>'+r.desired.activeNoticeCount+'</b><br>Pending Recovery obligations: <b>'+r.desired.pendingRecoveryCount+'</b><br>Committee due: <b>'+(r.desired.committeeDue?(r.desired.committeeFlow||'yes'):'no')+'</b><br>Stored phase (comparison only): '+esc(r.current.persistedPhase||'-')+'<br>Latest completed workflow source: '+source+'</div></div>'+issueHtml+actionHtml+
         '<div class="admin-form-section"><div class="admin-form-title">임시 시뮬레이션 | Temporary Simulation</div><div class="detail-content" style="display:flex;flex-wrap:wrap;gap:6px">'+
-        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',1)">+1 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',3)">+3 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestDetention\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Latest Detention</button>'+ 
-        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'materializeNotice\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Create Expected Notice</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeNotice\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Notice</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestNoticeCompletion\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Notice Completion</button>'+ 
-        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeRecovery\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Recovery</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestRecovery\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Recovery</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',1)">+1 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',3)">+3 Detention</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addPoints\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Custom Detention Points</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeNotice\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Notice</button>'+ 
+        '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeRecovery\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Recovery</button>'+ 
         '<button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',\'referral\')">Add Referral Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'addCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\',\'edu\')">Add Education Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'completeCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Complete Committee</button><button class="btn btn-secondary" onclick="workflowPreviewSimAction(\'cancelLatestCommittee\',\''+esc(r.studentKey)+'\',\''+esc(r.level)+'\')">Cancel Committee</button>'+ 
-        '</div><div style="margin-top:8px;font-size:11px;color:#64748b">Temp action history: '+esc(workflowPreviewTempActions.join(' → ')||'none')+'</div></div>'+ 
+        '</div><div style="margin-top:12px"><b>Temporary Record List | 임시 기록 목록</b><div style="margin-top:6px">'+workflowPreviewTempRecordList(r.studentKey,r.level)+'</div></div><div style="margin-top:8px;font-size:11px;color:#64748b">Temp action history: '+esc(workflowPreviewTempActions.join(' → ')||'none')+'</div></div>'+ 
         '<div class="admin-form-section"><div class="admin-form-title">안전 | Safety</div><div class="detail-content"><b>시뮬레이션 버튼은 Firebase를 호출하지 않습니다. 메모리 복사본만 수정합니다.</b><br>Simulation buttons never call Firebase. They mutate only an in-memory clone loaded by Preview.</div></div></div>';
     }
 
